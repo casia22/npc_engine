@@ -1,5 +1,5 @@
 ## NPC-ENGINE
-一个赋予游戏AI以群体智能的NPC引擎，由CodeMatrix贡献。
+一个赋予游戏AI以群体智能的NPC引擎，由CogniMatrix™️贡献。
 
 # 安装方式
 
