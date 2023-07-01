@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info
+*.egg-info/
+*.dist-info/
+*.dist-info
+*.cache
+*.log
+*.swp
+*.swo
+
+.pytest_cache/
+test/.pytest_cache/
+
+
+# Poetry
+__pypackages__/
