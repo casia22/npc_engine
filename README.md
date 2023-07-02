@@ -1,7 +1,9 @@
 ## NPC-ENGINE
 一个赋予游戏AI以群体智能的NPC引擎，由CogniMatrix™️贡献。
 
-![Pylint](https://img.shields.io/github/workflow/status/casia22/npc-engine/pylint.yml)
+
+![Static Badge](https://img.shields.io/badge/author-CogniMatrix-blue)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/casia22/npc-engine/pylint.yml)
 ![Lint pytest](https://img.shields.io/github/workflow/status/casia22/npc-engine/python-package.yml)
 
 # 安装方式
