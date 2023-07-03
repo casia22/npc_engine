@@ -6,10 +6,8 @@ import anybadge
 project_path = './'
 
 # 使用pylint对你的项目进行评分
-
-command = 'pylint'
-score1 = 0.1
-
+command = 'pylint ./'
+score = 0.1
 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 out, err = process.communicate()
 
@@ -17,14 +15,13 @@ out, err = process.communicate()
 lines = out.decode('utf-8').split('\n')
 for line in lines:
     if 'Your code has been rated at' in line:
-        score1 = float(line.split('/')[0].split(' ')[-1])
-
+        score = float(line.split('/')[0].split(' ')[-1])
 # 使用anybadge生成徽章
-badge = anybadge.Badge('pylint', score1, thresholds={2: 'red', 4: 'orange', 8: 'yellow', 10: 'green'})
+badge = anybadge.Badge('pylint', score, thresholds={2: 'red', 4: 'orange', 8: 'yellow', 10: 'green'})
+print("code score:",score)
 
 # 将徽章保存到文件
 badge.write_badge('./material/badges/pylint.svg',overwrite=True)
-
 
 import os
 import subprocess
@@ -61,9 +58,9 @@ if total_tests > 0:
 else:
     score = 0
 
-
-badge = anybadge.Badge('pytest', score, thresholds={20: 'red', 40: 'orange', 60: 'yellow', 80: 'green', 100: 'brightgreen'})
-
+sc = score
+# 使用anybadge生成徽章
+badge = anybadge.Badge('pytest', sc, thresholds={20: 'red', 40: 'orange', 60: 'yellow', 80: 'green', 100: 'brightgreen'})
 
 # 将徽章保存到文件，如果文件已经存在，就覆盖它
 badge.write_badge('./material/badges/pytest.svg', overwrite=True)
