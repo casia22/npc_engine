@@ -1,7 +1,6 @@
 # 🎮 NPC-Engine 🚀
 
 NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游戏AI以群体智能。
-
 ![Author Badge](https://img.shields.io/badge/author-CogniMatrix-blue)
 ![Pylint Badge](./material/badges/pylint.svg)
 ![Pytest Badge](./material/badges/pytest.svg)

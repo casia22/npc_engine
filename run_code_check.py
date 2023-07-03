@@ -23,10 +23,6 @@ print("code score:",score)
 # 将徽章保存到文件
 badge.write_badge('./material/badges/pylint.svg',overwrite=True)
 
-import sys
-sys.exit()
-
-
 import os
 import subprocess
 import pytest
