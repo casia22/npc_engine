@@ -6,7 +6,7 @@ import anybadge
 project_path = './'
 
 # 使用pylint对你的项目进行评分
-command = 'pylint'
+command = 'pylint ./'
 score = 0.1
 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 out, err = process.communicate()
@@ -18,9 +18,13 @@ for line in lines:
         score = float(line.split('/')[0].split(' ')[-1])
 # 使用anybadge生成徽章
 badge = anybadge.Badge('pylint', score, thresholds={2: 'red', 4: 'orange', 8: 'yellow', 10: 'green'})
+print("code score:",score)
 
 # 将徽章保存到文件
 badge.write_badge('./material/badges/pylint.svg',overwrite=True)
+
+import sys
+sys.exit()
 
 
 import os
