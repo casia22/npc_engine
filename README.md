@@ -3,9 +3,8 @@
 
 
 ![Static Badge](https://img.shields.io/badge/author-CogniMatrix-blue)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/casia22/npc-engine/pylint.yml)
-![Lint pytest](https://img.shields.io/github/workflow/status/casia22/npc-engine/python-package.yml)
-
+![Pylint](./material/badges/pylint.svg)
+![Pytest](./material/badges/pytest.svg)
 # 安装方式
 
 TBD
