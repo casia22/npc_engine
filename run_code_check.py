@@ -7,6 +7,7 @@ project_path = './'
 
 # 使用pylint对你的项目进行评分
 command = 'pylint'
+score = 0.1
 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 out, err = process.communicate()
 
@@ -15,8 +16,6 @@ lines = out.decode('utf-8').split('\n')
 for line in lines:
     if 'Your code has been rated at' in line:
         score = float(line.split('/')[0].split(' ')[-1])
-    else:
-	score = 0.1
 # 使用anybadge生成徽章
 badge = anybadge.Badge('pylint', score, thresholds={2: 'red', 4: 'orange', 8: 'yellow', 10: 'green'})
 
