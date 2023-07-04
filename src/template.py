@@ -31,8 +31,8 @@ class Engine_Prompt():
             Please use the information provided above, focus on the theme, and continue writing the script for all other characters to interact with each other following the player's opening. """
         supplementary = "\n"
         for i in range(len(names)):
-            supplementary += names[i] + descs[i] + names[i] + memories[i] + names[
-                i] + rf"""'s current mood is {moods[i]}. """ + '\n'
+            supplementary += names[i] + descs[i] + names[i] + ",".join(memories[i]) + names[
+                i] + rf"""'s current mood is {moods[i]}. """ + '\n' # memories = ['sentence1', 'sentence2', ...]
         observe = rf"""
         Now these characters observe that: {observations}"""
         pre_statement = introduction + supplementary + observe + task
@@ -78,7 +78,8 @@ class Engine_Prompt():
         return system_prompt, query
 
     # conversation system prompt in chinese
-    def prompt_for_conversation_C(self, names, location, topic, descs, moods, memories, observations, all_actions,
+    @staticmethod
+    def prompt_for_conversation_C(names, location, topic, descs, moods, memories, observations, all_actions,
                                   all_places, all_people, all_moods, starting):
         if starting == "" or not starting:
             introduction = rf"""现在有{len(names)}个角色正在‘{location}’中交流有关“{topic}”的内容。"""
@@ -90,8 +91,8 @@ class Engine_Prompt():
             请基于上述信息，围绕主题，在玩家的开头后面续写所有其他角色互相交流的剧本。"""
         supplementary = "\n"
         for i in range(len(names)):
-            supplementary += names[i] + descs[i] + names[i] + memories[i] + names[
-                i] + rf"""此刻的心情是{moods[i]}。""" + '\n'
+            supplementary += names[i] + descs[i] + names[i] + ",".join(memories[i]) + names[
+                i] + rf"""此刻的心情是{moods[i]}。""" + '\n' # memories = ['sentence1', 'sentence2', ...]
         observe = rf"""
         现在这些角色观测到：{observations}"""
         pre_statement = introduction + supplementary + observe + task
