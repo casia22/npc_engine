@@ -32,3 +32,10 @@ jobs:
     - name: Test with pytest
       run: |
         python run_code_check.py
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add ./material/badges/pylint.svg ./material/badges/pytest.svg README.md
+        git commit -m "Update badge" -a
+        git push
