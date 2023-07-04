@@ -42,6 +42,7 @@ class Conversation:
         for sent in self.sentences:
             if "(" in line or "（" in line:
                 line = {"type": "State", "name": "", "mood": "", "words": sent.split('|')[1], "action": None}
+                continue
             line = {
                 "type": "content",
                 "name": sent.split('|')[0],
