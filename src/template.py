@@ -1,9 +1,23 @@
 from typing import List, Tuple, Dict, Any
 
-class Engine_Prompt():
+
+class Engine_Prompt:
     # conversation system prompt in english
-    def prompt_for_conversation_E(self, names, location, topic, descs, moods, memories, observations, all_actions,
-                                  all_places, all_people, all_moods, starting):
+    def prompt_for_conversation_E(
+        self,
+        names,
+        location,
+        topic,
+        descs,
+        moods,
+        memories,
+        observations,
+        all_actions,
+        all_places,
+        all_people,
+        all_moods,
+        starting,
+    ):
         """
         生成英语对话剧本的prompt
 
@@ -31,8 +45,15 @@ class Engine_Prompt():
             Please use the information provided above, focus on the theme, and continue writing the script for all other characters to interact with each other following the player's opening. """
         supplementary = "\n"
         for i in range(len(names)):
-            supplementary += names[i] + descs[i] + names[i] + ",".join(memories[i]) + names[
-                i] + rf"""'s current mood is {moods[i]}. """ + '\n' # memories = ['sentence1', 'sentence2', ...]
+            supplementary += (
+                names[i]
+                + descs[i]
+                + names[i]
+                + ",".join(memories[i])
+                + names[i]
+                + rf"""'s current mood is {moods[i]}. """
+                + "\n"
+            )  # memories = ['sentence1', 'sentence2', ...]
         observe = rf"""
         Now these characters observe that: {observations}"""
         pre_statement = introduction + supplementary + observe + task
@@ -73,14 +94,26 @@ class Engine_Prompt():
 
         whole_statements = pre_statement + constraint_statement + example_statement
         system_prompt = {"role": "system", "content": whole_statements}
-        query = {"role": "user", "content": "Player: " + starting + '\n'}
+        query = {"role": "user", "content": "Player: " + starting + "\n"}
 
         return system_prompt, query
 
     # conversation system prompt in chinese
     @staticmethod
-    def prompt_for_conversation_C(names, location, topic, descs, moods, memories, observations, all_actions,
-                                  all_places, all_people, all_moods, starting):
+    def prompt_for_conversation_C(
+        names,
+        location,
+        topic,
+        descs,
+        moods,
+        memories,
+        observations,
+        all_actions,
+        all_places,
+        all_people,
+        all_moods,
+        starting,
+    ):
         if starting == "" or not starting:
             introduction = rf"""现在有{len(names)}个角色正在‘{location}’中交流有关“{topic}”的内容。"""
             task = rf"""
@@ -91,8 +124,15 @@ class Engine_Prompt():
             请基于上述信息，围绕主题，在玩家的开头后面续写所有其他角色互相交流的剧本。"""
         supplementary = "\n"
         for i in range(len(names)):
-            supplementary += names[i] + descs[i] + names[i] + ",".join(memories[i]) + names[
-                i] + rf"""此刻的心情是{moods[i]}。""" + '\n' # memories = ['sentence1', 'sentence2', ...]
+            supplementary += (
+                names[i]
+                + descs[i]
+                + names[i]
+                + ",".join(memories[i])
+                + names[i]
+                + rf"""此刻的心情是{moods[i]}。"""
+                + "\n"
+            )  # memories = ['sentence1', 'sentence2', ...]
         observe = rf"""
         现在这些角色观测到：{observations}"""
         pre_statement = introduction + supplementary + observe + task
@@ -133,35 +173,52 @@ class Engine_Prompt():
 
         whole_statements = pre_statement + constraint_statement + example_statement
         system_prompt = {"role": "system", "content": whole_statements}
-        query = {"role": "user", "content": "玩家：" + starting + '\n'}
+        query = {"role": "user", "content": "玩家：" + starting + "\n"}
 
         return system_prompt, query
 
     @staticmethod
-    def prompt_for_topic(names: List[str], location: str, observations: str, language: str) -> Tuple[
-        Dict[str, str], Dict[str, str]]:
+    def prompt_for_topic(
+        names: List[str], location: str, observations: str, language: str
+    ) -> Tuple[Dict[str, str], Dict[str, str]]:
         if language == "E":
-            system_prompt = {"role": "system",
-                             "content": rf"""Now there are {len(names)} characters communicating together at {location}, they are {", ".join(names)}, and their observations are: {observations}. Please generate a topic they might be discussed by them based on the above information.
-            For example: the big tree nearby"""}
-            query = {"role": "user", "content": rf"""
+            system_prompt = {
+                "role": "system",
+                "content": rf"""Now there are {len(names)} characters communicating together at {location}, they are {", ".join(names)}, and their observations are: {observations}. Please generate a topic they might be discussed by them based on the above information.
+            For example: the big tree nearby""",
+            }
+            query = {
+                "role": "user",
+                "content": rf"""
             Now, please generate a topic:
-            """}
+            """,
+            }
         else:
-            system_prompt = {"role": "system",
-                             "content": rf"""现在有{len(names)}个角色在{location}一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{observations}，请根据上述信息生成一个他们可能共同交谈的主题。
-            比如：身边的大树"""}
-            query = {"role": "user", "content": rf"""
+            system_prompt = {
+                "role": "system",
+                "content": rf"""现在有{len(names)}个角色在{location}一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{observations}，请根据上述信息生成一个他们可能共同交谈的主题。
+            比如：身边的大树""",
+            }
+            query = {
+                "role": "user",
+                "content": rf"""
             现在请生成一个主题：
-            """}
+            """,
+            }
         return system_prompt, query
 
     @staticmethod
     def prompt_for_re_creation(language, interruption, memory):
         if language == "E":
-            assistant_prompt = {"role": "assistant", "content": "\n".join(memory) + '\n'}
-            query = {"role": "user", "content": "Player: " + interruption + '\n'}
+            assistant_prompt = {
+                "role": "assistant",
+                "content": "\n".join(memory) + "\n",
+            }
+            query = {"role": "user", "content": "Player: " + interruption + "\n"}
         else:
-            assistant_prompt = {"role": "assistant", "content": "\n".join(memory + '\n')}
-            query = {"role": "user", "content": "玩家：" + interruption + '\n'}
+            assistant_prompt = {
+                "role": "assistant",
+                "content": "\n".join(memory + "\n"),
+            }
+            query = {"role": "user", "content": "玩家：" + interruption + "\n"}
         return assistant_prompt, query
