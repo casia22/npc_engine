@@ -1,8 +1,9 @@
 import os
 import subprocess
-import sys,pytest
+import sys
 
 import anybadge
+import pytest
 
 # 将你的项目路径替换为'your_project'
 project_path = "./"
