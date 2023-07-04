@@ -1,41 +1,57 @@
 import asyncio
-import socket
-import uuid
-from typing import List, Dict, Any, Tuple
-import json
-import threading
-from uuid import uuid4
 import datetime
+import json
+import os
+import re
+import socket
+import threading
+import uuid
+from typing import Any, Dict, List, Tuple
+from uuid import uuid4
+
+import colorama
 import openai
 import zhipuai
-import re, os, datetime
-
 from npc_engine import *
 from npc_engine import NPC
 
-import colorama
 colorama.init()
 from colorama import Fore, Style
-from npc_engine.src.config.config import ZHIPU_KEY, OPENAI_KEY, OPENAI_BASE, INIT_PACK, NPC_CONFIG, CONV_CONFIG, ALL_ACTIONS, ALL_PLACES, ALL_MOODS
-
 from langchain import text_splitter
+from npc_engine.src.config.config import (ALL_ACTIONS, ALL_MOODS, ALL_PLACES,
+                                          CONV_CONFIG, INIT_PACK, NPC_CONFIG,
+                                          OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
+
 zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
 openai.api_base = OPENAI_BASE
 
 
 class NPCEngine:
-    def __init__(self, engine_url="::1", engine_port=8199, game_url="::1", game_port=8084, model="gpt-3.5-turbo", logo=True):
+    def __init__(
+        self,
+        engine_url="::1",
+        engine_port=8199,
+        game_url="::1",
+        game_port=8084,
+        model="gpt-3.5-turbo",
+        logo=True,
+    ):
         if logo:
-            print(Fore.BLUE + """
+            print(
+                Fore.BLUE
+                + """
              _   _ ______  _____  _____  _   _  _____  _____  _   _  _____
             | \ | || ___ \/  __ \|  ___|| \ | ||  __ \|_   _|| \ | ||  ___|
             |  \| || |_/ /| /  \/| |__  |  \| || |  \/  | |  |  \| || |__
             | . ` ||  __/ | |    |  __| | . ` || | __   | |  | . ` ||  __|
             | |\  || |    | \__/\| |___ | |\  || |_\ \ _| |_ | |\  || |___
             \_| \_/\_|     \____/\____/ \_| \_/ \____/ \___/ \_| \_/\____/
-            """ + Style.RESET_ALL)
-            print("""
+            """
+                + Style.RESET_ALL
+            )
+            print(
+                """
                 _
                | |
                | |__   _   _
@@ -50,7 +66,8 @@ class NPCEngine:
              \____/ \___/  \__, ||_| |_||_|\_|  |_/ \__,_| \__||_|   |_|/_/\_\\
                             __/ |
                            |___/
-            """)
+            """
+            )
         self.engine_port = engine_port
         self.engine_url = engine_url
         self.game_url = game_url
@@ -60,14 +77,17 @@ class NPCEngine:
         self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)  # 使用IPv6地址
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
         # color print
-        print(Fore.GREEN + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}" + Style.RESET_ALL)
-        self.sock.bind(('::', self.engine_port))  # 修改为IPv6地址绑定方式
+        print(
+            Fore.GREEN
+            + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}"
+            + Style.RESET_ALL
+        )
+        self.sock.bind(("::", self.engine_port))  # 修改为IPv6地址绑定方式
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
 
-
-    def listen(self,buffer_size=40000):
+    def listen(self, buffer_size=40000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
@@ -77,22 +97,22 @@ class NPCEngine:
         while True:
             data, addr = self.sock.recvfrom(buffer_size)
             # 解析UDP数据包头部
-            msg_id, packet_no, total_packets, pack = data.split(b'@', 3)
+            msg_id, packet_no, total_packets, pack = data.split(b"@", 3)
             packet_no = int(packet_no)
             total_packets = int(total_packets)
             # 缓存数据包
             if msg_id not in buffer:
-                buffer[msg_id] = [b''] * total_packets
+                buffer[msg_id] = [b""] * total_packets
             buffer[msg_id][packet_no - 1] = pack
             # 检查是否所有数据包都已接收
-            if not any(part == b'' for part in buffer[msg_id]):
+            if not any(part == b"" for part in buffer[msg_id]):
                 # 重组消息
-                msg_str = b''.join(buffer[msg_id]).decode('utf-8')
+                msg_str = b"".join(buffer[msg_id]).decode("utf-8")
 
                 json_data = json.loads(msg_str)
                 try:
                     # 按照完整数据包的func字段调用相应的函数
-                    if 'func' in json_data.keys():
+                    if "func" in json_data.keys():
                         func_name = json_data["func"]
                         if hasattr(self, func_name):
                             func = getattr(self, func_name)
@@ -107,7 +127,9 @@ class NPCEngine:
 
                 except json.JSONDecodeError:
                     # print the raw data and the address of the sender and the time and the traceback
-                    print(f"json decode error: {data} from {addr} at {datetime.datetime.now()}")
+                    print(
+                        f"json decode error: {data} from {addr} at {datetime.datetime.now()}"
+                    )
                     # print error getting key
                     print(f"error getting key: {json_data['func']}")
                 except Exception as e:
@@ -135,38 +157,55 @@ class NPCEngine:
         :return:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
-        names: List[str] = json_data['npc']
-        npc_refs = [self.npc_dict[name] for name in names] # todo:altert！！！有问题！！
-        location: str = json_data['location']
-        topic: str = json_data['topic']
+        names: List[str] = json_data["npc"]
+        npc_refs = [self.npc_dict[name] for name in names]  # todo:altert！！！有问题！！
+        location: str = json_data["location"]
+        topic: str = json_data["topic"]
 
         # 初始化群体描述、心情和记忆
-        descs: List[str] = [json_data['player_desc']] + [npc.desc for npc in npc_refs]
-        moods:List[str] = [npc.mood for npc in npc_refs]
-        memories:List[str] = [npc.memory for npc in npc_refs]
+        descs: List[str] = [json_data["player_desc"]] + [npc.desc for npc in npc_refs]
+        moods: List[str] = [npc.mood for npc in npc_refs]
+        memories: List[str] = [npc.memory for npc in npc_refs]
 
         # 初始化群体观察和常识
-        observations:str = json_data['observation']
-        all_actions:List[str] = self.knowledge["actions"]
-        all_places:List[str] = self.knowledge["places"]
-        all_people:List[str] = self.knowledge["people"]
-        all_moods:List[str] = self.knowledge["moods"]
-        starting:str = json_data['starting']
+        observations: str = json_data["observation"]
+        all_actions: List[str] = self.knowledge["actions"]
+        all_places: List[str] = self.knowledge["places"]
+        all_people: List[str] = self.knowledge["people"]
+        all_moods: List[str] = self.knowledge["moods"]
+        starting: str = json_data["starting"]
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
             topic = self.get_random_topic(names, location, observations, self.language)
 
         # 根据语言选择对应的系统提示函数
-        system_prompt_func = getattr(Engine_Prompt, "prompt_for_conversation_" + self.language)
-        system_prompt, query_prompt = system_prompt_func(names=names, location=location, topic=topic, descs=descs, moods=moods,
-                                                         memories=memories, observations=observations, all_actions=all_actions,
-                                                         all_places=all_places, all_people=all_people,
-                                                         all_moods=all_moods, starting=starting)
+        system_prompt_func = getattr(
+            Engine_Prompt, "prompt_for_conversation_" + self.language
+        )
+        system_prompt, query_prompt = system_prompt_func(
+            names=names,
+            location=location,
+            topic=topic,
+            descs=descs,
+            moods=moods,
+            memories=memories,
+            observations=observations,
+            all_actions=all_actions,
+            all_places=all_places,
+            all_people=all_people,
+            all_moods=all_moods,
+            starting=starting,
+        )
 
         # 创建Conversation，存入对象字典，生成剧本
-        convo = Conversation(names=names, system_prompt=system_prompt, query_prompt=query_prompt,
-                             language=self.language, model=self.model) # todo: 这里engine会等待OPENAI并无法处理新的接收
+        convo = Conversation(
+            names=names,
+            system_prompt=system_prompt,
+            query_prompt=query_prompt,
+            language=self.language,
+            model=self.model,
+        )  # todo: 这里engine会等待OPENAI并无法处理新的接收
 
         self.conversation_dict[convo.id] = convo
         # script = convo.generate_script()
@@ -186,13 +225,15 @@ class NPCEngine:
         :return:
         """
         conversation_id = json_data["conversation_id"]
-        interruption = json_data['interruption']
+        interruption = json_data["interruption"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
             script = convo.re_create_conversation(interruption)
             self.send_script(script)
 
-    async def get_random_topic(self, names: List[str], location: str, observations: str, language: str) -> str:
+    async def get_random_topic(
+        self, names: List[str], location: str, observations: str, language: str
+    ) -> str:
         """
         使用GPT为对话生成一个随机的topic
         :param names: 参与对话的NPC名称列表
@@ -201,9 +242,12 @@ class NPCEngine:
         :param language: 语言
         :return: 随机生成的话题
         """
-        system_topic, query_prompt = Engine_Prompt.prompt_for_topic(names=names, location=location,
-                                                                    observations=observations, language=language)
-        response = openai.ChatCompletion.create(model=self.model, messages=[system_topic, query_prompt])
+        system_topic, query_prompt = Engine_Prompt.prompt_for_topic(
+            names=names, location=location, observations=observations, language=language
+        )
+        response = openai.ChatCompletion.create(
+            model=self.model, messages=[system_topic, query_prompt]
+        )
         topic: str = response["choices"][0]["message"]["content"].strip()
         return topic
 
@@ -240,9 +284,15 @@ class NPCEngine:
         self.knowledge = json_data["knowledge"]
         self.language = json_data["language"]
         for npc_data in npc_list:
-            npc = NPC(name=npc_data["name"], desc=npc_data["desc"], mood=npc_data["mood"],
-                      location=npc_data["location"],
-                      knowledge=self.knowledge, memory=npc_data["memory"], model=self.model)  # todo:👀NPC观察也就是ob没有做
+            npc = NPC(
+                name=npc_data["name"],
+                desc=npc_data["desc"],
+                mood=npc_data["mood"],
+                location=npc_data["location"],
+                knowledge=self.knowledge,
+                memory=npc_data["memory"],
+                model=self.model,
+            )  # todo:👀NPC观察也就是ob没有做
             self.npc_dict[npc.name] = npc
             # print("inited npc:", npc.name)
         self.send_data({"name": "inited", "status": "success"})
@@ -282,9 +332,9 @@ class NPCEngine:
         # 对每个人名，生成一条记忆，放入对应的NPC的记忆list中
         for i in range(len(names)):
             person_name = names[i]
-            the_other_names = names[:i] + names[i + 1:]
+            the_other_names = names[:i] + names[i + 1 :]
             pre_inform = rf"{person_name} talked with {','.join(the_other_names)} from {convo.start_time} to {convo.end_time}. \n"
-            new_memory = pre_inform + '\n'.join(convo.temp_memory) + '\n'
+            new_memory = pre_inform + "\n".join(convo.temp_memory) + "\n"
             npc = self.npc_dict[person_name]
             npc.memory.append(new_memory)
 
@@ -295,8 +345,14 @@ class NPCEngine:
         :return:
         """
         # print item with appropriate color
-        print("[NPC-ENGINE]sending script:", Fore.GREEN, json.dumps(script).encode(), Style.RESET_ALL,
-              "to", (self.game_url, self.game_port))
+        print(
+            "[NPC-ENGINE]sending script:",
+            Fore.GREEN,
+            json.dumps(script).encode(),
+            Style.RESET_ALL,
+            "to",
+            (self.game_url, self.game_port),
+        )
         self.send_data(script)
 
     def send_data(self, data, max_packet_size=6000):
@@ -309,16 +365,22 @@ class NPCEngine:
         # UUID作为消息ID
         msg_id = uuid.uuid4().hex
         # 将json字符串转换为bytes
-        data = json.dumps(data).encode('utf-8')
+        data = json.dumps(data).encode("utf-8")
         # 计算数据包总数
-        packets = [data[i: i + max_packet_size] for i in range(0, len(data), max_packet_size)]
+        packets = [
+            data[i : i + max_packet_size] for i in range(0, len(data), max_packet_size)
+        ]
         total_packets = len(packets)
         print(total_packets)
 
         for i, packet in enumerate(packets):
             # 构造UDP数据包头部
-            print("sending packet {} of {}, size: {} KB".format(i + 1, total_packets, self.calculate_str_size_in_kb(packet)))
-            header = f"{msg_id}@{i + 1}@{total_packets}".encode('utf-8')
+            print(
+                "sending packet {} of {}, size: {} KB".format(
+                    i + 1, total_packets, self.calculate_str_size_in_kb(packet)
+                )
+            )
+            header = f"{msg_id}@{i + 1}@{total_packets}".encode("utf-8")
             # 发送UDP数据包
             self.sock.sendto(header + b"@" + packet, (self.game_url, self.game_port))
 
@@ -343,6 +405,12 @@ class NPCEngine:
         print("Engine closed")
 
 
-if __name__ == '__main__':
-    NPC(name = "李大爷", desc="是个好人", mood="正常",knowledge={"actions":["1"],"place":[],"moods":[],"people":[]},location="李大爷家", memory = ["李大爷的记忆.txt"])
-
+if __name__ == "__main__":
+    NPC(
+        name="李大爷",
+        desc="是个好人",
+        mood="正常",
+        knowledge={"actions": ["1"], "place": [], "moods": [], "people": []},
+        location="李大爷家",
+        memory=["李大爷的记忆.txt"],
+    )
