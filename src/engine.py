@@ -1,4 +1,6 @@
+import asyncio
 import socket
+import uuid
 from typing import List, Dict, Any, Tuple
 import json
 import threading
@@ -9,6 +11,7 @@ import zhipuai
 import re, os, datetime
 
 from npc_engine import *
+from npc_engine import NPC
 
 import colorama
 colorama.init()
@@ -22,32 +25,34 @@ openai.api_base = OPENAI_BASE
 
 
 class NPCEngine:
-    def __init__(self, engine_port=8199, game_url="::1", game_port=8084, model="gpt-3.5-turbo"):
-        print(Fore.BLUE + """
-         _   _ ______  _____  _____  _   _  _____  _____  _   _  _____    
-        | \ | || ___ \/  __ \|  ___|| \ | ||  __ \|_   _|| \ | ||  ___|   
-        |  \| || |_/ /| /  \/| |__  |  \| || |  \/  | |  |  \| || |__     
-        | . ` ||  __/ | |    |  __| | . ` || | __   | |  | . ` ||  __|    
-        | |\  || |    | \__/\| |___ | |\  || |_\ \ _| |_ | |\  || |___    
-        \_| \_/\_|     \____/\____/ \_| \_/ \____/ \___/ \_| \_/\____/ 
-        """ + Style.RESET_ALL)
-        print("""
-            _                                                             
-           | |                                                            
-           | |__   _   _                                                  
-           | '_ \ | | | |                                                 
-           | |_) || |_| |                                                 
-           |_.__/  \__, |                                                 
-         _____      __/ |            _ ___  ___        _          _       
-        /  __ \    |___/            (_)|  \/  |       | |        (_)      
-        | /  \/  ___    __ _  _ __   _ | .  . |  __ _ | |_  _ __  _ __  __
-        | |     / _ \  / _` || '_ \ | || |\/| | / _` || __|| '__|| |\ \/ /
-        | \__/\| (_) || (_| || | | || || |  | || (_| || |_ | |   | | >  < 
-         \____/ \___/  \__, ||_| |_||_|\_|  |_/ \__,_| \__||_|   |_|/_/\_\
-                        __/ |                                             
-                       |___/                                              
-        """)
+    def __init__(self, engine_url="::1", engine_port=8199, game_url="::1", game_port=8084, model="gpt-3.5-turbo", logo=True):
+        if logo:
+            print(Fore.BLUE + """
+             _   _ ______  _____  _____  _   _  _____  _____  _   _  _____
+            | \ | || ___ \/  __ \|  ___|| \ | ||  __ \|_   _|| \ | ||  ___|
+            |  \| || |_/ /| /  \/| |__  |  \| || |  \/  | |  |  \| || |__
+            | . ` ||  __/ | |    |  __| | . ` || | __   | |  | . ` ||  __|
+            | |\  || |    | \__/\| |___ | |\  || |_\ \ _| |_ | |\  || |___
+            \_| \_/\_|     \____/\____/ \_| \_/ \____/ \___/ \_| \_/\____/
+            """ + Style.RESET_ALL)
+            print("""
+                _
+               | |
+               | |__   _   _
+               | '_ \ | | | |
+               | |_) || |_| |
+               |_.__/  \__, |
+             _____      __/ |            _ ___  ___        _          _
+            /  __ \    |___/            (_)|  \/  |       | |        (_)
+            | /  \/  ___    __ _  _ __   _ | .  . |  __ _ | |_  _ __  _ __  __
+            | |     / _ \  / _` || '_ \ | || |\/| | / _` || __|| '__|| |\ \/ /
+            | \__/\| (_) || (_| || | | || || |  | || (_| || |_ | |   | | >  <
+             \____/ \___/  \__, ||_| |_||_|\_|  |_/ \__,_| \__||_|   |_|/_/\_\\
+                            __/ |
+                           |___/
+            """)
         self.engine_port = engine_port
+        self.engine_url = engine_url
         self.game_url = game_url
         self.game_port = game_port
         self.conversation_dict = {}
@@ -57,35 +62,59 @@ class NPCEngine:
         # color print
         print(Fore.GREEN + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}" + Style.RESET_ALL)
         self.sock.bind(('::', self.engine_port))  # 修改为IPv6地址绑定方式
+        self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
-        self.model = model
 
-    def listen(self):
+
+    def listen(self,buffer_size=40000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
         """
         print(f"listening on [::]:{self.engine_port}")
+        buffer = {}
         while True:
-            data, addr = self.sock.recvfrom(1024)
-            try:
-                json_data = json.loads(data.decode())
-                if "func" in json_data:
-                    func_name = json_data["func"]
-                    if hasattr(self, func_name):
-                        func = getattr(self, func_name)
-                        func(json_data)
-            except json.JSONDecodeError:
-                # print the raw data and the address of the sender and the time and the traceback
-                print(f"json decode error: {data} from {addr} at {datetime.datetime.now()}")
-                # print error getting key
-                print(f"error getting key: {json_data['func']}")
-            except Exception as e:
-                print(f"error: {e}")
-                pass
+            data, addr = self.sock.recvfrom(buffer_size)
+            # 解析UDP数据包头部
+            msg_id, packet_no, total_packets, pack = data.split(b'@', 3)
+            packet_no = int(packet_no)
+            total_packets = int(total_packets)
+            # 缓存数据包
+            if msg_id not in buffer:
+                buffer[msg_id] = [b''] * total_packets
+            buffer[msg_id][packet_no - 1] = pack
+            # 检查是否所有数据包都已接收
+            if not any(part == b'' for part in buffer[msg_id]):
+                # 重组消息
+                msg_str = b''.join(buffer[msg_id]).decode('utf-8')
 
-    def create_conversation(self, json_data):
+                json_data = json.loads(msg_str)
+                try:
+                    # 按照完整数据包的func字段调用相应的函数
+                    if 'func' in json_data.keys():
+                        func_name = json_data["func"]
+                        if hasattr(self, func_name):
+                            func = getattr(self, func_name)
+                            asyncio.run(func(json_data))
+                        # test
+                        if "init" in json_data["func"]:
+                            print(f"[NPC-ENGINE]init: {json_data}")
+                        if "create_conversation" in json_data["func"]:
+                            print(f"[NPC-ENGINE]create_conversation: {json_data}")
+                        if "confirm_conversation" in json_data["func"]:
+                            print(f"[NPC-ENGINE]confirm_conversation: {json_data}")
+
+                except json.JSONDecodeError:
+                    # print the raw data and the address of the sender and the time and the traceback
+                    print(f"json decode error: {data} from {addr} at {datetime.datetime.now()}")
+                    # print error getting key
+                    print(f"error getting key: {json_data['func']}")
+                except Exception as e:
+                    print(f"error: {e}")
+                    pass
+
+    async def create_conversation(self, json_data):
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
         直到对话都被确认，Conversation才会被销毁，
@@ -107,7 +136,7 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data['npc']
-        npc_refs = [self.npc_dict[name] for name in names]
+        npc_refs = [self.npc_dict[name] for name in names] # todo:altert！！！有问题！！
         location: str = json_data['location']
         topic: str = json_data['topic']
 
@@ -117,7 +146,7 @@ class NPCEngine:
         memories:List[str] = [npc.memory for npc in npc_refs]
 
         # 初始化群体观察和常识
-        observations:str = json_data['observations']
+        observations:str = json_data['observation']
         all_actions:List[str] = self.knowledge["actions"]
         all_places:List[str] = self.knowledge["places"]
         all_people:List[str] = self.knowledge["people"]
@@ -130,20 +159,21 @@ class NPCEngine:
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(Engine_Prompt, "prompt_for_conversation_" + self.language)
-        system_prompt, query_prompt = system_prompt_func(names, location, topic, descs, moods,
-                                                         memories, observations, all_actions, all_places, all_people,
-                                                         all_moods, starting)
+        system_prompt, query_prompt = system_prompt_func(names=names, location=location, topic=topic, descs=descs, moods=moods,
+                                                         memories=memories, observations=observations, all_actions=all_actions,
+                                                         all_places=all_places, all_people=all_people,
+                                                         all_moods=all_moods, starting=starting)
 
         # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(names=names, system_prompt=system_prompt, query_prompt=query_prompt,
-                             language=self.language, model=self.model)
+                             language=self.language, model=self.model) # todo: 这里engine会等待OPENAI并无法处理新的接收
 
         self.conversation_dict[convo.id] = convo
-        script = convo.generate_script()
+        # script = convo.generate_script()
         # 发送整个剧本
-        self.send_script(script)
+        self.send_script(convo.script)
 
-    def re_create_conversation(self, json_data):
+    async def re_create_conversation(self, json_data):
         """
         根据游戏发送的Conversation打断包中id，找到原来的Conversation对象，重新生成剧本并返回；
         打断包例:
@@ -162,7 +192,7 @@ class NPCEngine:
             script = convo.re_create_conversation(interruption)
             self.send_script(script)
 
-    def get_random_topic(self, names: List[str], location: str, observations: str, language: str) -> str:
+    async def get_random_topic(self, names: List[str], location: str, observations: str, language: str) -> str:
         """
         使用GPT为对话生成一个随机的topic
         :param names: 参与对话的NPC名称列表
@@ -177,7 +207,7 @@ class NPCEngine:
         topic: str = response["choices"][0]["message"]["content"].strip()
         return topic
 
-    def init(self, json_data):
+    async def init(self, json_data):
         """
         按照json来初始化NPC和NPC的常识
         例子：
@@ -214,10 +244,10 @@ class NPCEngine:
                       location=npc_data["location"],
                       knowledge=self.knowledge, memory=npc_data["memory"], model=self.model)  # todo:👀NPC观察也就是ob没有做
             self.npc_dict[npc.name] = npc
-            print("inited npc:", npc.name, npc.desc, npc.location, npc.mood)
+            # print("inited npc:", npc.name)
+        self.send_data({"name": "inited", "status": "success"})
 
-
-    def confirm_conversation_line(self, json_data):
+    async def confirm_conversation_line(self, json_data):
         """
         接受确认包，将游戏发过来对应的conversation和idx 添加到 npc的memory中。
         例：
@@ -265,9 +295,39 @@ class NPCEngine:
         :return:
         """
         # print item with appropriate color
-        print("sending script:", Fore.GREEN, json.dumps(script).encode(), Style.RESET_ALL,
+        print("[NPC-ENGINE]sending script:", Fore.GREEN, json.dumps(script).encode(), Style.RESET_ALL,
               "to", (self.game_url, self.game_port))
-        self.sock.sendto(json.dumps(script).encode(), (self.game_url, self.game_port))
+        self.send_data(script)
+
+    def send_data(self, data, max_packet_size=6000):
+        """
+        把DICT数据发送给游戏端口
+        :param data:dict
+        :param max_packet_size:
+        :return:
+        """
+        # UUID作为消息ID
+        msg_id = uuid.uuid4().hex
+        # 将json字符串转换为bytes
+        data = json.dumps(data).encode('utf-8')
+        # 计算数据包总数
+        packets = [data[i: i + max_packet_size] for i in range(0, len(data), max_packet_size)]
+        total_packets = len(packets)
+        print(total_packets)
+
+        for i, packet in enumerate(packets):
+            # 构造UDP数据包头部
+            print("sending packet {} of {}, size: {} KB".format(i + 1, total_packets, self.calculate_str_size_in_kb(packet)))
+            header = f"{msg_id}@{i + 1}@{total_packets}".encode('utf-8')
+            # 发送UDP数据包
+            self.sock.sendto(header + b"@" + packet, (self.game_url, self.game_port))
+
+    def calculate_str_size_in_kb(self, string: bytes):
+        # 获取字符串的字节数
+        byte_size = len(string)
+        # 将字节数转换成KB大小
+        kb_size = byte_size / 1024
+        return kb_size
 
     def close(self):
         """
@@ -281,3 +341,8 @@ class NPCEngine:
             npc.save_memory()
         print("all memory saved")
         print("Engine closed")
+
+
+if __name__ == '__main__':
+    NPC(name = "李大爷", desc="是个好人", mood="正常",knowledge={"actions":["1"],"place":[],"moods":[],"people":[]},location="李大爷家", memory = ["李大爷的记忆.txt"])
+
