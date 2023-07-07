@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="175" height="20">
+    <linearGradient id="b" x2="0" y2="100%">
+        <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+        <stop offset="1" stop-opacity=".1"/>
+    </linearGradient>
+    <mask id="anybadge_4">
+        <rect width="175" height="20" rx="3" fill="#fff"/>
+    </mask>
+    <g mask="url(#anybadge_4)">
+        <path fill="#555" d="M0 0h48v20H0z"/>
+        <path fill="#4C1" d="M48 0h127v20H48z"/>
+        <path fill="url(#b)" d="M0 0h175v20H0z"/>
+    </g>
+    <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+        <text x="25.0" y="15" fill="#010101" fill-opacity=".3">pytest</text>
+        <text x="24.0" y="14">pytest</text>
+    </g>
+    <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+        <text x="112.5" y="15" fill="#010101" fill-opacity=".3">66.66666666666666</text>
+        <text x="111.5" y="14">66.66666666666666</text>
+    </g>
+</svg>
