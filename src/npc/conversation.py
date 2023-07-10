@@ -8,8 +8,8 @@ import openai
 #import zhipuai
 import re, os, datetime, sys
 
-#from src.template import *
-#from src.config.config import *
+from src.template import *
+from src.config.config import *
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
