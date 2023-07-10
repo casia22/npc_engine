@@ -151,8 +151,9 @@ class NPCEngine:
             "observations":"旁边有两颗大树",    # 描述的是角色个体或者角色团体观测到的场景信息
 
             # 下面是为了解决玩家/npc插入对话的问题
-            "starting": "你好我是玩家，你们在干什么？"，  # 玩家插入发言,可以留空
-            "player_desc": "是一个律师，是小村村长的儿子。"
+            "starting": "你好我是玩家，你们在干什么？",  # 玩家插入发言,可以留空
+            "player_desc": "是一个律师，是小村村长的儿子。",
+            "length": "S"
         }
         :param json_data:
         :return:
@@ -162,6 +163,7 @@ class NPCEngine:
         npc_refs = [self.npc_dict[name] for name in names]  # todo:altert！！！有问题！！
         location: str = json_data["location"]
         topic: str = json_data["topic"]
+        length: str = json_data["length"]
 
         # 初始化群体描述、心情和记忆
         descs: List[str] = [json_data["player_desc"]] + [npc.desc for npc in npc_refs]
@@ -197,6 +199,7 @@ class NPCEngine:
             all_people=all_people,
             all_moods=all_moods,
             starting=starting,
+            length=length
         )
 
         # 创建Conversation，存入对象字典，生成剧本

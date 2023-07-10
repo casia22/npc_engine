@@ -38,7 +38,8 @@ CONV_CONFIG = json.loads("""
         "topic": "{topic}",
         "observation": "{observations}",
         "starting": "{starting}",
-        "player_desc": "{player_desc}"
+        "player_desc": "{player_desc}",
+        "length": "{length}"
     }
 """)
 

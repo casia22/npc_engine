@@ -8,8 +8,8 @@ import openai
 #import zhipuai
 import re, os, datetime, sys
 
-from src.template import *
-from src.config.config import *
+#from src.template import *
+#from src.config.config import *
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
@@ -18,7 +18,7 @@ os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
 
 class Conversation:
     def __init__(
-        self, names, location, system_prompt, query_prompt, language="E", model="gpt-3.5-turbo"
+        self, names, location, system_prompt, query_prompt, language="C", model="gpt-3.5-turbo"
     ):
         self.start_time = datetime.datetime.now()
         self.language = language
@@ -30,7 +30,7 @@ class Conversation:
         self.id = str(uuid4())
         self.temp_memory = []
         self.index = -1
-        self.script = self.generate_script()
+        #self.script = self.generate_script()
 
     def add_temp_memory(self, conversation_id, index):
         if index >= self.index + 1:
@@ -54,24 +54,42 @@ class Conversation:
         """
         lines = []
         self.sentences = conv.split("\n")
-        print(self.sentences)
         for sent in self.sentences:
-            if "(" in sent or "（" in sent or sent == "<EOC>":
+            if "<" in sent:
                 line = {
                     "type": "State",
+                    "state": sent,
                     "name": "",
                     "mood": "",
-                    "words": sent,
+                    "words": "",
                     "action": None}
-                continue
-            line = {
-                "type": "Content",
-                "name": sent.split("|")[0],
-                "mood": sent.split("|")[3],
-                "words": sent.split("|")[1],
-                "action": {"type": sent.split("|")[5], "args": sent.split("|")[6]},
-            }
+            elif "(" in sent or "（" in sent:
+                if self.language == "E":
+                    line = {
+                        "type": "Interaction",
+                        "state": "",
+                        "name": sent.split("(")[0].strip(),
+                        "mood": (sent.split("(")[1]).split(",")[0].strip(),
+                        "words": sent.split(":")[1].strip(),
+                        "action": {"type": (((sent.split(")")[0]).split(",")[1]).strip()).split(" ")[0], "args": (((sent.split(")")[0]).split(",")[1]).strip()).split(" ")[1]}}
+                elif self.language == "C":
+                    line = {
+                        "type": "Interaction",
+                        "state": "",
+                        "name": sent.split("（")[0].strip(),
+                        "mood": (sent.split("（")[1]).split("，")[0].strip(),
+                        "words": sent.split("：")[1].strip(),
+                        "action": {"type": (((sent.split("）")[0]).split("，")[1]).strip()).split(" ")[0], "args": (((sent.split("）")[0]).split("，")[1]).strip()).split(" ")[1]}}
+            else:
+                line = {
+                    "type": "Error",
+                    "state": sent,
+                    "name": "",
+                    "mood": "",
+                    "words": "",
+                    "action": None}
             lines.append(line)
+            print(line)
         return lines
 
     def call_llm(self):
@@ -122,8 +140,9 @@ class Conversation:
         return script
 
 if __name__ == '__main__':
-    prompt = Engine_Prompt()
-    
+    #prompt = Engine_Prompt()
+    con = Conversation(1,2,3,4)
+    '''
     a, b = prompt.prompt_for_conversation_E(
         names = ["Tony", "Austin"],
         location = "park",
@@ -145,3 +164,21 @@ if __name__ == '__main__':
     #print(convo.add_temp_memory("123",2))
     convo.re_create_conversation("yeah it takes much time. What do you think of physics.")
     #print(convo.script)
+    '''
+    conv = rf"""<无人退出。剩下的角色：小明，小李，小张>""" + '\n' + \
+                                rf"""小明（稳定，对话 小李&小张）：“你好呀，你们最近过得如何？”""" + '\n' + \
+                                rf"""小李（稳定，对话 小明）：“我很好，我们现在正在讨论数学。”""" + '\n' + \
+                                rf"""小张（稳定，对话 小明）：“是的，我们忙于做数学作业。”""" + '\n' + \
+                                rf"""小明（稳定，对话 小李&小张）：“好吧，下次再见。”""" + '\n' + \
+                                rf"""小李（稳定，对话 小明）：“好的，再见。”""" + '\n' + \
+                                rf"""小张（稳定，对话 小明）：“再见小明。”""" + '\n' + \
+                                rf"""小张（稳定，前往 家）：空""" + '\n' + \
+                                rf"""<小明退出。剩下的角色：小李，小张>""" + '\n' + \
+                                rf"""小李（着急，对话 小张）：“哦！我妈妈让我回家，我得走了。”""" + '\n' + \
+                                rf"""小张（稳定，对话 小李）：“好的，再见，我想去公园看看。”""" + '\n' + \
+                                rf"""小李（着急，前往 家）：空""" + '\n' + \
+                                rf"""<小李退出。剩下的角色：小张>""" + '\n' + \
+                                rf"""小张（稳定，前往 公园）：空""" + '\n' + \
+                                rf"""<小张退出。剩下的角色：无人>""" + '\n' + \
+                                rf"""<结束>"""
+    con.parser(conv)
