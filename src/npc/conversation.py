@@ -18,8 +18,7 @@ os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
 
 class Conversation:
     def __init__(
-        self, names, location, system_prompt, query_prompt, language="C", model="gpt-3.5-turbo"
-    ):
+        self, names, location, system_prompt, query_prompt, language="C", model="gpt-3.5-turbo"):
         self.start_time = datetime.datetime.now()
         self.language = language
         self.names = names
