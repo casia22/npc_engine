@@ -82,7 +82,7 @@ class NPCEngine:
             + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}"
             + Style.RESET_ALL
         )
-        self.sock.bind(("::", self.engine_port))  # 修改为IPv6地址绑定方式
+        self.sock.bind((engine_url, self.engine_port))  # 修改为IPv6地址绑定方式 todo:这里可能要改为::1
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
