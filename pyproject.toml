@@ -10,6 +10,7 @@ packages = [{include = "npc_engine"}]
 python = "^3.9"
 langchain = "^0.0.220"
 openai = "^0.27.8"
+anybadge = "^1.14.0"
 
 
 [build-system]

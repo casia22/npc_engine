@@ -2,10 +2,13 @@
 __pycache__/
 *.py[cod]
 *.so
+*.meta
 *.egg
 *.egg-info/
 dist/
 build/
+npc_memory/*
+test/npc_memory/*
 *.egg-info
 *.egg-info/
 *.dist-info/

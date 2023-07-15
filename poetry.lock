@@ -123,6 +123,20 @@ files = [
 frozenlist = ">=1.1.0"
 
 [[package]]
+name = "anybadge"
+version = "1.14.0"
+description = "Simple, flexible badge generator for project badges."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "anybadge-1.14.0-py3-none-any.whl", hash = "sha256:8711a7f7f45317c62a460f14084f005ba665cbebdf2a94e7df53bc3ab35df4c9"},
+    {file = "anybadge-1.14.0.tar.gz", hash = "sha256:47f06e0a6320d3e5eac55c712dc0bab71b9ed85353c591d448653c5a0740783f"},
+]
+
+[package.dependencies]
+packaging = "*"
+
+[[package]]
 name = "async-timeout"
 version = "4.0.2"
 description = "Timeout context manager for asyncio programs"
@@ -1116,4 +1130,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "949c118eecab6d6a1ca506ee76fa3b49b4e20b4f6ed72b568dda86810af3330e"
+content-hash = "8cb5bea6f996a9d1768b513b048969adc9f592f08b8c05f4d9fb4abb076c291e"
