@@ -3,6 +3,8 @@ import json
 import random
 import socket
 import threading, sys
+import time
+import uuid
 from pathlib import Path
 
 # 获取当前脚本所在目录的父目录
@@ -37,9 +39,10 @@ import faker
 
 
 class TestGame():
-    def setup_method(
-        self, game_url="::1", engine_url="::", engine_port=8199, game_port=8084
+    def setup_class(
+        self, game_url="::1", engine_url="::1", engine_port=8199, game_port=8084
     ):
+        print("setup_class")
         self.engine = NPCEngine(
             engine_port=engine_port,
             game_url=game_url,
@@ -48,37 +51,61 @@ class TestGame():
         )
         self.engine_url = engine_url
         self.engine_port = engine_port
+        self.game_url = game_url
         self.game_port = game_port
         self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-        self.listen_thread = threading.Thread(target=self.listen)
-        self.listen_thread.start()
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
+        self.sock.bind((self.game_url, self.game_port))
+        # faker
+        # 生成包括200个NPC的初始包数据
+        self.npc_num = 200
+        self.fake = faker.Faker(locale="zh_CN")
+        self.names = [self.fake.unique.name() for _ in range(self.npc_num)]
 
-    def teardown_method(self):
+    def teardown_class(self):
+        print("teardown_class")
         self.engine.close()
         self.sock.close()
 
-    def listen(self):
-        self.sock.bind(("::1", self.game_port))
+    def listen(self, buffer_size=6000):
+        print("LISTENING")
+        buffer = {}
         while True:
-            data, addr = self.sock.recvfrom(1024)
-            try:
-                json_data = json.loads(data.decode())
-                # 处理对话包
-                if json_data["name"] == "conversation":
-                    id = json_data["id"]
-                    length = json_data["length"]
-                    lines = json_data["lines"]
-                    assert len(lines) == length
-                    for idx, line in enumerate(lines):
-                        print(line)
-                        # 回传确认包
-                        self.confirm_conversation(id, idx)
-
-                # 处理其他包
-                pass
-                print(json_data)
-            except json.JSONDecodeError:
-                pass
+            data, addr = self.sock.recvfrom(buffer_size)
+            # 解析UDP数据包头部
+            msg_id, packet_no, total_packets, pack = data.split(b'@', 3)
+            print("GAME LISTEN RECIEVED:", msg_id, packet_no, total_packets)
+            packet_no = int(packet_no)
+            total_packets = int(total_packets)
+            # 缓存数据包
+            if msg_id not in buffer:
+                buffer[msg_id] = [b''] * total_packets
+            buffer[msg_id][packet_no - 1] = pack
+            # 检查是否所有数据包都已接收
+            if not any(part == b'' for part in buffer[msg_id]):
+                # 重组消息
+                msg_str = b''.join(buffer[msg_id]).decode('utf-8')
+                msg = json.loads(json.loads(msg_str))
+                try:
+                    # 根据func键值调用相应的函数
+                    if msg["name"] == "inited":
+                        print("init_confirm")
+                    if msg["name"] == "conversation":
+                        print("收到 CONVERSATION包")
+                        msg_id = msg["id"]
+                        length = msg["length"]
+                        lines = msg["lines"]
+                        assert len(lines) == length
+                        for idx, line in enumerate(lines):
+                            print(line)
+                            # 回传确认包
+                            self.confirm_conversation(msg_id, idx)
+                        return
+                except json.JSONDecodeError:
+                    print("json.JSONDecodeError, msg:", msg)
+                except:
+                    import traceback
+                    traceback.print_exc()
 
     @pytest.mark.run(order=1)
     def test_init_engine(self):
@@ -86,24 +113,24 @@ class TestGame():
         生成若干NPC的初始包，发送给Engine
         :return:
         """
+        self.listen_thread = threading.Thread(target=self.listen)
+        self.listen_thread.start()
         sock, engine = self.sock, self.engine
-        npc_num = 200
-        # 生成包括200个NPC的初始包数据
-        fake = faker.Faker(locale="zh_CN")
-        names = [fake.name() for _ in range(npc_num)]
-        descriptions = [fake.text() for _ in range(npc_num)]
+        print("running test test_engine.py::TestGame::test_init_engine")
+
+        descriptions = [self.fake.text() for _ in range(self.npc_num)]
         moods = [
-            fake.random_element(elements=("正常", "焦急", "严肃", "开心", "伤心"))
-            for _ in range(npc_num)
+            self.fake.random_element(elements=("正常", "焦急", "严肃", "开心", "伤心"))
+            for _ in range(self.npc_num)
         ]
-        addresses = [fake.address() for _ in range(npc_num)]
+        addresses = [self.fake.address() for _ in range(self.npc_num)]
         # 生成每个NPC的记忆,每个NPC的记忆随机多条
-        event_descriptions = [[fake.sentence() for _ in range(fake.random_int(min=1, max=5))] for i in range(npc_num)]
+        event_descriptions = [[self.fake.sentence() for _ in range(self.fake.random_int(min=1, max=5))] for i in range(self.npc_num)]
         npc_jsons = []
-        for i in range(npc_num):
+        for i in range(self.npc_num):
             NPC_CONFIG.update(
                 {
-                    "name": names[i],
+                    "name": self.names[i],
                     "desc": descriptions[i],
                     "mood": moods[i],
                     "location": addresses[i],
@@ -115,20 +142,23 @@ class TestGame():
             {
                 "npc": npc_jsons,
                 "knowledge": {
-                    "all_actions": ALL_ACTIONS,
-                    "all_places": ALL_PLACES,
-                    "all_moods": ALL_MOODS,
-                    "all_people": names
+                    "actions": ALL_ACTIONS,
+                    "places": ALL_PLACES,
+                    "moods": ALL_MOODS,
+                    "people": self.names
                             },
                 "language":"C"
             }
         )
         init_pack = INIT_PACK
         # 使用UDP发送初始包到引擎
-        sock.sendto(
-            json.dumps(init_pack).encode(), (engine.game_url, engine.engine_port)
+        self.send_data(
+            init_pack
         )
-        assert True
+        time.sleep(10)
+        print("test_init_engine done")
+        # print(self.engine.npc_dict.keys())
+        assert len(self.engine.npc_dict.keys())==self.npc_num
 
     @pytest.mark.run(order=2)
     def test_conversation(self):
@@ -137,10 +167,11 @@ class TestGame():
 
         :return:
         """
-        sock, engine = self.sock, self.engine
+
+        print("\n running test test_engine.py::TestGame::test_conversation")
         # 生成10个假对话包数据
         fake = faker.Faker(locale="zh_CN")
-        num = 10
+        num = 3
         npcs = []
         locations = []
         topics = []
@@ -148,9 +179,9 @@ class TestGame():
         startings = []
         player_descs = []
         for i in range(num):
-            # 随机生成1-5个npc
-            npc_num = fake.random_int(min=1, max=5)
-            npc = [fake.name() for _ in range(npc_num)]
+            # 从self.names随机选择2-5个NPC
+            npc_num = fake.random_int(min=2, max=5)
+            npc = fake.random_elements(elements=self.names, length=npc_num)
             # 随机生成地点，话题，打断语，观察语，开始语
             location = fake.address()
             topic = fake.sentence()
@@ -179,12 +210,12 @@ class TestGame():
             )
             conversation_pack = CONV_CONFIG
             # 使用UDP发送对话包到引擎
-            sock.sendto(
-                json.dumps(conversation_pack).encode(),
-                (engine.game_url, engine.engine_port),
+            print("sending conversation_pack")
+            self.send_data(
+                conversation_pack
             )
-
-        assert True
+        time.sleep(60)
+        assert len(self.engine.conversation_dict.keys())==num
 
     def generate_conversation(self, npc, location, topic, iterrupt_speech):
         conversation_data = {
@@ -205,7 +236,29 @@ class TestGame():
             "conversation_id": conversation_id,
             "index": index,
         }
+        print("confirm_conversation_line", confirm_data)
         self.send_data(confirm_data)
 
-    def send_data(self, data):
-        self.sock.sendto(json.dumps(data).encode(), (self.engine_url, self.engine_port))
+    def calculate_str_size_in_kb(self, string: bytes):
+        # 获取字符串的字节数
+        byte_size = len(string)
+        # 将字节数转换成KB大小
+        kb_size = byte_size / 1024
+        return kb_size
+
+    def send_data(self, data, max_packet_size=6000):
+        # UUID作为消息ID
+        msg_id = uuid.uuid4().hex
+        # 将json字符串转换为bytes
+        data = json.dumps(data).encode('utf-8')
+        # 计算数据包总数
+        packets = [data[i: i + max_packet_size] for i in range(0, len(data), max_packet_size)]
+        total_packets = len(packets)
+
+        for i, packet in enumerate(packets):
+            # 构造UDP数据包头部
+            #print("sending packet {} of {}, size: {} KB".format(i + 1, total_packets, self.calculate_str_size_in_kb(packet)))
+            header = f"{msg_id}@{i + 1}@{total_packets}".encode('utf-8')
+            # 发送UDP数据包
+            #print()
+            self.sock.sendto(header + b"@" + packet, (self.engine_url, self.engine_port))

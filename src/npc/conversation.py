@@ -1,12 +1,16 @@
-import socket
-from typing import List, Dict, Any, Tuple
-import json
-import threading
-from uuid import uuid4
 import datetime
+import json
+import os
+import re
+import socket
+import threading
+from typing import Any, Dict, List, Tuple
+from uuid import uuid4
+
 import openai
 import zhipuai
-import re, os, datetime
+
+from npc_engine.src.config import *
 from npc_engine.src.template import *
 
 
@@ -108,4 +112,9 @@ class Conversation:
             "length": len(lines),
             "lines": lines,
         }
+        print("script:", script)
         return script
+
+
+if __name__ == "__main__":
+    print(OPENAI_BASE)
