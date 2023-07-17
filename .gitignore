@@ -2,13 +2,19 @@
 __pycache__/
 *.py[cod]
 *.so
+<<<<<<< HEAD
 *.meta
+=======
+>>>>>>> main
 *.egg
 *.egg-info/
 dist/
 build/
+<<<<<<< HEAD
 npc_memory/*
 test/npc_memory/*
+=======
+>>>>>>> main
 *.egg-info
 *.egg-info/
 *.dist-info/

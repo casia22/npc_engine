@@ -83,9 +83,8 @@ ALL_ACTIONS = ["stay", "move", "chat"]
 ALL_PLACES = ["李大爷家", "王大妈家", "广场", "瓜田", "酒吧", "警局"]
 ALL_MOODS = ["正常", "焦急", "严肃", "开心", "伤心"]
 
-'''
+
 if __name__ == "__main__":
     #NPC_CONFIG.format(name="李大爷", desc="是个好人", mood="正常", location="李大爷家", memory=[])
     print(INIT_PACK)
     pass
-'''
