@@ -69,37 +69,37 @@ class Engine_Prompt:
 
         # inform the constraints of generation
         constraint_statement =  rf"""The script consists of multiple lines of characters' interactions and conversation states. """ + '\n' + \
-                                rf"""The template of character's interaction is - <Character Name>(<Mood>, <Action Type> <Action Argument>): "<Spoken Content>".""" + '\n' + \
+                                rf"""The template of character's interaction is - Character Name(Mood|Action Type|Action Argument): Spoken Content """ + '\n' + \
                                 rf"""Where,""" + '\n' + \
-                                rf"""<Character Name>: {", ".join(names)}""" + '\n' + \
-                                rf"""<Mood>: {", ".join(all_moods)}""" + '\n' + \
-                                rf"""<Action Type>: {", ".join(all_actions)}""" + '\n' + \
-                                rf"""<Action Argument>: can be <Place Name>, <Character Name>, or None.""" + '\n' + \
-                                rf"""<Place Name>: {", ".join(all_places)}""" + '\n' + \
-                                rf"""<Spoken Content>: can be any proper content related to topic, or None, and names of <All People> can appear in the content.""" + '\n' + \
-                                rf"""<All People>: {", ".join(all_people)}""" + '\n' + \
-                                rf"""The templates of conversation state are - <<Character Name> Exits. Remaining Characters: <Character Name>...> and <EOS>. """ + '\n' + \
-                                rf"""At the beginning of the script, or, when a character exits the conversation, you should use <<Character Name> Exit. Remaining Characters : <Character Name>...>. """ + '\n' + \
-                                rf"""When all characters exist and no character left in the conversation, which is considered the end of the script, you should use <EOC> as ending symbol of script. """
+                                rf"""Character Name: {", ".join(names)}""" + '\n' + \
+                                rf"""Mood: {", ".join(all_moods)}""" + '\n' + \
+                                rf"""Action Type: {", ".join(all_actions)}""" + '\n' + \
+                                rf"""Action Argument: can be Place Name, Character Name, or None.""" + '\n' + \
+                                rf"""Place Name: {", ".join(all_places)}""" + '\n' + \
+                                rf"""Spoken Content: can be any proper content related to topic, or None.""" + '\n' + \
+                                rf"""The templates of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>. """ + '\n' + \
+                                rf"""At the beginning of the script, nobody exists and all charachters remain in the conversation.""" + '\n' + \
+                                rf"""Afterwards, when a character exits the conversation, he/she no longer appear in the following script, the other remaining characters continue to interact.""" + '\n' + \
+                                rf"""When all characters exist and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol. """
 
         # show some examples
         if starting == "":
             example_statement = rf"""Example: """ + '\n' + \
                                 rf"""Generate a script of how these characters interact around the topic with about 10 to 25 lines.""" + '\n'+ \
                                 rf"""<Nobody Exits. Remaining Characters: Lily, Jack, Tom>""" + '\n' + \
-                                rf"""Lily(Calm, Chat Jack&Tom): "Hi, how are you." """ + '\n' + \
-                                rf"""Jack(Calm, Chat Lily): "I'am fine and we are discussing about math." """ + '\n' + \
-                                rf"""Tom(Calm, Chat Lily): "Yes, we are busy doing math homework." """ + '\n' + \
-                                rf"""Lily(Calm, Chat Jack&Tom): "OK, see you next time." """ + '\n' + \
-                                rf"""Jack(Calm, Chat Lily): "OK, see you." """ + '\n' + \
-                                rf"""Tom(Calm, Chat Lily): "See you Lily." """ + '\n' + \
-                                rf"""Lily(Calm, Move Home): None""" + '\n' + \
+                                rf"""Lily(Calm|Chat|Jack&Tom): "Hi, how are you." """ + '\n' + \
+                                rf"""Jack(Calm|Chat|Lily): "I'am fine and we are discussing about math." """ + '\n' + \
+                                rf"""Tom(Calm|Chat|Lily): "Yes, we are busy doing math homework." """ + '\n' + \
+                                rf"""Lily(Calm|Chat|Jack&Tom): "OK, see you next time." """ + '\n' + \
+                                rf"""Jack(Calm|Chat|Lily): "OK, see you." """ + '\n' + \
+                                rf"""Tom(Calm|Chat|Lily): "See you Lily." """ + '\n' + \
+                                rf"""Lily(Calm|Move|Home): None""" + '\n' + \
                                 rf"""<Lily Exits. Remaining Charecters: Jack, Tom>""" + '\n' + \
-                                rf"""Jack(Anxious, Chat Tom): "Oh! My mom call me back, I have to go now." """ + '\n' + \
-                                rf"""Tom(Calm, Chat Tom): "OK, see you, I want to go to the park." """ + '\n' + \
-                                rf"""Jack(Anxious, Move Home): None""" + '\n' + \
+                                rf"""Jack(Anxious|Chat|Tom): "Oh! My mom call me back, I have to go now." """ + '\n' + \
+                                rf"""Tom(Calm|Chat|Tom): "OK, see you, I want to go to the park." """ + '\n' + \
+                                rf"""Jack(Anxious|Move|Home): None""" + '\n' + \
                                 rf"""<Jack Exits. Remaining Characters: Tom>""" + '\n' + \
-                                rf"""Tom(Calm, Move Park): None""" + '\n' + \
+                                rf"""Tom(Calm|Move|Park): None""" + '\n' + \
                                 rf"""<Tom Exits. Remaining Characters: Nobody>""" + '\n' + \
                                 rf"""<EOC>"""
         else:
@@ -107,16 +107,16 @@ class Engine_Prompt:
                                 rf"""Generate a script of how these characters interact or respond to me around the topic with about 10 to 25 lines.""" + '\n'+ \
                                 rf"""Me: "Hi, how are you?" """ + '\n' + \
                                 rf"""<Nobody Exists. Remaining Characters: Jack, Tom>""" + '\n' + \
-                                rf"""Jack(Calm, Chat Me): "I'am fine and we are talking about flowers." """ + '\n' + \
-                                rf"""Tom(Happy, Chat Me): "Yes, these flowers are so beautiful." """ + '\n' + \
-                                rf"""Jack(Calm, Chat Tom): "My mom likes flowers very much." """ + '\n' + \
-                                rf"""Tom(Calm, Chat Jack): "Well, my mom doesn't but my dad likes flowers." """ + '\n' + \
-                                rf"""Jack(Calm, Chat Me&Tom): "Ok, I have to go home for dinner, see you next time." """ + '\n' + \
-                                rf"""Tom(Calm, Chat Jack): "Ok, see you Jack." """ + '\n' + \
-                                rf"""Jack(Calm, Move Home): None""" + '\n' + \
+                                rf"""Jack(Calm|Chat|Me): "I'am fine and we are talking about flowers." """ + '\n' + \
+                                rf"""Tom(Happy|Chat|Me): "Yes, these flowers are so beautiful." """ + '\n' + \
+                                rf"""Jack(Calm|Chat|Tom): "My mom likes flowers very much." """ + '\n' + \
+                                rf"""Tom(Calm|Chat|Jack): "Well, my mom doesn't but my dad likes flowers." """ + '\n' + \
+                                rf"""Jack(Calm|Chat|Me&Tom): "Ok, I have to go home for dinner, see you next time." """ + '\n' + \
+                                rf"""Tom(Calm|Chat|Jack): "Ok, see you Jack." """ + '\n' + \
+                                rf"""Jack(Calm|Move|Home): None""" + '\n' + \
                                 rf"""<Jack Exits. Remaining Charecters: Tom>""" + '\n' + \
-                                rf"""Tom(Calm, Chat Me): "It is dark outside, I have to go home, too, see you." """ + '\n' + \
-                                rf"""Tom(Calm, Move Home): None""" + '\n' + \
+                                rf"""Tom(Calm|Chat|Me): "It is dark outside, I have to go home, too, see you." """ + '\n' + \
+                                rf"""Tom(Calm|Move|Home): None""" + '\n' + \
                                 rf"""<Tom Exits. Remaining Characters: Nobody>""" + '\n' + \
                                 rf"""<EOC>"""
 
@@ -174,37 +174,37 @@ class Engine_Prompt:
         pre_statement = introduction + supplementary + observe + task
 
         constraint_statement =  rf"""这个剧本由许多行角色交互和会话状态组成。""" + '\n' + \
-                                rf"""角色交互的模板是 - <角色姓名>（<情绪状态>，<动作类型> <动作参数>）：“<说话内容>”。""" + '\n' + \
+                                rf"""角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容 """ + '\n' + \
                                 rf"""其中，""" + '\n' + \
-                                rf"""<角色姓名>：{", ".join(names)}""" + '\n' + \
-                                rf"""<情绪状态>：{", ".join(all_moods)}""" + '\n' + \
-                                rf"""<动作类型>：{", ".join(all_actions)}""" + '\n' + \
-                                rf"""<动作参数>：可以是<场所名>，<角色姓名>，或者空。""" + '\n' + \
-                                rf"""<场所名>：{", ".join(all_places)}""" + '\n' + \
-                                rf"""<说话内容>：可以是任务与主题有关的合规的内容，也可以是空，并且<所有角色>的名字均可以出现在内容中。""" + '\n' + \
-                                rf"""<所有角色>：{", ".join(all_people)}""" + '\n' + \
-                                rf"""会话状态的模板是 - <<角色姓名>退出。剩下的角色：<角色姓名>。。。> 以及 <结束>。""" + '\n' + \
-                                rf"""当剧本刚开始，或者当有角色退出交流的时候，你需要使用 <<角色姓名>退出了。剩下的角色：<角色姓名>。。。>。""" + \
-                                rf"""当所有角色都退出交流并且没有角色剩余的时候，你需要用 <结束> 作为剧本的结束标志。"""
+                                rf"""角色姓名：{", ".join(names)}""" + '\n' + \
+                                rf"""情绪状态：{", ".join(all_moods)}""" + '\n' + \
+                                rf"""动作类型：{", ".join(all_actions)}""" + '\n' + \
+                                rf"""动作参数：可以是场所名，角色姓名，或者空。""" + '\n' + \
+                                rf"""场所名：{", ".join(all_places)}""" + '\n' + \
+                                rf"""说话内容：可以是任务与主题有关的合规的内容，也可以是空。""" + '\n' + \
+                                rf"""会话状态的模板是 - <角色姓名 / 无人 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。""" + '\n' + \
+                                rf"""当剧本刚开始的时候，无人退出且所有角色都参与交流。""" + \
+                                rf"""后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。""" + \
+                                rf"""当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
         
         # show some examples
         if starting == "":
             example_statement = rf"""例子：""" + '\n' + \
                                 rf"""生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互的。""" + '\n'+ \
                                 rf"""<无人退出。剩下的角色：小明，小李，小张>""" + '\n' + \
-                                rf"""小明（稳定，对话 小李&小张）：“你好呀，你们最近过得如何？”""" + '\n' + \
-                                rf"""小李（稳定，对话 小明）：“我很好，我们现在正在讨论数学。”""" + '\n' + \
-                                rf"""小张（稳定，对话 小明）：“是的，我们忙于做数学作业。”""" + '\n' + \
-                                rf"""小明（稳定，对话 小李&小张）：“好吧，下次再见。”""" + '\n' + \
-                                rf"""小李（稳定，对话 小明）：“好的，再见。”""" + '\n' + \
-                                rf"""小张（稳定，对话 小明）：“再见小明。”""" + '\n' + \
-                                rf"""小张（稳定，前往 家）：空""" + '\n' + \
+                                rf"""小明（稳定|对话|小李&小张）：“你好呀，你们最近过得如何？”""" + '\n' + \
+                                rf"""小李（稳定|对话|小明）：“我很好，我们现在正在讨论数学。”""" + '\n' + \
+                                rf"""小张（稳定|对话|小明）：“是的，我们忙于做数学作业。”""" + '\n' + \
+                                rf"""小明（稳定|对话|小李&小张）：“好吧，下次再见。”""" + '\n' + \
+                                rf"""小李（稳定|对话|小明）：“好的，再见。”""" + '\n' + \
+                                rf"""小张（稳定|对话|小明）：“再见小明。”""" + '\n' + \
+                                rf"""小张（稳定|前往|家）：空""" + '\n' + \
                                 rf"""<小明退出。剩下的角色：小李，小张>""" + '\n' + \
-                                rf"""小李（着急，对话 小张）：“哦！我妈妈让我回家，我得走了。”""" + '\n' + \
-                                rf"""小张（稳定，对话 小李）：“好的，再见，我想去公园看看。”""" + '\n' + \
-                                rf"""小李（着急，前往 家）：空""" + '\n' + \
+                                rf"""小李（着急|对话|小张）：“哦！我妈妈让我回家，我得走了。”""" + '\n' + \
+                                rf"""小张（稳定|对话|小李）：“好的，再见，我想去公园看看。”""" + '\n' + \
+                                rf"""小李（着急|前往|家）：空""" + '\n' + \
                                 rf"""<小李退出。剩下的角色：小张>""" + '\n' + \
-                                rf"""小张（稳定，前往 公园）：空""" + '\n' + \
+                                rf"""小张（稳定|前往|公园）：空""" + '\n' + \
                                 rf"""<小张退出。剩下的角色：无人>""" + '\n' + \
                                 rf"""<结束>"""
         else:
@@ -212,16 +212,16 @@ class Engine_Prompt:
                                 rf"""生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互或者回复我的。""" + '\n'+ \
                                 rf"""我：“你好，最近怎么样？”""" + '\n' + \
                                 rf"""<无人退出。剩下的角色：小李，小张>""" + '\n' + \
-                                rf"""小李（稳定，对话 我）：“我很好，我们在讨论花朵。”""" + '\n' + \
-                                rf"""小张（开心，对话 我）：“对的，这些花很漂亮。”""" + '\n' + \
-                                rf"""小李（稳定，对话 小张）：“我母亲很喜欢花朵。”""" + '\n' + \
-                                rf"""小张（稳定，对话 小李）：“喔喔，我母亲不喜欢，但是我父亲喜欢花。”""" + '\n' + \
-                                rf"""小李（稳定，对话 我&小张）：“好吧，我要回家吃晚饭了，下次再见。”""" + '\n' + \
-                                rf"""小张（稳定，对话 小李）：“好的，再见小李。”""" + '\n' + \
-                                rf"""小李（稳定，前往 家）：空""" + '\n' + \
+                                rf"""小李（稳定|对话|我）：“我很好，我们在讨论花朵。”""" + '\n' + \
+                                rf"""小张（开心|对话|我）：“对的，这些花很漂亮。”""" + '\n' + \
+                                rf"""小李（稳定|对话|小张）：“我母亲很喜欢花朵。”""" + '\n' + \
+                                rf"""小张（稳定|对话|小李）：“喔喔，我母亲不喜欢，但是我父亲喜欢花。”""" + '\n' + \
+                                rf"""小李（稳定|对话|我&小张）：“好吧，我要回家吃晚饭了，下次再见。”""" + '\n' + \
+                                rf"""小张（稳定|对话|小李）：“好的，再见小李。”""" + '\n' + \
+                                rf"""小李（稳定|前往|家）：空""" + '\n' + \
                                 rf"""<小李退出。剩下的角色：小张>""" + '\n' + \
-                                rf"""小张（稳定，对话 我）：“现在外面很黑，我也要回家了，再见。”""" + '\n' + \
-                                rf"""小张（稳定，前往 家）：空""" + '\n' + \
+                                rf"""小张（稳定|对话|我）：“现在外面很黑，我也要回家了，再见。”""" + '\n' + \
+                                rf"""小张（稳定|前往|家）：空""" + '\n' + \
                                 rf"""<小张退出。剩下的角色：无人>""" + '\n' + \
                                 rf"""<结束>"""
 

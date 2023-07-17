@@ -8,8 +8,8 @@ import openai
 #import zhipuai
 import re, os, datetime, sys
 
-from src.template import *
-from src.config.config import *
+from template import *
+from config.config import *
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
@@ -29,7 +29,7 @@ class Conversation:
         self.id = str(uuid4())
         self.temp_memory = []
         self.index = -1
-        #self.script = self.generate_script()
+        self.script = self.generate_script()
 
     def add_temp_memory(self, conversation_id, index):
         if index >= self.index + 1:
@@ -68,17 +68,17 @@ class Conversation:
                         "type": "Interaction",
                         "state": "",
                         "name": sent.split("(")[0].strip(),
-                        "mood": (sent.split("(")[1]).split(",")[0].strip(),
+                        "mood": (sent.split("(")[1]).split("|")[0].strip(),
                         "words": sent.split(":")[1].strip(),
-                        "action": {"type": (((sent.split(")")[0]).split(",")[1]).strip()).split(" ")[0], "args": (((sent.split(")")[0]).split(",")[1]).strip()).split(" ")[1]}}
+                        "action": {"type": ((sent.split(")")[0]).split("|")[1]).strip(), "args": ((sent.split(")")[0]).split("|")[2]).strip()}}
                 elif self.language == "C":
                     line = {
                         "type": "Interaction",
                         "state": "",
                         "name": sent.split("（")[0].strip(),
-                        "mood": (sent.split("（")[1]).split("，")[0].strip(),
+                        "mood": (sent.split("（")[1]).split("|")[0].strip(),
                         "words": sent.split("：")[1].strip(),
-                        "action": {"type": (((sent.split("）")[0]).split("，")[1]).strip()).split(" ")[0], "args": (((sent.split("）")[0]).split("，")[1]).strip()).split(" ")[1]}}
+                        "action": {"type": ((sent.split("）")[0]).split("|")[1]).strip(), "args": ((sent.split("）")[0]).split("|")[2]).strip()}}
             else:
                 line = {
                     "type": "Error",
