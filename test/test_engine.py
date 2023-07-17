@@ -10,6 +10,7 @@ parent_dir = Path(__file__).parent
 # 将父目录添加到模块搜索路径中
 sys.path.append(str(parent_dir))
 
+
 from src.config.config import (
     NPC_CONFIG,
     INIT_PACK,
