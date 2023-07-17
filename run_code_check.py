@@ -60,6 +60,7 @@ else:
 
 sc = score
 # 使用anybadge生成徽章
+
 badge = anybadge.Badge('pytest', sc, thresholds={20: 'red', 40: 'orange', 60: 'yellow', 80: 'green', 100: 'brightgreen'})
 
 # 将徽章保存到文件，如果文件已经存在，就覆盖它
