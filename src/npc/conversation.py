@@ -32,6 +32,12 @@ class Conversation:
         self.script = self.generate_script()
 
     def add_temp_memory(self, conversation_id, index):
+        """
+        根据回收的确认包，将所有不大于确认索引的所有剧本内容添加到conversation记忆中
+        在需要的时候将记忆内容提取出来并存在每个参与对话的npc的记忆中
+        :params conversation_id, index:
+        :return bool:
+        """
         if index >= self.index + 1:
             self.temp_memory.extend(self.sentences[self.index + 1 : index + 1])
             self.index = index
@@ -91,25 +97,28 @@ class Conversation:
             print(line)
         return lines
 
-    def call_llm(self):
+    def call_llm(self, messages):
         """
-        调用LLM生成对话的功能函数(需要parser再处理)
-        :return:
+        统一的LLM调用函数，用于剧本生成和部分润色
+        :params messages:
+        :return content:
         """
         #print(self.system_prompt)
         #print(self.query_prompt)
         response = openai.ChatCompletion.create(
-            model=self.model, messages=[self.system_prompt, self.query_prompt]
+            model=self.model, messages=messages
         )
-        conv = response["choices"][0]["message"]["content"].strip()
-        return conv
+        content = response["choices"][0]["message"]["content"].strip()
+        return content
 
     def generate_script(self):
         """
         在类初始化的时候被自动调用，会请求LLM生成对话，返回剧本包
-        :return:
+        :params:
+        :return script:
         """
-        conv = self.call_llm()
+        messages = [self.system_prompt, self.query_prompt]
+        conv = self.call_llm(messages = messages)
         lines = self.parser(conv)
         script = {
             "name": "conversation",
@@ -121,19 +130,22 @@ class Conversation:
         return script
 
     def re_create_conversation(self, interruption):
+        """
+        接着玩家新插入的语句，继续生成剧本
+        :params interruption:
+        :return script:
+        """
         assistant_prompt, query_prompt = Engine_Prompt.prompt_for_re_creation(
             self.language, interruption, self.temp_memory)
         self.query_prompt = query_prompt
-        response = openai.ChatCompletion.create(
-            model=self.model,
-            messages=[self.system_prompt, assistant_prompt, self.query_prompt],
-        )
-        conv = response["choices"][0]["message"]["content"].strip()
+        messages = [self.system_prompt, assistant_prompt, self.query_prompt]
+        conv = self.call_llm(messages = messages)
         lines = self.parser(conv)
         script = {
             "name": "conversation",
             "id": self.id,
             "length": len(lines),
+            "location": self.location,
             "lines": lines,
         }
         return script
