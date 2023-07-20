@@ -135,7 +135,7 @@ class Conversation:
         :params interruption:
         :return script:
         """
-        assistant_prompt, query_prompt = Engine_Prompt.prompt_for_re_creation(
+        assistant_prompt, query_prompt = EnginePrompt.prompt_for_re_creation(
             self.language, interruption, self.temp_memory)
         self.query_prompt = query_prompt
         messages = [self.system_prompt, assistant_prompt, self.query_prompt]
