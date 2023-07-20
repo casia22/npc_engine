@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict, Any
 
+
 class Engine_Prompt:
     # length annotation
     def __init__(self) -> None:
@@ -242,6 +243,14 @@ class Engine_Prompt:
     def prompt_for_topic(
         names: List[str], location: str, observations: str, language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """
+
+        :param names:
+        :param location:
+        :param observations:
+        :param language:
+        :return:
+        """
         if language == "E":
             system_content = rf"""Now there are {len(names)} characters communicating together at the location : {location}. They are {", ".join(names)}, and their observations are: {observations}. """ + '\n' \
                            + rf"""Please generate a topic they might be discussed by them based on the above information.""" + '\n' \

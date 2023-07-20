@@ -1,15 +1,9 @@
-import socket
-from typing import List, Dict, Any, Tuple
-import json
-import threading
 from uuid import uuid4
-import datetime
 import openai
 #import zhipuai
-import re, os, datetime, sys
+import os, datetime
 
-from template import *
-from config.config import *
+from npc_engine.src.config.template import *
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
@@ -32,6 +26,15 @@ class Conversation:
         self.script = self.generate_script()
 
     def add_temp_memory(self, conversation_id, index):
+        """
+        在conversation类中添加指定剧本的剧本历史(self.sentences)中指定行（index）到temp_memory中
+        conversation id 竟然没有用到 ？？？？
+        这个函数也没有用到？？？
+
+        :param conversation_id:
+        :param index:
+        :return:
+        """
         if index >= self.index + 1:
             self.temp_memory.extend(self.sentences[self.index + 1 : index + 1])
             self.index = index
