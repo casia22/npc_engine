@@ -233,6 +233,8 @@ class NPCEngine:
         interruption = json_data["interruption"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
+            assistant_prompt, query_prompt = EnginePrompt.prompt_for_re_creation(
+            self.language, interruption, self.temp_memory)
             script = convo.re_create_conversation(interruption)
             self.send_script(script)
 

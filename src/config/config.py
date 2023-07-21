@@ -64,6 +64,7 @@ CONV_CNFM = json.loads("""
 CONV_LINE = json.loads("""
     {
     "type": "{type}",
+    "state": "{state}",
     "name": "{name}",
     "mood": "{mood}",
     "words": "{words}",

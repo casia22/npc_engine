@@ -1,15 +1,19 @@
 """
-文件名：template.py
-作者：Yangzejun
+Filename : template.py
+Author : Yangzejun
+Contact : yzj_cs_ilstar@163.com
 """
 
 from typing import List, Tuple, Dict
 
-class EnginePrompt():
+class EnginePrompt:
     """
     EnginePrompt类，内有四个函数提供大模型提示词
     """
-    def __init__(self, knowledge) -> None:
+    def __init__(
+        self,
+        knowledge,
+    ) -> None:
         # 剧本长字典{ 标识 : 长度范围 }
         self.number_of_lines: Dict[str, Tuple] = {
             'S' : (10 ,  25),
@@ -105,10 +109,10 @@ class EnginePrompt():
             task = """Based on the information provided above, please use your imagination and generate a script of how these characters interact with each other or respond to me around the topic. """
         # 收集每个参与对话角色的特征描述、记忆内容和当前情绪状态并整合成角色信息
         supplementary_list = []
-        for i in range(len(names)):
-            supplementary_new = rf"""{names[i]}'s characteristic descriptions are : {descs[i]}
-                                In {names[i]}'s memory : {" ".join(memories[i])}
-                                {names[i]}'s current mood is : {moods[i]}. """
+        for i, name in enumerate(names):
+            supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
+                                In {name}'s memory : {" ".join(memories[i])}
+                                {name}'s current mood is : {moods[i]}. """
             supplementary_new = supplementary_new.replace("    ","",16)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -275,10 +279,10 @@ class EnginePrompt():
             task = """基于上述信息，请发挥你的想象力，生成一个剧本，展现这些角色是如何围绕主题进行交互或者回复我的。"""
         # 收集每个参与对话角色的特征描述、记忆内容和当前情绪状态并整合成角色信息
         supplementary_list = []
-        for i in range(len(names)):
-            supplementary_new = rf"""{names[i]}的个性描述是：{descs[i]}
-                                在{names[i]}的记忆中：{" ".join(memories[i])}
-                                {names[i]}此刻的心情是：{moods[i]}。"""
+        for i, name in enumerate(names):
+            supplementary_new = rf"""{name}的个性描述是：{descs[i]}
+                                在{name}的记忆中：{" ".join(memories[i])}
+                                {name}此刻的心情是：{moods[i]}。"""
             supplementary_new = supplementary_new.replace("    ","",16)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
