@@ -1,4 +1,30 @@
 import json
+import logging
+from pathlib import Path
+
+# LOGGER配置
+# 日志格式
+LOG_FORMAT = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+
+# 日志级别
+CONSOLE_LOG_LEVEL = logging.INFO
+FILE_LOG_LEVEL = logging.DEBUG
+
+# 控制台处理器
+CONSOLE_HANDLER = logging.StreamHandler()
+CONSOLE_HANDLER.setLevel(CONSOLE_LOG_LEVEL)
+CONSOLE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
+
+# 文件处理器
+FILE_HANDLER = logging.FileHandler('app.log')
+FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
+FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
+
+# 项目主路径
+PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
+MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
+
+
 
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
@@ -129,15 +155,19 @@ PINECONE_CONFIG = {
 }
 
 NPC_MEMORY_CONFIG = {
+    # pinecone
     "pinecone_api_key": PINECONE_CONFIG["pinecone_api_key"],
     "pinecone_environment": PINECONE_CONFIG["pinecone_environment"],
     "pinecone_index_name": PINECONE_CONFIG["pinecone_index_name"],
     "pinecone_index_dim": PINECONE_CONFIG["pinecone_index_dim"],
+    # huggingface
     "hf_token": HF_TOKEN,
     "hf_model_id": HF_EMBEDDING_SBERT_CHINESE["model_id"],
     "hf_dim": HF_EMBEDDING_SBERT_CHINESE["dim"],
     "hf_api_url": HF_EMBEDDING_SBERT_CHINESE["hf_url"],
     "hf_headers": {"Authorization": f"Bearer {HF_TOKEN}"},
+    # db
+    "db_dir": "./npc_memory.db",
 }
 
 # assert dim of hf model == dim of pinecone index
