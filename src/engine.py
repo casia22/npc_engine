@@ -1,28 +1,20 @@
 import asyncio
 import datetime
 import json
-import os
-import re
 import socket
 import threading
 import uuid
-from typing import Any, Dict, List, Tuple
-from uuid import uuid4
+from typing import List
 
 import colorama
 import openai
 import zhipuai
-from npc.npc import NPC
-from template import Engine_Prompt
-from npc.conversation import Conversation
+from npc_engine.src.npc.npc import NPC
+from npc_engine.src.config.template import Engine_Prompt
+from npc_engine.src.npc.conversation import Conversation
 colorama.init()
 from colorama import Fore, Style
-from langchain import text_splitter
-from config.config import (ALL_ACTIONS, ALL_MOODS, ALL_PLACES,
-                                          CONV_CONFIG, INIT_PACK, NPC_CONFIG,
-                                          CONV_SCRIPT, CONV_CNFM, CONV_RECRE,
-                                          OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,
-                                          CONV_LINE)
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
 
 zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
@@ -168,7 +160,7 @@ class NPCEngine:
         # 初始化群体描述、心情和记忆
         descs: List[str] = [json_data["player_desc"]] + [npc.desc for npc in npc_refs]
         moods: List[str] = [npc.mood for npc in npc_refs]
-        memories: List[str] = [npc.memory for npc in npc_refs]
+        memories: List[str] = [npc.memory for npc in npc_refs]  # 记忆来自于init初始化中的记忆参数
 
         # 初始化群体观察和常识
         observations: str = json_data["observation"]
@@ -192,7 +184,7 @@ class NPCEngine:
             topic=topic,
             descs=descs,
             moods=moods,
-            memories=memories,
+            memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
             observations=observations,
             all_actions=all_actions,
             all_places=all_places,
@@ -342,6 +334,9 @@ class NPCEngine:
             the_other_names = names[:i] + names[i + 1 :]
             pre_inform = rf"{person_name} talked with {','.join(the_other_names)} from {convo.start_time} to {convo.end_time}. \n"
             new_memory = pre_inform + "\n".join(convo.temp_memory) + "\n"
+            """
+            目前convo.temp_memory根本没有用到，也就是说确认包不会产生任何效果，NPC的记忆是不存在的
+            """
             npc = self.npc_dict[person_name]
             npc.memory.append(new_memory)
 
