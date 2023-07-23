@@ -28,15 +28,15 @@ class EnginePrompt:
 
     def prompt_for_conversation_e(
         self,
-        names: List[str],
-        location: str,
-        topic: str,
-        descs: List[str],
-        moods: List[str],
-        memories: List[List[str]],
-        observations: str,
-        starting: str,
-        length: str,
+        names: List[str] = None,
+        location: str = "",
+        topic: str = "",
+        descs: List[str] = None,
+        moods: List[str] = None,
+        memories: List[List[str]] = None,
+        observations: str = "",
+        starting: str = "",
+        length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
         根据提供的信息和函数内的模板获取用于生成英文对话剧本的提示词，包括系统提示词和查询提示词
@@ -196,15 +196,15 @@ class EnginePrompt:
 
     def prompt_for_conversation_c(
         self,
-        names: List[str],
-        location: str,
-        topic: str,
-        descs: List[str],
-        moods: List[str],
-        memories: List[List[str]],
-        observations: str,
-        starting: str,
-        length: str,
+        names: List[str] = None,
+        location: str = "",
+        topic: str = "",
+        descs: List[str] = None,
+        moods: List[str] = None,
+        memories: List[List[str]] = None,
+        observations: str = "",
+        starting: str = "",
+        length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
         根据提供的信息和函数内的模板获取用于生成中文对话剧本的提示词，包括系统提示词和查询提示词
