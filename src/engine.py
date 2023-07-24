@@ -1,3 +1,9 @@
+"""
+Filename: engine.py
+Author: Mengshi, Yangzejun
+Contact: ..., yzj_cs_ilstar@163.com
+"""
+
 import asyncio
 import datetime
 import json
@@ -9,12 +15,12 @@ from typing import List
 import colorama
 import openai
 import zhipuai
-from npc_engine.src.npc.npc import NPC
-from npc_engine.src.config.template import Engine_Prompt
-from npc_engine.src.npc.conversation import Conversation
+from src.npc.npc import NPC
+from src.config.template import EnginePrompt
+from src.npc.conversation import Conversation
 colorama.init()
 from colorama import Fore, Style
-from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
+from src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
 
 zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
@@ -55,7 +61,7 @@ class NPCEngine:
             /  __ \    |___/            (_)|  \/  |       | |        (_)
             | /  \/  ___    __ _  _ __   _ | .  . |  __ _ | |_  _ __  _ __  __
             | |     / _ \  / _` || '_ \ | || |\/| | / _` || __|| '__|| |\ \/ /
-            | \__/\| (_) || (a_| || | | || || |  | || (_| || |_ | |   | | >  <
+            | \__/\| (_) || (_| || | | || || |  | || (_| || |_ | |   | | >  <
              \____/ \___/  \__, ||_| |_||_|\_|  |_/ \__,_| \__||_|   |_|/_/\_\\
                             __/ |
                            |___/
@@ -176,7 +182,7 @@ class NPCEngine:
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(
-            Engine_Prompt, "prompt_for_conversation_" + self.language
+            self.engine_prompt, "prompt_for_conversation_" + self.language
         )
         system_prompt, query_prompt = system_prompt_func(
             names=names,
@@ -215,19 +221,21 @@ class NPCEngine:
         打断包例:
         {
         "func":"re_create_conversation",
-        "id":"1234567890"
+        "id":"1234567890",
+        "character":"小明",
         "interruption": "我认为这边" # 玩家插入发言,可以留空
         }
         :param json_data:
         :return:
         """
         conversation_id = json_data["conversation_id"]
+        character = json_data["character"]
         interruption = json_data["interruption"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
-            assistant_prompt, query_prompt = EnginePrompt.prompt_for_re_creation(
-            self.language, interruption, self.temp_memory)
-            script = convo.re_create_conversation(interruption)
+            assistant_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(
+            self.language, character = character, interruption = interruption, memory = convo.temp_memory)
+            script = convo.re_create_conversation(assistant_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
@@ -241,7 +249,7 @@ class NPCEngine:
         :param language: 语言
         :return: 随机生成的话题
         """
-        system_topic, query_prompt = Engine_Prompt.prompt_for_topic(
+        system_topic, query_prompt = self.engine_prompt.prompt_for_topic(
             names=names, location=location, observations=observations, language=language
         )
         response = openai.ChatCompletion.create(
@@ -281,6 +289,7 @@ class NPCEngine:
         """
         npc_list = json_data["npc"]
         self.knowledge = json_data["knowledge"]
+        self.engine_prompt = EnginePrompt(self.knowledge)
         self.language = json_data["language"]
         for npc_data in npc_list:
             npc = NPC(
@@ -313,11 +322,11 @@ class NPCEngine:
         index = json_data["index"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
-            judge = convo.add_memory(conversation_id, index)
+            judge = convo.add_temp_memory(index)
             if judge:
-                self.npc_add_memory(convo)
+                self.npc_add_memory(conversation_id)
 
-    def npc_add_memory(self, convo):
+    def npc_add_memory(self, conversation_id):
         """
         将对话的内容添加到对应NPC的记忆list中，以第三人称的方式
         例如：
@@ -327,6 +336,7 @@ class NPCEngine:
         :return:
         """
         # 得到对话类中的人名列表
+        convo = self.conversation_dict[conversation_id]
         names = convo.names
         # 对每个人名，生成一条记忆，放入对应的NPC的记忆list中
         for i in range(len(names)):

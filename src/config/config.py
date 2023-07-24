@@ -30,8 +30,6 @@ FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
 MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
 
-
-
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 OPENAI_KEY = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
@@ -121,6 +119,7 @@ CONV_RECRE = json.loads(
     {
         "func": "re_create_conversation",
         "id": "{id}",
+        "character": "{character}",
         "interruption": "{interruption}"
     }
 """

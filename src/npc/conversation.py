@@ -247,10 +247,11 @@ class Conversation:
         query_prompt: Dict[str, str],
     ) -> Dict[str, Any]:
         """
-        函数根据实例中与对话创建相关的关键信息以及玩家新插入的回复信息，继续生成剧本并以标准格式解析成json发送到游戏端
+        函数根据实例中与对话创建相关的关键信息以及新加入的角色或新插入的玩家回复，继续生成剧本并以标准格式解析成json发送到游戏端
         函数中涉及到字典格式的剧本信息，具体格式详见generate_script()函数
 
-        :params interruption:
+        :params assistant_prompt:
+        :params query_prompt:
         :return script:
         """
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
