@@ -7,6 +7,7 @@ NPC的记忆处理类
     NPCMemory
     MemoryItem
 """
+
 import hashlib
 import json
 import queue

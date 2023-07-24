@@ -25,6 +25,7 @@ class Conversation:
         self,
         names: List[str],
         location: str,
+        topic: str,
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
         language: str = "C",
@@ -36,6 +37,7 @@ class Conversation:
         # 对话创建关键信息：角色名称、地点、系统提示词、查询提示词、中/英、大模型类型
         self.names: List[str] = names
         self.location: str = location
+        self.topic: str = topic
         self.system_prompt: Dict[str, str] = system_prompt ######
         self.query_prompt: Dict[str, str] = query_prompt ######
         self.language: str = language
@@ -289,7 +291,7 @@ class Conversation:
         memory_add返回值的格式事例：
         {
             "Tom": [
-            "Tom had a conversation with Lily at the location: Park.",
+            "Tom had a conversation with Lily about "help with the math homework" at the location: Park.",
             "Lily(Sad|Chat|Tom): "Hi, how is it going?" ",
             "Tom(Calm|Chat|Lily): "Hi, I'm fine, but you look unhappy." ",
             "Lily(Sad|Chat|Tom): "Yes, I cannot finish my homework." ",
@@ -316,19 +318,19 @@ class Conversation:
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
                 # 如果是非结束符的会话状态类型的剧本行
-                elif line["type"] == "State" and line["State"] != "EOC":
+                elif line["type"] == "State" and line["State"] != "结束":
                     # 提取出退出的角色
                     exit_character = line["State"].split("Exits").strip()
-                    # 如果退出的角色是Nobody的话，处理下一个剧本行
-                    if exit_character == "Nobody":
+                    # 如果退出的角色是无人的话，处理下一个剧本行
+                    if exit_character == "无人":
                         continue
-                    memory_head = rf"""{exit_character} had a conversation with {", ".join(self.memory_head_names[exit_character])} at the location: {self.location}."""
+                    memory_head = rf"""{exit_character}和{"，".join(self.memory_head_names[exit_character])}在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
                     memory_add[exit_character] = [memory_head].extend(self.temp_memory)
                     #显示退出角色添加记忆的信息
                     print(rf"""{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}""")
                     # 将角色退出作为客观事实写入temp_memory中
-                    self.temp_memory.append(rf"""{exit_character} exits the conversation.""")
+                    self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     # 从会话的角色姓名列表中删除退出的角色
                     self.names.remove(exit_character)
                 # Error及结束符这两种类型的剧本行不做处理

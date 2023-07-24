@@ -4,6 +4,7 @@ import pickle
 import openai
 import zhipuai
 import re, os, datetime
+from memory import *
 
 zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
@@ -39,7 +40,7 @@ class NPC:
         self.mood: str = mood
         self.location: str = location
         # NPC的记忆
-        self.memory: List[str] = memory
+        self.memory = NPCMemory()
         self.prompt: List[Dict[str, str]] = []
         self.prompt.extend(
             [

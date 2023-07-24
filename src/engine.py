@@ -203,6 +203,8 @@ class NPCEngine:
         # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(
             names=names,
+            location=location,
+            topic=topic,
             system_prompt=system_prompt,
             query_prompt=query_prompt,
             language=self.language,
