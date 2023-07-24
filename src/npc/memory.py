@@ -1,4 +1,8 @@
 """
+Filename: memory.py
+Author: Maweiyu, Mengshi
+Contact: ..., ...
+
 NPC的记忆处理类
     NPCMemory
     MemoryItem
@@ -332,7 +336,6 @@ class NPCMemory:
             asyncio.run(self.add_memory(memory_item))
             logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
         logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
-
 
 if __name__ == "__main__":
     # logger设置

@@ -235,7 +235,7 @@ class NPCEngine:
             convo = self.conversation_dict[conversation_id]
             assistant_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(
             self.language, character = character, interruption = interruption, memory = convo.temp_memory)
-            script = convo.re_create_conversation(assistant_prompt, query_prompt)
+            script = convo.re_generate_script(assistant_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
@@ -317,38 +317,28 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-
         conversation_id = json_data["conversation_id"]
         index = json_data["index"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
-            judge = convo.add_temp_memory(index)
-            if judge:
-                self.npc_add_memory(conversation_id)
+            memory_add = convo.add_temp_memory(index)
+            if len(memory_add) != 0:
+                self.npc_add_memory(memory_add)
 
-    def npc_add_memory(self, conversation_id):
+    def npc_add_memory(self, memory_add):
         """
         将对话的内容添加到对应NPC的记忆list中，以第三人称的方式
         例如：
             李大爷 talked with 王大妈,村长 from 2021-01-01 12:00:00 to 2021-01-01 12:00:00.
             (被放入李大爷的记忆中)
-        :param convo:
+        :params memory_add:
         :return:
         """
         # 得到对话类中的人名列表
-        convo = self.conversation_dict[conversation_id]
-        names = convo.names
-        # 对每个人名，生成一条记忆，放入对应的NPC的记忆list中
-        for i in range(len(names)):
-            person_name = names[i]
-            the_other_names = names[:i] + names[i + 1 :]
-            pre_inform = rf"{person_name} talked with {','.join(the_other_names)} from {convo.start_time} to {convo.end_time}. \n"
-            new_memory = pre_inform + "\n".join(convo.temp_memory) + "\n"
-            """
-            目前convo.temp_memory根本没有用到，也就是说确认包不会产生任何效果，NPC的记忆是不存在的
-            """
-            npc = self.npc_dict[person_name]
-            npc.memory.append(new_memory)
+        for name, memory in memory_add:
+            one_memory = "\n".join(memory)
+            npc = self.npc_dict[name]
+            npc.memory.append(one_memory)
 
     def send_script(self, script):
         """

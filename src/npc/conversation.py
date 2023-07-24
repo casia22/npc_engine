@@ -6,6 +6,7 @@ Contact : yzj_cs_ilstar@163.com
 
 from typing import List, Dict, Any
 from uuid import uuid4
+import copy
 import datetime
 import os
 import openai
@@ -35,10 +36,14 @@ class Conversation:
         # 对话创建关键信息：角色名称、地点、系统提示词、查询提示词、中/英、大模型类型
         self.names: List[str] = names
         self.location: str = location
-        self.system_prompt: Dict[str, str] = system_prompt
-        self.query_prompt: Dict[str, str] = query_prompt
+        self.system_prompt: Dict[str, str] = system_prompt ######
+        self.query_prompt: Dict[str, str] = query_prompt ######
         self.language: str = language
         self.model: str = model
+        # 由self.names派生出的变量，用于添加到角色的记忆中，会动态更新
+        self.memory_head_names: Dict[str, List[str]] = {}
+        for name in self.names:
+            self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
         self.convo_id: str = str(uuid4())
         # 将展示结束的剧本行作为记忆存起来
@@ -46,9 +51,10 @@ class Conversation:
         # 剧本行索引，用于剧本演示的确认
         self.index: int = -1
         # 存储剧本按行拆分结果的中间变量
-        self.sentences = []
+        self.sentences: List[str] = []
+        self.lines: List[Dict[str, Any]] = []
         # 调用剧本生成函数生成剧本
-        self.script = self.generate_script()
+        self.script = self.generate_script(system_prompt, query_prompt)
 
     def call_llm(
         self,
@@ -85,13 +91,13 @@ class Conversation:
     def parser(
         self,
         conv: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> None:
         """
         将剧本按行解析，每行归为四个剧本内容类型中的一类，并打包成字典格式
         剧本内容类型1————会话状态，配置案例如下：
         {
         "type": "State",
-        "state": "<Nobody Exists. Remaining Characters: Jack, Tom, Lily>",
+        "state": "Nobody Exits. Remaining Characters: Jack, Tom, Lily",
         "name": "",
         "mood": "",
         "words": "",
@@ -100,7 +106,7 @@ class Conversation:
         剧本内容类型2————结束状态，配置案例如下：
         {
         "type": "State",
-        "state": "<EOC>",
+        "state": "EOC",
         "name": "",
         "mood": "",
         "words": "",
@@ -121,7 +127,7 @@ class Conversation:
         剧本内容类型4————错误内容，配置案例如下：
         {
         "type": "Error",
-        "state": "<Nobody exist, remained characters: Lily)",
+        "state": "<Nobody Exit, remained characters: Lily)",
         "name": "",
         "mood": "",
         "words": "",
@@ -131,18 +137,19 @@ class Conversation:
         :param conv:
         :return:
         """
-        # 首先将剧本按行拆分
-        lines = []
+        # 更新与实例属性以适应新剧本
+        self.index = -1
+        self.lines.clear()
         self.sentences.clear()
         self.sentences = conv.split("\n")
 
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
             # 归为结束状态和会话状态两类
-            if "<" in sent:
+            if sent[0] == "<" and sent[-1] == ">":
                 line = {
                     "type": "State",
-                    "state": sent,
+                    "state": sent[1:-1],
                     "name": "",
                     "mood": "",
                     "words": "",
@@ -175,12 +182,12 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
-            lines.append(line)
-
-        return lines
+            self.lines.append(line)
 
     def generate_script(
         self,
+        system_prompt: Dict[str, str],
+        query_prompt: Dict[str, str],
     ) -> Dict[str, Any]:
         """
         函数根据实例中与对话创建相关的关键信息生成剧本并以标准格式解析成json发送到游戏端
@@ -193,7 +200,7 @@ class Conversation:
         "lines": [
             {
             "type": "State",
-            "state": "<Nobody Exists. Remaining Characters: Jack, Tom, Lily>"
+            "state": "<Nobody Exits. Remaining Characters: Jack, Tom, Lily>"
             "name": "",
             "mood": "",
             "words": "",
@@ -221,27 +228,29 @@ class Conversation:
         ]
         }
 
-        :params:
+        :params system_prompt:
+        :params query_prompt:
         :return script:
         """
         # 首先将系统提示词和查询提示词打包
-        messages = [self.system_prompt, self.query_prompt]
+        messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中生成文本剧本
         conv = self.call_llm(messages = messages)
         # 使用解析器将文本剧本映射成字典格式
-        lines = self.parser(conv)
+        self.parser(conv)
         # 将剧本信息按照配置标准整理并返回
         script = {
             "name": "conversation",
             "id": self.convo_id,
-            "length": len(lines),
+            "length": len(self.lines),
             "location": self.location,
-            "lines": lines,
+            "lines": self.lines,
         }
 
         return script
 
-    def re_create_conversation(
+    ######
+    def re_generate_script(
         self,
         assistant_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
@@ -259,14 +268,14 @@ class Conversation:
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
         conv = self.call_llm(messages = messages)
         # 使用解析器将文本剧本映射成字典格式
-        lines = self.parser(conv)
+        self.parser(conv)
         # 将剧本信息按照配置标准整理并返回
         script = {
             "name": "conversation",
             "id": self.convo_id,
-            "length": len(lines),
+            "length": len(self.lines),
             "location": self.location,
-            "lines": lines,
+            "lines": self.lines,
         }
 
         return script
@@ -274,29 +283,59 @@ class Conversation:
     def add_temp_memory(
         self,
         index: int,
-    ) -> bool:
+    ) -> Dict[str, List[str]]:
         """
-        根据回收的确认包，将所有不大于确认索引的所有剧本内容添加到conversation记忆中
+        根据回收的确认包，将所有不大于确认索引的所有剧本内容整理并添加到temp_memory中，对已退出的角色返回记忆添加内容
+        memory_add返回值的格式事例：
+        {
+            "Tom": [
+            "Tom had a conversation with Lily at the location: Park.",
+            "Lily(Sad|Chat|Tom): "Hi, how is it going?" ",
+            "Tom(Calm|Chat|Lily): "Hi, I'm fine, but you look unhappy." ",
+            "Lily(Sad|Chat|Tom): "Yes, I cannot finish my homework." ",
+            "Tom(Calm|Chat|Lily): "Math? Maybe I can help you." ",
+            "Lily(Happy|Chat|Tom): "Oh, really? Are you available now?" ",
+            "Tom(Calm|Chat|Lily): "Sorry I'm busy now, tonight at 7 I will call you. Bye." ",
+            "Lily(Happy|Chat|Tom): "OK, see you tonight!" ",
+            "Tom(Calm|Move|Home): None",
+            ]
+        }
 
         :params index:
-        :return bool:
+        :return memory_add:
         """
-        # 将接收的索引号与已经处理的索引号作比较，并决定是否添加新的记忆
-        if index >= self.index + 1:
-            self.temp_memory.extend(self.sentences[self.index + 1 : index + 1])
-            self.index = index
-        else:
-            pass
+        # 声明一个返回的记忆添加变量
+        memory_add = {}
 
-        # 显示新添加的记忆内容的详细信息
-        print("add_memory:", self.convo_id, index, datetime.datetime.now())
+        # 如果确认包的索引值符合要求，则处理索引范围内的剧本
+        if index > self.index :
+            # 遍历temp_lines的每一行剧本，判断其所属类型并更新self.temp_memory和self.names的数值
+            for i in range(self.index + 1, index + 1):
+                line = self.lines[i]
+                # 如果是角色交互类型的剧本行
+                if line["type"] == "Interaction":
+                    self.temp_memory.append(self.sentences[i])
+                # 如果是非结束符的会话状态类型的剧本行
+                elif line["type"] == "State" and line["State"] != "EOC":
+                    # 提取出退出的角色
+                    exit_character = line["State"].split("Exits").strip()
+                    # 如果退出的角色是Nobody的话，处理下一个剧本行
+                    if exit_character == "Nobody":
+                        continue
+                    memory_head = rf"""{exit_character} had a conversation with {", ".join(self.memory_head_names[exit_character])} at the location: {self.location}."""
+                    # 将temp_memory加入到退出角色的记忆中
+                    memory_add[exit_character] = [memory_head].extend(self.temp_memory)
+                    #显示退出角色添加记忆的信息
+                    print(rf"""{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}""")
+                    # 将角色退出作为客观事实写入temp_memory中
+                    self.temp_memory.append(rf"""{exit_character} exits the conversation.""")
+                    # 从会话的角色姓名列表中删除退出的角色
+                    self.names.remove(exit_character)
+                # Error及结束符这两种类型的剧本行不做处理
+                else:
+                    continue
 
-        # 判断所有剧本内容是否都添加到记忆中，如果是则返回True，否则返回False
-        if self.index + 1 == len(self.sentences):
-            self.end_time = datetime.datetime.now()
-            print("add_memory complete !", self.end_time)
-            return True
-        return False
+        return memory_add
 
 if __name__ == '__main__':
     #prompt = Engine_Prompt()

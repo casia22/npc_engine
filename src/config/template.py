@@ -62,14 +62,14 @@ class EnginePrompt:
         Place Name: Austin's home, Tony's home, park
         Spoken Content: can be any proper content related to topic, or None.
         The templates of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
-        At the beginning of the script, nobody exists and all charachters remain in the conversation.
+        At the beginning of the script, nobody exits and all charachters remain in the conversation.
         Afterwards, when a character exits the conversation, he/she no longer appear in the following script, the other remaining characters continue to interact.
-        When all characters exist and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol.
+        When all characters exit and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol.
 
         Example:
         Generate a script of how these characters interact or respond to me around the topic with about 10 to 25 lines.
         Me: "Hi, how are you?"
-        <Nobody Exists. Remaining Characters: Jack, Tom>
+        <Nobody Exits. Remaining Characters: Jack, Tom>
         Jack(Calm|Chat|Me): "I'am fine and we are talking about flowers."
         Tom(Happy|Chat|Me): "Yes, these flowers are so beautiful."
         Jack(Calm|Chat|Tom): "My mom likes flowers very much."
@@ -132,9 +132,9 @@ class EnginePrompt:
                                     Place Name: {", ".join(self.all_places)}
                                     Spoken Content: can be any proper content related to topic, or None.
                                     The templates of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
-                                    At the beginning of the script, nobody exists and all charachters remain in the conversation.
+                                    At the beginning of the script, nobody exits and all charachters remain in the conversation.
                                     Afterwards, when a character exits the conversation, he/she no longer appear in the following script, the other remaining characters continue to interact.
-                                    When all characters exist and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol. """
+                                    When all characters exit and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol. """
         constraint_statement = constraint_statement.replace("    ","",108)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
@@ -162,7 +162,7 @@ class EnginePrompt:
             example_statement = """Example:
                                 Generate a script of how these characters interact or respond to me around the topic with about 10 to 25 lines.
                                 Me: "Hi, how are you?"
-                                <Nobody Exists. Remaining Characters: Jack, Tom>
+                                <Nobody Exits. Remaining Characters: Jack, Tom>
                                 Jack(Calm|Chat|Me): "I'am fine and we are talking about flowers."
                                 Tom(Happy|Chat|Me): "Yes, these flowers are so beautiful."
                                 Jack(Calm|Chat|Tom): "My mom likes flowers very much."
@@ -301,7 +301,7 @@ class EnginePrompt:
                                     动作参数：可以是场所名，角色姓名，或者空。
                                     场所名：{", ".join(self.all_places)}
                                     说话内容：可以是任务与主题有关的合规的内容，也可以是空。
-                                    会话状态的模板是 - <角色姓名 / 无人 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                    会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
                                     当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                     后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
                                     当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
