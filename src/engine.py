@@ -164,7 +164,7 @@ class NPCEngine:
         length: str = json_data["length"]
 
         # 初始化群体描述、心情和记忆
-        descs: List[str] = [json_data["player_desc"]] + [npc.desc for npc in npc_refs]
+        descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = [npc.memory for npc in npc_refs]  # 记忆来自于init初始化中的记忆参数
 
@@ -225,19 +225,54 @@ class NPCEngine:
         "func":"re_create_conversation",
         "id":"1234567890",
         "character":"小明",
-        "interruption": "我认为这边" # 玩家插入发言,可以留空
+        "interruption": "我认为这儿需要在交流", # 玩家插入发言,可以留空
+        "player_desc": "是一名老师", # 玩家的个性描述
+        "length": "X",
         }
+
+        location: str = "",
+        topic: str = "",
+        mood: str = "",
+        descs: List[str] = None,
+        memories: List[List[str]] = None,
+        history: List[str] = None,
+
         :param json_data:
         :return:
         """
         conversation_id = json_data["conversation_id"]
         character = json_data["character"]
         interruption = json_data["interruption"]
+        player_desc = json_data["player_desc"]
+        length = json_data["player_desc"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
-            assistant_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(
-            self.language, character = character, interruption = interruption, memory = convo.temp_memory)
-            script = convo.re_generate_script(assistant_prompt, query_prompt)
+            names = convo.names
+            location = convo.location
+            topic = convo.topic
+            mood = self.npc_dict[character].mood
+            npc_refs = [self.npc_dict[name] for name in names]
+            descs = [npc.desc for npc in npc_refs]
+            if player_desc != "":
+                descs += [player_desc]
+            else:
+                descs += [self.npc_dict[character].desc]
+            memories = [npc.memory for npc in npc_refs]
+            if character != "":
+                memories += [self.npc_dict[character].memory]
+            history = convo.temp_memory
+
+            system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
+                                                                                    location = location,
+                                                                                    topic = topic,
+                                                                                    character = character,
+                                                                                    mood = mood,
+                                                                                    descs = descs,
+                                                                                    memories = memories,
+                                                                                    interruption = interruption,
+                                                                                    length = length,
+                                                                                    history = history)
+            script = convo.re_generate_script(system_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
@@ -323,11 +358,11 @@ class NPCEngine:
         index = json_data["index"]
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
-            memory_add = convo.add_temp_memory(index)
+            memory_add, mood_change = convo.add_temp_memory(index)
             if len(memory_add) != 0:
-                self.npc_add_memory(memory_add)
+                self.npc_information_update(memory_add, mood_change)
 
-    def npc_add_memory(self, memory_add):
+    def npc_information_update(self, memory_add, mood_change):
         """
         将对话的内容添加到对应NPC的记忆list中，以第三人称的方式
         例如：
@@ -337,10 +372,10 @@ class NPCEngine:
         :return:
         """
         # 得到对话类中的人名列表
-        for name, memory in memory_add:
-            one_memory = "\n".join(memory)
+        for name in memory_add.keys():
             npc = self.npc_dict[name]
-            npc.memory.append(one_memory)
+            npc.memory.append("\n".join(memory_add[name]))
+            npc.mood = mood_change[name]
 
     def send_script(self, script):
         """

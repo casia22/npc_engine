@@ -38,8 +38,6 @@ class Conversation:
         self.names: List[str] = names
         self.location: str = location
         self.topic: str = topic
-        self.system_prompt: Dict[str, str] = system_prompt ######
-        self.query_prompt: Dict[str, str] = query_prompt ######
         self.language: str = language
         self.model: str = model
         # 由self.names派生出的变量，用于添加到角色的记忆中，会动态更新
@@ -251,22 +249,21 @@ class Conversation:
 
         return script
 
-    ######
     def re_generate_script(
         self,
-        assistant_prompt: Dict[str, str],
+        system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
     ) -> Dict[str, Any]:
         """
         函数根据实例中与对话创建相关的关键信息以及新加入的角色或新插入的玩家回复，继续生成剧本并以标准格式解析成json发送到游戏端
         函数中涉及到字典格式的剧本信息，具体格式详见generate_script()函数
 
-        :params assistant_prompt:
+        :params system_prompt:
         :params query_prompt:
         :return script:
         """
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
-        messages = [self.system_prompt, assistant_prompt, query_prompt]
+        messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
         conv = self.call_llm(messages = messages)
         # 使用解析器将文本剧本映射成字典格式
@@ -287,7 +284,7 @@ class Conversation:
         index: int,
     ) -> Dict[str, List[str]]:
         """
-        根据回收的确认包，将所有不大于确认索引的所有剧本内容整理并添加到temp_memory中，对已退出的角色返回记忆添加内容
+        根据回收的确认包，将所有不大于确认索引的所有剧本内容整理并添加到temp_memory中，对退出的角色返回记忆添加内容和退出时的心情
         memory_add返回值的英文格式事例：
         {
             "Tom": [
@@ -300,14 +297,21 @@ class Conversation:
             "Tom(Calm|Chat|Lily): "Sorry I'm busy now, tonight at 7 I will call you. Bye." ",
             "Lily(Happy|Chat|Tom): "OK, see you tonight!" ",
             "Tom(Calm|Move|Home): None",
-            ]
+            ],
+            ...
+        }
+        mood_change返回值的英文格式事例：
+        {
+            "Tom": "Calm",
+            ...        
         }
 
         :params index:
-        :return memory_add:
+        :return memory_add, mood_change:
         """
-        # 声明一个返回的记忆添加变量
+        # 声明一个返回的记忆添加变量和心情改变变量
         memory_add = {}
+        mood_change = {}
 
         # 如果确认包的索引值符合要求，则处理索引范围内的剧本
         if index > self.index :
@@ -327,6 +331,8 @@ class Conversation:
                     memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}几个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
                     memory_add[exit_character] = [memory_head].extend(self.temp_memory)
+                    # 提取退出角色在退出时的心情作为最新的心情
+                    mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
                     print(rf"""{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}""")
                     # 将角色退出作为客观事实写入temp_memory中
@@ -337,7 +343,7 @@ class Conversation:
                 else:
                     continue
 
-        return memory_add
+        return memory_add, mood_change
 
 if __name__ == '__main__':
     #prompt = Engine_Prompt()
