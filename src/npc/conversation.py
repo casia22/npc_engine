@@ -288,7 +288,7 @@ class Conversation:
     ) -> Dict[str, List[str]]:
         """
         根据回收的确认包，将所有不大于确认索引的所有剧本内容整理并添加到temp_memory中，对已退出的角色返回记忆添加内容
-        memory_add返回值的格式事例：
+        memory_add返回值的英文格式事例：
         {
             "Tom": [
             "Tom had a conversation with Lily about "help with the math homework" at the location: Park.",
@@ -324,7 +324,7 @@ class Conversation:
                     # 如果退出的角色是无人的话，处理下一个剧本行
                     if exit_character == "无人":
                         continue
-                    memory_head = rf"""{exit_character}和{"，".join(self.memory_head_names[exit_character])}在地点{self.location}中共同交流有关{self.topic}的内容。"""
+                    memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}几个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
                     memory_add[exit_character] = [memory_head].extend(self.temp_memory)
                     #显示退出角色添加记忆的信息
