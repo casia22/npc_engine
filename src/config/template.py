@@ -479,7 +479,7 @@ class EnginePrompt:
 
         例子：
         输入：
-        接着如下会话历史后面续写大约10到25行的剧本，以展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
+        接着如下会话历史后面续写大约10到25行的剧本，展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
         <无人退出。剩下的角色：小明，小李，小张>
         小明（稳定|对话|小李&小张）：“你好呀，你们最近过得如何？”
         小李（稳定|对话|小明）：“我很好，我们现在正在讨论数学。”
@@ -518,7 +518,7 @@ class EnginePrompt:
 
         中文查询提示词例子：
         输入：
-        接着如下会话历史后面续写大约25到45行的剧本，以展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
+        接着如下会话历史后面续写大约25到45行的剧本，展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
         <无人退出。剩下的角色：小白，小黑>
         小黑（稳定|对话|小白）：“我很好，我们在讨论花朵。”
         小白（开心|对话|小黑）：“对的，这些花很漂亮。”
@@ -549,7 +549,7 @@ class EnginePrompt:
             task = """基于上述信息，请发挥你的想象力，接着给定的会话历史后面续写剧本，以展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。"""
         else:
             introduction = rf"""此时此刻{"，".join(names)}几个角色正在地点：{location}，火热地交流有关“{topic}”主题的内容。
-                                我作为会话的指挥者在旁听他们的交谈内容，并适当插入几句话做指点。
+                                我在旁听他们的交谈内容，并适当插入几句话作为指引影响他们的后续交谈。
                                 此刻我插入了一句话：“{interruption}”
                                 我的个性描述是：{descs[-1]}"""
             introduction = introduction.replace("    ","",24)
@@ -600,7 +600,7 @@ class EnginePrompt:
         if interruption == "":
             example_statement = """例子：
                                 输入：
-                                接着如下会话历史后面续写大约10到25行的剧本，以展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
+                                接着如下会话历史后面续写大约10到25行的剧本，展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。
                                 <无人退出。剩下的角色：小明，小李，小张>
                                 小明（稳定|对话|小李&小张）：“你好呀，你们最近过得如何？”
                                 小李（稳定|对话|小明）：“我很好，我们现在正在讨论数学。”
@@ -640,7 +640,7 @@ class EnginePrompt:
         else:
             example_statement = """例子：
                                 输入：
-                                生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
+                                接着如下会话历史后面续写大约10到25行的剧本，展现这些角色是如何在我插入一句话后围绕主题继续交互并回复我的。
                                 我：“你好，最近怎么样？”
                                 <无人退出。剩下的角色：小李，小张>
                                 小李（稳定|对话|我）：“我很好，我们在讨论花朵。”
@@ -677,7 +677,7 @@ class EnginePrompt:
         # 根据是否有玩家的插入语句获取不同的查询提示词内容
         if interruption == "" :
             query_title = rf"""输入：
-                                接着如下会话历史后面续写大约{self.number_of_lines[length][0]}到{self.number_of_lines[length][1]}行的剧本，以展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。"""
+                                接着如下会话历史后面续写大约{self.number_of_lines[length][0]}到{self.number_of_lines[length][1]}行的剧本，展现在新角色的加入后所有角色是如何共同围绕主题进行交互的。"""
             query_title = query_title.replace("    ","",8)
             query_history = "\n".join(history)
             query_ending = rf"""<{character}加入对话>
@@ -686,7 +686,7 @@ class EnginePrompt:
             query_content = "\n".join([query_title, query_history, query_ending])
         else:
             query_title = rf"""输入：
-                                接着如下会话历史后面续写大约{self.number_of_lines[length][0]}到{self.number_of_lines[length][1]}行的剧本，以展现这些角色是如何在我的插入语句的指引下围绕主题进行交互并回复我的。"""
+                                接着如下会话历史后面续写大约{self.number_of_lines[length][0]}到{self.number_of_lines[length][1]}行的剧本，展现这些角色是如何在我插入一句话后围绕主题继续交互并回复我的。"""
             query_title = query_title.replace("    ","",8)
             query_history = "\n".join(history)
             query_ending = rf"""我：“{interruption}”
