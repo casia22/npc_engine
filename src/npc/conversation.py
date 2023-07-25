@@ -346,9 +346,10 @@ class Conversation:
         return memory_add, mood_change
 
 if __name__ == '__main__':
-    #prompt = Engine_Prompt()
-    con = Conversation(1,2,3,4)
+    con = Conversation(1,2,3,{},{},"","")
     '''
+    prompt = EnginePrompt()
+    con = Conversation(1,2,3,{},{},"","")
     a, b = prompt.prompt_for_conversation_E(
         names = ["Tony", "Austin"],
         location = "park",
