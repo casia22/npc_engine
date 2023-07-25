@@ -1,6 +1,6 @@
 """
 Filename: memory.py
-Author: Maweiyu, Mengshi
+Author: Mengshi*, Maweiyu
 Contact: ..., ...
 
 NPC的记忆处理类
@@ -54,7 +54,6 @@ class MemoryItem:
     def set_score(self, score: float):
         self.score = score
         return self
-
 
 class NPCMemory:
     """

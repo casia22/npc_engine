@@ -166,7 +166,14 @@ class NPCEngine:
         # 初始化群体描述、心情和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
-        memories: List[str] = [npc.memory for npc in npc_refs]  # 记忆来自于init初始化中的记忆参数
+        memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
+        memories_items = [npc.memory.search_memory(query_text = topic, 
+                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
+                                                   k = self.memory_k) for npc in npc_refs]
+        for i, memory_items in enumerate(memories_items):
+            items_list = memory_items["queue_memory"] + memory_items["pinecone_memory"]
+            memory_content = [m_item.text for m_item in items_list]
+            memories.append(memory_content)
 
         # 初始化群体观察和常识
         observations: str = json_data["observation"]
@@ -182,7 +189,7 @@ class NPCEngine:
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(
-            self.engine_prompt, "prompt_for_conversation_" + self.language
+            self.engine_prompt, "prompt_for_conversation_" + self.language.lower()
         )
         system_prompt, query_prompt = system_prompt_func(
             names=names,
@@ -257,9 +264,21 @@ class NPCEngine:
                 descs += [player_desc]
             else:
                 descs += [self.npc_dict[character].desc]
-            memories = [npc.memory for npc in npc_refs]
+            
+            memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
+            memories_items = [npc.memory.search_memory(query_text = topic, 
+                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
+                                                   k = self.memory_k) for npc in npc_refs]
             if character != "":
-                memories += [self.npc_dict[character].memory]
+                memories_items += [self.npc_dict[character].memory.search_memory(query_text = topic, 
+                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
+                                                   k = self.memory_k)]
+
+            for i, memory_items in enumerate(memories_items):
+                items_list = memory_items["queue_memory"] + memory_items["pinecone_memory"]
+                memory_content = [m_item.text for m_item in items_list]
+                memories.append(memory_content)
+
             history = convo.temp_memory
 
             system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
@@ -318,8 +337,9 @@ class NPCEngine:
                      "all_places" = ["李大爷家", "王大妈家", "广场", "瓜田", "酒吧", "警局"],
                      "all_moods" = ["正常", "焦急", "严肃", "开心", "伤心"],
                      "all_people" = ["李大爷","王大妈","村长","警长"],
-                             }，
-                "language":"E" or "C"
+                             },
+                "memory_k": 10 OR <other_int>,
+                "language": "E" or "C"
         }
         :param json_data:
         :return:
@@ -328,6 +348,7 @@ class NPCEngine:
         self.knowledge = json_data["knowledge"]
         self.engine_prompt = EnginePrompt(self.knowledge)
         self.language = json_data["language"]
+        self.memory_k = json_data["memory_k"]
         for npc_data in npc_list:
             npc = NPC(
                 name=npc_data["name"],
@@ -336,6 +357,7 @@ class NPCEngine:
                 location=npc_data["location"],
                 knowledge=self.knowledge,
                 memory=npc_data["memory"],
+                memory_k = self.memory_k,
                 model=self.model,
             )  # todo:👀NPC观察也就是ob没有做
             self.npc_dict[npc.name] = npc
@@ -374,7 +396,7 @@ class NPCEngine:
         # 得到对话类中的人名列表
         for name in memory_add.keys():
             npc = self.npc_dict[name]
-            npc.memory.append("\n".join(memory_add[name]))
+            npc.memory.add_memory_text(text = "\n".join(memory_add[name]), game_time = "XXXXXXXXXXXXXXXX")
             npc.mood = mood_change[name]
 
     def send_script(self, script):

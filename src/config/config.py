@@ -1,6 +1,6 @@
 """
 Filename: config.py
-Author: Mengshi, Yangzejun
+Author: Mengshi*, Yangzejun
 Contact: ..., yzj_cs_ilstar@163.com
 """
 
@@ -47,7 +47,8 @@ INIT_PACK = json.loads(
 			 "all_moods": "{all_moods}",
 			 "all_people": "{all_people}"
 				     },
-   		"language":"{language}"
+        "memory_k": "{memory_k}",
+   		"language": "{language}"
 }
 """
 )
@@ -120,7 +121,9 @@ CONV_RECRE = json.loads(
         "func": "re_create_conversation",
         "id": "{id}",
         "character": "{character}",
-        "interruption": "{interruption}"
+        "interruption": "{interruption}",
+        "player_desc": "{player_desc}",
+        "length": "{length}"
     }
 """
 )

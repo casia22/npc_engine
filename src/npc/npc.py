@@ -1,3 +1,9 @@
+"""
+Filename: npc.py
+Author: Mengshi*, Yangzejun
+Contact: ..., yzj_cs_ilstar@163.com
+"""
+
 import socket
 from typing import List, Dict, Any, Tuple
 import pickle
@@ -20,6 +26,7 @@ class NPC:
         mood: str = "正常",
         ob: List[str] = [],
         memory: List[str] = [],
+        memory_k: int = 10,
         model: str = "gpt-3.5-turbo",
     ) -> None:
         # model
@@ -40,7 +47,7 @@ class NPC:
         self.mood: str = mood
         self.location: str = location
         # NPC的记忆
-        self.memory = NPCMemory()
+        self.memory = NPCMemory(npc_name = self.name, k = memory_k)
         self.prompt: List[Dict[str, str]] = []
         self.prompt.extend(
             [
