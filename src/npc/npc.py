@@ -26,7 +26,7 @@ class NPC:
         mood: str = "正常",
         ob: List[str] = [],
         memory: List[str] = [],
-        memory_k: int = 10,
+        memory_k: int = 3,
         model: str = "gpt-3.5-turbo",
     ) -> None:
         # model

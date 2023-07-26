@@ -237,7 +237,7 @@ class NPCMemory:
 
         return embedding
 
-    def search_memory(
+    async def search_memory(
         self, query_text: str, query_game_time: str, k: int, top_p: float = 0.8
     ) -> Dict[str, List[MemoryItem]]:
         """

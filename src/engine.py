@@ -135,6 +135,24 @@ class NPCEngine:
                     print(f"error: {e}")
                     pass
 
+    def batch_search_memory(self, npcs, query):   
+        tasks = {}
+        memories_items = {}
+        loop = asyncio.get_event_loop()
+        for npc in npcs:
+            new_task = loop.create_task(npc.memory.search_memory(query_text = query, 
+                                        query_game_time = "XXXXXXXXXXXXXXXX", 
+                                        k = self.memory_k))
+            tasks[npc.name] = new_task
+
+        for _, task in tasks.items():
+                loop.run_until_complete(task)
+
+        for name, task in tasks.items():
+            memories_items[name] = task.result()
+
+        return memories_items
+
     async def create_conversation(self, json_data):
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
@@ -167,11 +185,10 @@ class NPCEngine:
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-        memories_items = [npc.memory.search_memory(query_text = topic, 
-                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
-                                                   k = self.memory_k) for npc in npc_refs]
-        for i, memory_items in enumerate(memories_items):
-            items_list = memory_items["queue_memory"] + memory_items["pinecone_memory"]
+        memories_items = self.batch_search_memory(npcs=npc_refs, query=topic)
+
+        for name in names:
+            items_list = memories_items[name]["queue_memory"] + memories_items[name]["pinecone_memory"]
             memory_content = [m_item.text for m_item in items_list]
             memories.append(memory_content)
 
@@ -260,22 +277,18 @@ class NPCEngine:
             mood = self.npc_dict[character].mood
             npc_refs = [self.npc_dict[name] for name in names]
             descs = [npc.desc for npc in npc_refs]
-            if player_desc != "":
-                descs += [player_desc]
-            else:
-                descs += [self.npc_dict[character].desc]
             
-            memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-            memories_items = [npc.memory.search_memory(query_text = topic, 
-                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
-                                                   k = self.memory_k) for npc in npc_refs]
             if character != "":
-                memories_items += [self.npc_dict[character].memory.search_memory(query_text = topic, 
-                                                   query_game_time = "XXXXXXXXXXXXXXXX", 
-                                                   k = self.memory_k)]
+                npc_refs += self.npc_dict[character]
+                descs += [self.npc_dict[character].desc]
+            else:
+                descs += [player_desc]
 
-            for i, memory_items in enumerate(memories_items):
-                items_list = memory_items["queue_memory"] + memory_items["pinecone_memory"]
+            memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
+            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic)
+
+            for name in names:
+                items_list = memories_items[name]["queue_memory"] + memories_items[name]["pinecone_memory"]
                 memory_content = [m_item.text for m_item in items_list]
                 memories.append(memory_content)
 
@@ -338,7 +351,7 @@ class NPCEngine:
                      "all_moods" = ["正常", "焦急", "严肃", "开心", "伤心"],
                      "all_people" = ["李大爷","王大妈","村长","警长"],
                              },
-                "memory_k": 10 OR <other_int>,
+                "memory_k": 3 OR <other_int>,
                 "language": "E" or "C"
         }
         :param json_data:
