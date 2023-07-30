@@ -57,7 +57,7 @@ class PickleDB:
             logger.info(f"使用已有数据库：{self.db_path}")
         else:
             logger.info(f"不存在数据库：{self.db_path}，创建新数据库")
-        result = pickledb.load(self.db_path, self.auto_dump)
+        result = pickledb.load(self.db_path, self.auto_dump, sig=False)
         logger.info(f"数据库已加载：{self.db_path}")
         return result
 
