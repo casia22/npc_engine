@@ -1,13 +1,8 @@
 """
-Filename: memory.py
-Author: Mengshi*, Maweiyu
-Contact: ..., ...
-
 NPC的记忆处理类
     NPCMemory
     MemoryItem
 """
-
 import hashlib
 import json
 import queue
@@ -21,8 +16,8 @@ import logging
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-from npc_engine.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
-from npc_engine.src.utils.database import PickleDB
+from config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
+from utils.database import PickleDB
 
 # LOGGER配置
 logger = logging.getLogger("NPC_MEMORY")
@@ -54,6 +49,7 @@ class MemoryItem:
     def set_score(self, score: float):
         self.score = score
         return self
+
 
 class NPCMemory:
     """
@@ -156,7 +152,7 @@ class NPCMemory:
         if self.latest_k.full():
             old_memory_item = self.latest_k.get()
             # embed最老的记忆并上传到pinecone
-            asyncio.run(self.add_memory(old_memory_item))
+            asyncio.create_task(self.add_memory(old_memory_item))
         # 将新的记忆加入到latest_k队列中
         self.latest_k.put(new_memory_item)
 
@@ -172,7 +168,7 @@ class NPCMemory:
         embedding = self.embed_text(memory_item.text)
         self.vector_engine.upsert(
             vectors=[(memory_item.md5_hash, embedding)],
-            namespace=self.npc_name
+            namespace=hashlib.md5(self.npc_name.encode('utf-8')).hexdigest()
         )
         self.memory_db.set(key=memory_item.md5_hash, value=memory_item.to_json_str())
         logger.debug(f"add memory {memory_item.md5_hash} done")
@@ -237,7 +233,7 @@ class NPCMemory:
 
         return embedding
 
-    async def search_memory(
+    def search_memory(
         self, query_text: str, query_game_time: str, k: int, top_p: float = 0.8
     ) -> Dict[str, List[MemoryItem]]:
         """
@@ -256,7 +252,7 @@ class NPCMemory:
         query_embedding = self.embed_text(query_text)
         # 从pinecone中搜索与query_text最相似的2k条记忆(# 返回数据格式参照：https://docs.pinecone.io/docs/quickstart)
         pinecone_response = self.vector_engine.query(
-            vector=query_embedding, top_k=2 * k, include_values=False, namespace=self.npc_name
+            vector=query_embedding, top_k=2 * k, include_values=False, namespace=hashlib.md5(self.npc_name.encode('utf-8')).hexdigest()
         )
         pinecone_response_matches: str = pinecone_response["matches"]  # 匹配结果
         match_items: List[MemoryItem] = [
@@ -325,7 +321,7 @@ class NPCMemory:
         清空向量数据库中的记忆
         但是不清空KV数据库中的记忆
         """
-        self.vector_engine.delete(delete_all=True, namespace=self.npc_name)
+        self.vector_engine.delete(delete_all=True, namespace=hashlib.md5(self.npc_name.encode('utf-8')).hexdigest())
         logger.debug("NPC: {} 向量库记忆已清空".format(self.npc_name))
 
     def shutdown(self):
@@ -336,6 +332,7 @@ class NPCMemory:
             asyncio.run(self.add_memory(memory_item))
             logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
         logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
+
 
 if __name__ == "__main__":
     # logger设置

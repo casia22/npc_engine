@@ -14,15 +14,15 @@ from typing import List
 
 import colorama
 import openai
-import zhipuai
-from src.npc.npc import NPC
-from src.config.template import EnginePrompt
-from src.npc.conversation import Conversation
+#import zhipuai
+from npc.npc import NPC
+from config.template import EnginePrompt
+from npc.conversation import Conversation
 colorama.init()
 from colorama import Fore, Style
-from src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
+from config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY)
 
-zhipuai.api_key = ZHIPU_KEY
+#zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
 openai.api_base = OPENAI_BASE
 
@@ -95,7 +95,6 @@ class NPCEngine:
         while True:
             data, addr = self.sock.recvfrom(buffer_size)
             # 解析UDP数据包头部
-            print(data)
             msg_id, packet_no, total_packets, pack = data.split(b"@", 3)
             packet_no = int(packet_no)
             total_packets = int(total_packets)
@@ -114,9 +113,12 @@ class NPCEngine:
                     if "func" in json_data.keys():
                         func_name = json_data["func"]
                         if hasattr(self, func_name):
+                            print("Has Function")
                             func = getattr(self, func_name)
+                            print("Get Function")
                             asyncio.run(func(json_data))
                         # test
+                        print("Test")
                         if "init" in json_data["func"]:
                             print(f"[NPC-ENGINE]init: {json_data}")
                         if "create_conversation" in json_data["func"]:
@@ -135,7 +137,9 @@ class NPCEngine:
                     print(f"error: {e}")
                     pass
 
-    def batch_search_memory(self, npcs, query):   
+    def batch_search_memory(self, 
+            npcs: List[str], 
+            query: str):   
         tasks = {}
         memories_items = {}
         loop = asyncio.get_event_loop()

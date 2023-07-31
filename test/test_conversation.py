@@ -17,7 +17,7 @@ from src.config.config import (
     ALL_PLACES,
     ALL_MOODS)
 
-from src.engine import *
+from ..src.engine import *
 
 
 class Game:

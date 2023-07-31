@@ -8,11 +8,11 @@ import socket
 from typing import List, Dict, Any, Tuple
 import pickle
 import openai
-import zhipuai
+#import zhipuai
 import re, os, datetime
-from memory import *
+from npc.memory import *
 
-zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
+#zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
 
