@@ -7,6 +7,17 @@ Contact: ..., yzj_cs_ilstar@163.com
 import json
 import logging
 from pathlib import Path
+import time
+
+# 项目主路径
+PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
+LOG_FILE_PATH = PROJECT_ROOT_PATH / "logs"
+CONFIG_PATH = PROJECT_ROOT_PATH / "src" / "config"
+MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
+
+# 时间
+time_format = "%Y-%m-%d-%H:%M:%S"
+time_str = time.strftime(time_format, time.localtime())
 
 # LOGGER配置
 # 日志格式
@@ -22,13 +33,16 @@ CONSOLE_HANDLER.setLevel(CONSOLE_LOG_LEVEL)
 CONSOLE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
 # 文件处理器
-FILE_HANDLER = logging.FileHandler('app.log')
+#FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
+FILE_HANDLER = logging.FileHandler("C:/Users/fdsdfs/Desktop/yzj_code/npc-engine/logs/new_log.log")
 FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
 FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
-# 项目主路径
-PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
-MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
+# 根记录器
+ROOT_LOGGER = logging.getLogger()
+ROOT_LOGGER.setLevel(logging.DEBUG)
+ROOT_LOGGER.addHandler(CONSOLE_HANDLER)
+ROOT_LOGGER.addHandler(FILE_HANDLER)
 
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
@@ -75,6 +89,7 @@ CONV_CONFIG = json.loads(
         "observation": "{observations}",
         "starting": "{starting}",
         "player_desc": "{player_desc}",
+        "memory_k": "{memory_k}",
         "length": "{length}"
     }
 """

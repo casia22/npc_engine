@@ -156,6 +156,24 @@ class NPCMemory:
         # 将新的记忆加入到latest_k队列中
         self.latest_k.put(new_memory_item)
 
+    def touch_memory(self):
+        """
+        在NPC创建时上传一条最小消息到pinecone namespace 以便pinecone创建索引。
+        :return:
+        """
+        try:
+            placeholder_memory_item = MemoryItem(" ", "")
+            embedding = [0.0 for i in range(self.hf_dim)]
+            self.vector_engine.upsert(
+                vectors=[(placeholder_memory_item.md5_hash, embedding)],
+                namespace=hashlib.md5(self.npc_name.encode('utf-8')).hexdigest()
+            )
+            self.memory_db.set(key=placeholder_memory_item.md5_hash, value=placeholder_memory_item.to_json_str())
+        except Exception as e:
+            import traceback
+            print(f"error: {e}")
+            logger.error(traceback.format_exc())
+
     async def add_memory(self, memory_item:MemoryItem):
         """
         将一条需要持久化检索的记忆文本：

@@ -21,10 +21,10 @@ class EnginePrompt:
             "L" : (45 ,  70),
             'X' : (70 , 100),
         }
-        self.all_actions: List[str] = knowledge["all_actions"]
-        self.all_places: List[str] = knowledge["all_places"]
-        self.all_people: List[str] = knowledge["all_people"]
-        self.all_moods: List[str] = knowledge["all_moods"]
+        self.all_actions: List[str] = knowledge["actions"] #["all_actions"]
+        self.all_places: List[str] = knowledge["places"] #["all_places"]
+        self.all_people: List[str] = knowledge["people"] #["all_people"]
+        self.all_moods: List[str] = knowledge["moods"] #["all_moods"]
 
     def prompt_for_conversation_e(
         self,
