@@ -5,6 +5,7 @@ Contact: ..., yzj_cs_ilstar@163.com
 """
 
 import asyncio
+import nest_asyncio
 import datetime
 import json
 import logging
@@ -13,6 +14,7 @@ import threading
 import traceback
 import uuid
 from typing import List, Dict, Any, Tuple
+nest_asyncio.apply()
 
 import colorama
 import openai
@@ -166,9 +168,9 @@ class NPCEngine:
                     pass
 
     def batch_search_memory(self, 
-            npcs: List[str], 
+            npcs: List[str],
             query: str,
-            memory_k: int):   
+            memory_k: int):
         tasks = {}
         memories_items = {}
         loop = asyncio.get_event_loop()
