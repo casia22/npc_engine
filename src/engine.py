@@ -174,7 +174,7 @@ class NPCEngine:
         loop = asyncio.get_event_loop()
         for npc in npcs:
             new_task = loop.create_task(npc.memory.search_memory(query_text = query, 
-                                        query_game_time = "XXXXXXXXXXXXXXXX", 
+                                        query_game_time = "Time", 
                                         k = memory_k))
             tasks[npc.name] = new_task
 
@@ -502,7 +502,7 @@ class NPCEngine:
         # 得到对话类中的人名列表
         for name in memory_add.keys():
             npc = self.npc_dict[name]
-            npc.memory.add_memory_text(text = "\n".join(memory_add[name]), game_time = "XXXXXXXXXXXXXXXX")
+            npc.memory.add_memory_text(text = "\n".join(memory_add[name]), game_time = "Time")
             npc.mood = mood_change[name]
 
     async def action_done(self, json_data:Dict[str, Any]):

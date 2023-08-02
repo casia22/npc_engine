@@ -61,7 +61,6 @@ INIT_PACK = json.loads(
 			 "all_moods": "{all_moods}",
 			 "all_people": "{all_people}"
 				     },
-        "memory_k": "{memory_k}",
    		"language": "{language}"
 }
 """
