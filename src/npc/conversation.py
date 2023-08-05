@@ -9,13 +9,21 @@ from uuid import uuid4
 import copy
 import datetime
 import os
+import logging
 import openai
 #import zhipuai
+from config.config import (CONSOLE_HANDLER,FILE_HANDLER)
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
+
+logger = logging.getLogger("CONVERSATION")
+CONSOLE_HANDLER.setLevel(logging.DEBUG)
+logger.addHandler(CONSOLE_HANDLER)
+logger.addHandler(FILE_HANDLER)
+logger.setLevel(logging.DEBUG)
 
 class Conversation:
     """
@@ -45,7 +53,8 @@ class Conversation:
         for name in self.names:
             self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
-        self.convo_id: str = str(uuid4())
+        # self.convo_id: str = str(uuid4())
+        self.convo_id = "1234567890"
         # 将展示结束的剧本行作为记忆存起来
         self.temp_memory: List[str] = []
         # 剧本行索引，用于剧本演示的确认
@@ -246,7 +255,7 @@ class Conversation:
             "location": self.location,
             "lines": self.lines,
         }
-
+        logger.debug(f"First script of conversation {self.convo_id} is generated.")
         return script
 
     def re_generate_script(
@@ -276,7 +285,7 @@ class Conversation:
             "location": self.location,
             "lines": self.lines,
         }
-
+        logger.debug(f"New script of conversation {self.convo_id} is generated.")
         return script
 
     def add_temp_memory(
@@ -312,7 +321,7 @@ class Conversation:
         # 声明一个返回的记忆添加变量和心情改变变量
         memory_add = {}
         mood_change = {}
-
+        print(self.sentences)
         # 如果确认包的索引值符合要求，则处理索引范围内的剧本
         if index > self.index :
             # 遍历temp_lines的每一行剧本，判断其所属类型并更新self.temp_memory和self.names的数值
@@ -321,20 +330,24 @@ class Conversation:
                 # 如果是角色交互类型的剧本行
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
+                    logger.debug(f"No.{i} line is Interaction, added into temp_conversation done")
+                    print(self.sentences[i])
                 # 如果是非结束符的会话状态类型的剧本行
-                elif line["type"] == "State" and line["State"] != "结束":
+                elif line["type"] == "State" and line["state"] != "结束":
                     # 提取出退出的角色
-                    exit_character = line["State"].split("Exits").strip()
+                    exit_character = line["state"].split("退出")[0].strip()
                     # 如果退出的角色是无人的话，处理下一个剧本行
                     if exit_character == "无人":
                         continue
-                    memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}几个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
+                    print(self.temp_memory)
+                    memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}这{len(self.memory_head_names[exit_character])}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
-                    memory_add[exit_character] = [memory_head].extend(self.temp_memory)
+                    memory_add[exit_character] = [memory_head] + self.temp_memory
+                    print(memory_add)
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
-                    print(rf"""{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}""")
+                    logger.debug(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     # 从会话的角色姓名列表中删除退出的角色
@@ -342,7 +355,8 @@ class Conversation:
                 # Error及结束符这两种类型的剧本行不做处理
                 else:
                     continue
-
+            self.index = index
+        print(memory_add, mood_change)
         return memory_add, mood_change
 
 if __name__ == '__main__':

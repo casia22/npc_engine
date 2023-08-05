@@ -55,6 +55,11 @@ class NPC:
         # NPC的记忆
         self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
         self.memory.touch_memory()
+        
+        ####################### 先清空现有VB #######################
+        self.memory.clear_memory()
+        ################# 等到记忆添加实现闭环时删除 #################
+        
         # 将初始化的记忆内容加入到memory中
         if len(memory) > 0:
             for piece in memory:

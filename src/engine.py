@@ -225,12 +225,12 @@ class NPCEngine:
         memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
         for name in names:
-            items_list = memories_items[name]["queue_memory"] + memories_items[name]["pinecone_memory"]
+            items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
             memory_content = [m_item.text for m_item in items_list]
             memories.append(memory_content)
 
         # 初始化群体观察和常识
-        observations: str = json_data["observation"]
+        observations: str = json_data["observations"]
         all_actions: List[str] = self.knowledge["actions"]
         all_places: List[str] = self.knowledge["places"]
         all_people: List[str] = self.knowledge["people"]
@@ -253,10 +253,6 @@ class NPCEngine:
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
             observations=observations,
-            all_actions=all_actions,
-            all_places=all_places,
-            all_people=all_people,
-            all_moods=all_moods,
             starting=starting,
             length=length
         )
@@ -272,7 +268,7 @@ class NPCEngine:
             model=self.model,
         )  # todo: 这里engine会等待OPENAI并无法处理新的接收
 
-        self.conversation_dict[convo.id] = convo
+        self.conversation_dict[convo.convo_id] = convo
         # script = convo.generate_script()
 
         # 发送整个剧本
@@ -325,7 +321,7 @@ class NPCEngine:
             memories_items = self.batch_search_memory(npcs=npc_refs, query=topic)
 
             for name in names:
-                items_list = memories_items[name]["queue_memory"] + memories_items[name]["pinecone_memory"]
+                items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
                 memories.append(memory_content)
 
@@ -489,7 +485,7 @@ class NPCEngine:
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
             memory_add, mood_change = convo.add_temp_memory(index)
-            if len(memory_add) != 0:
+            if len(memory_add.keys()) != 0:
                 self.npc_information_update(memory_add, mood_change)
 
     def npc_information_update(self, memory_add, mood_change):

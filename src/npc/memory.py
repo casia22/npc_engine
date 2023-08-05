@@ -351,7 +351,6 @@ class NPCMemory:
             logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
         logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
 
-
 if __name__ == "__main__":
     # logger设置
     logger = logging.getLogger(__name__)
