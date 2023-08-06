@@ -501,7 +501,9 @@ class NPCEngine:
         for name in memory_add.keys():
             npc = self.npc_dict[name]
             npc.memory.add_memory_text(text = "\n".join(memory_add[name]), game_time = "Time")
+            logger.debug(f"npc {name} add conversation pieces into memory done")
             npc.mood = mood_change[name]
+            logger.debug(f"npc {name} update mood done")
 
     async def action_done(self, json_data:Dict[str, Any]):
         """

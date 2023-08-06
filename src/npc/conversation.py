@@ -321,7 +321,6 @@ class Conversation:
         # 声明一个返回的记忆添加变量和心情改变变量
         memory_add = {}
         mood_change = {}
-        print(self.sentences)
         # 如果确认包的索引值符合要求，则处理索引范围内的剧本
         if index > self.index :
             # 遍历temp_lines的每一行剧本，判断其所属类型并更新self.temp_memory和self.names的数值
@@ -330,8 +329,7 @@ class Conversation:
                 # 如果是角色交互类型的剧本行
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
-                    logger.debug(f"No.{i} line is Interaction, added into temp_conversation done")
-                    print(self.sentences[i])
+                    logger.debug(f"No.{i} Interaction line, added into temp_conversation done")
                 # 如果是非结束符的会话状态类型的剧本行
                 elif line["type"] == "State" and line["state"] != "结束":
                     # 提取出退出的角色
@@ -339,11 +337,9 @@ class Conversation:
                     # 如果退出的角色是无人的话，处理下一个剧本行
                     if exit_character == "无人":
                         continue
-                    print(self.temp_memory)
                     memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}这{len(self.memory_head_names[exit_character])}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
                     memory_add[exit_character] = [memory_head] + self.temp_memory
-                    print(memory_add)
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
@@ -356,7 +352,6 @@ class Conversation:
                 else:
                     continue
             self.index = index
-        print(memory_add, mood_change)
         return memory_add, mood_change
 
 if __name__ == '__main__':
