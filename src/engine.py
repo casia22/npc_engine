@@ -284,6 +284,7 @@ class NPCEngine:
         "character":"小明",
         "interruption": "我认为这儿需要在交流", # 玩家插入发言,可以留空
         "player_desc": "是一名老师", # 玩家的个性描述
+        "memory_k": 3,
         "length": "X",
         }
 
@@ -297,11 +298,13 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-        conversation_id = json_data["conversation_id"]
+        conversation_id = json_data["id"]
         character = json_data["character"]
         interruption = json_data["interruption"]
         player_desc = json_data["player_desc"]
-        length = json_data["player_desc"]
+        memory_k = json_data["memory_k"]
+        length = json_data["length"]
+
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
             names = convo.names
@@ -312,20 +315,20 @@ class NPCEngine:
             descs = [npc.desc for npc in npc_refs]
             
             if character != "":
-                npc_refs += self.npc_dict[character]
+                npc_refs.append(self.npc_dict[character])
                 descs += [self.npc_dict[character].desc]
             else:
                 descs += [player_desc]
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic)
+            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
                 memories.append(memory_content)
 
-            history = convo.temp_memory
+            history = convo.script_perform
 
             system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
                                                                                     location = location,

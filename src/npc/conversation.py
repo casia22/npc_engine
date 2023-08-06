@@ -57,6 +57,7 @@ class Conversation:
         self.convo_id = "1234567890"
         # 将展示结束的剧本行作为记忆存起来
         self.temp_memory: List[str] = []
+        self.script_perform: List[str] = []
         # 剧本行索引，用于剧本演示的确认
         self.index: int = -1
         # 存储剧本按行拆分结果的中间变量
@@ -163,7 +164,7 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
-            elif "(" in sent or "（" in sent:
+            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
                 # 归为英文的角色交互一类
                 if self.language == "E":
                     line = {
@@ -191,6 +192,7 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
+                continue
             self.lines.append(line)
 
     def generate_script(
@@ -275,6 +277,7 @@ class Conversation:
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
         conv = self.call_llm(messages = messages)
+        print(conv)
         # 使用解析器将文本剧本映射成字典格式
         self.parser(conv)
         # 将剧本信息按照配置标准整理并返回
@@ -329,6 +332,7 @@ class Conversation:
                 # 如果是角色交互类型的剧本行
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
+                    self.script_perform.append(self.sentences[i])
                     logger.debug(f"No.{i} Interaction line, added into temp_conversation done")
                 # 如果是非结束符的会话状态类型的剧本行
                 elif line["type"] == "State" and line["state"] != "结束":
@@ -346,6 +350,7 @@ class Conversation:
                     logger.debug(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
+                    self.script_perform.append(self.sentences[i])
                     # 从会话的角色姓名列表中删除退出的角色
                     self.names.remove(exit_character)
                 # Error及结束符这两种类型的剧本行不做处理
