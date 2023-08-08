@@ -24,7 +24,6 @@ logger = logging.getLogger("NPC_MEMORY")
 logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 
-
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):
         self.text = text

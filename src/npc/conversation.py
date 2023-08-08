@@ -164,7 +164,7 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
-            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
+            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent) and (("“" in sent and "”" in sent) or len(sent.split("\"")) == 3):
                 # 归为英文的角色交互一类
                 if self.language == "E":
                     line = {
@@ -247,6 +247,7 @@ class Conversation:
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中生成文本剧本
         conv = self.call_llm(messages = messages)
+        print(conv)
         # 使用解析器将文本剧本映射成字典格式
         self.parser(conv)
         # 将剧本信息按照配置标准整理并返回
@@ -328,6 +329,7 @@ class Conversation:
         if index > self.index :
             # 遍历temp_lines的每一行剧本，判断其所属类型并更新self.temp_memory和self.names的数值
             for i in range(self.index + 1, index + 1):
+                print(self.temp_memory)
                 line = self.lines[i]
                 # 如果是角色交互类型的剧本行
                 if line["type"] == "Interaction":
