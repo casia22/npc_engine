@@ -26,6 +26,8 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 
 ### 数据包格式记录
 https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
+#### 引擎初始化：
+在游戏场景初始化加载的时候发送给engine，需要指定加载的场景json
 ```python
 {
     "func":"init",
@@ -46,9 +48,17 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
         "mood":"焦急",
         "location":"王大妈家",
         "memory":[ ]
-        }], # 可以留空，默认按照game_world.json+scene初始化场景NPC。非空则在之前基础上添加。
+        }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
 }
+```
 
+#### NPC自主行为:
+NPC不会开始自主行动，除非你发送了wakeup包给它。
+npc-engine接到wakeup包之后，会返回action行为。
+游戏这边需要执行对应action，执行最终状态以action_done的形式返回给npc-engine
+engine接收到action_done包之后会继续返回action行为包。
+
+```python
 # wakeup包例：
 {
     "func":"wake_up",
@@ -81,7 +91,16 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
     "object":"李大爷家",
     "parameters":[],
 }
+```
 
+#### 对话相关行为：
+游戏需要自己确认npc的群体对话触发机制，通常是一个包含固定半径的对话房间。
+发送create_conversation给engine后，engine会根据提供的参数返回一个长剧本包，游戏需要自己实现剧本演出。
+每一行剧本演出完成后，需要发送确认包给engine否则不会有记忆。
+
+剧本有插入功能，比如玩家要插入对话或者一个新的npc进入了对话，这时候发送re_create_conversation包便可，会重新生成一个考虑到插入npc的接续剧本。
+
+```python
 # create_conversation游戏端发给引擎的包
 {
     "func": "create_conversation",
