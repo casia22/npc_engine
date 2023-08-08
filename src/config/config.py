@@ -15,8 +15,8 @@ LOG_FILE_PATH = PROJECT_ROOT_PATH / "logs"
 CONFIG_PATH = PROJECT_ROOT_PATH / "src" / "config"
 MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
 
-# 时间
-time_format = "%Y-%m-%d-%H:%M:%S"
+# 时间(兼容windows文件名)
+time_format = "%Y-%m-%d-%H-%M-%S"
 time_str = time.strftime(time_format, time.localtime())
 
 # LOGGER配置
@@ -33,8 +33,7 @@ CONSOLE_HANDLER.setLevel(CONSOLE_LOG_LEVEL)
 CONSOLE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
 # 文件处理器
-#FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
-FILE_HANDLER = logging.FileHandler("C:/Users/fdsdfs/Desktop/yzj_code/npc-engine/logs/new_log.log")
+FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
 FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
 FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
