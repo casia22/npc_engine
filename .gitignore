@@ -11,6 +11,7 @@ npc_memory/*
 
 yzj*
 dist/code/*
+dist/release/windows_ver/code/*
 
 test/npc_memory/*
 *.log
