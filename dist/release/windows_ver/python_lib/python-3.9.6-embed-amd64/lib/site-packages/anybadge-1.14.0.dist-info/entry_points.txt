@@ -1,0 +1,3 @@
+[console_scripts]
+anybadge = anybadge.cli:main
+anybadge-server = anybadge.server.cli:main
