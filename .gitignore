@@ -10,6 +10,7 @@ npc_memory/*
 
 
 yzj*
+dist/code/*
 
 test/npc_memory/*
 *.log
