@@ -2215,6 +2215,23 @@ class TestUfunc:
         np.maximum.at(a, [0], 0)
         assert_equal(a, np.array([1, 2, 3]))
 
+    @pytest.mark.parametrize("dtype",
+            np.typecodes['AllInteger'] + np.typecodes['Float'])
+    @pytest.mark.parametrize("ufunc",
+            [np.add, np.subtract, np.divide, np.minimum, np.maximum])
+    def test_at_negative_indexes(self, dtype, ufunc):
+        a = np.arange(0, 10).astype(dtype)
+        indxs = np.array([-1, 1, -1, 2]).astype(np.intp)
+        vals = np.array([1, 5, 2, 10], dtype=a.dtype)
+
+        expected = a.copy()
+        for i, v in zip(indxs, vals):
+            expected[i] = ufunc(expected[i], v)
+
+        ufunc.at(a, indxs, vals)
+        assert_array_equal(a, expected)
+        assert np.all(indxs == [-1, 1, -1, 2])
+
     def test_at_not_none_signature(self):
         # Test ufuncs with non-trivial signature raise a TypeError
         a = np.ones((2, 2, 2))

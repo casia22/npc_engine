@@ -11,10 +11,10 @@ extra_dll_dir = os.path.join(os.path.dirname(__file__), '.libs')
 if sys.platform == 'win32' and os.path.isdir(extra_dll_dir):
     os.add_dll_directory(extra_dll_dir)
 
-openblas64__info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['/usr/local/lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None)], 'runtime_library_dirs': ['/usr/local/lib']}
-blas_ilp64_opt_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['/usr/local/lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None)], 'runtime_library_dirs': ['/usr/local/lib']}
-openblas64__lapack_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['/usr/local/lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None), ('HAVE_LAPACKE', None)], 'runtime_library_dirs': ['/usr/local/lib']}
-lapack_ilp64_opt_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['/usr/local/lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None), ('HAVE_LAPACKE', None)], 'runtime_library_dirs': ['/usr/local/lib']}
+openblas64__info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['openblas\\lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None)], 'runtime_library_dirs': ['openblas\\lib']}
+blas_ilp64_opt_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['openblas\\lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None)], 'runtime_library_dirs': ['openblas\\lib']}
+openblas64__lapack_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['openblas\\lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None), ('HAVE_LAPACKE', None)], 'runtime_library_dirs': ['openblas\\lib']}
+lapack_ilp64_opt_info={'libraries': ['openblas64_', 'openblas64_'], 'library_dirs': ['openblas\\lib'], 'language': 'c', 'define_macros': [('HAVE_CBLAS', None), ('BLAS_SYMBOL_SUFFIX', '64_'), ('HAVE_BLAS_ILP64', None), ('HAVE_LAPACKE', None)], 'runtime_library_dirs': ['openblas\\lib']}
 
 def get_info(name):
     g = globals()
