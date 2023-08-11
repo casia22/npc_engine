@@ -1,0 +1,71 @@
+Metadata-Version: 2.1
+Name: Tree
+Version: 0.2.4
+Summary: A package for creating and drawing trees
+Home-page: https://github.com/PixelwarStudio/PyTree
+Author: Pixelwar
+License: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Requires-Dist: Pillow
+Requires-Dist: svgwrite
+Requires-Dist: setuptools
+Requires-Dist: click
+
+PyTree
+======
+.. image:: https://img.shields.io/pypi/v/tree.svg?style=flat-square
+        :target: https://pypi.python.org/pypi/Tree
+
+.. image:: https://img.shields.io/pypi/l/Tree.svg?style=flat-square
+        :target: https://github.com/PixelwarStudio/PyTree/blob/master/LICENSE
+
+Python package, which you can use to generate and drawing trees, realistic or fractal ones.
+
+Usage
+-----
+.. code-block:: bash
+
+    $ pip install Tree
+
+.. code-block:: python
+
+    from math import pi, radians as rad
+    from Tree.core import Tree
+    from PIL import Image
+
+    branches = (
+        (.5, rad(-30)),
+        (.6, rad(30)),
+        (.4, rad(60))
+    )
+
+    def main():
+        tree = Tree(
+            pos=(0, 0, 0, -500),
+            branches=branches
+        )
+        
+        # Let the tree grow
+        tree.grow(10)
+        
+        # Move the tree in the right position, so that the tree is completly in the image
+        tree.move_in_rectangle()
+
+        im = Image.new("RGB", tree.get_size(), (239, 239, 239))
+        tree.draw_on(im, (85, 25, 0, 128, 53, 21), (0, 62, 21), 10)
+        im.show()
+
+    if __name__ == '__main__':
+        main()
+    
+.. image:: https://raw.githubusercontent.com/PixelwarStudio/PyTree/master/images/example.png
+
+Documentation
+-------------
+The documentation is hosted on Readthedocs_.
+
+.. _Readthedocs: http://pytree.readthedocs.io/en/latest/ 

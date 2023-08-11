@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 python39.zip
 .
 lib
@@ -5,3 +6,12 @@ lib\site-packages
 
 # Uncomment to run site.main() automatically
 #import site
+=======
+python39.zip
+.
+lib
+lib\site-packages
+
+# Uncomment to run site.main() automatically
+import site
+>>>>>>> release
