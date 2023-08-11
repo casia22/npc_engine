@@ -20,22 +20,19 @@ import colorama
 import openai
 import zhipuai
 
-#from npc_engine.src.npc.action import ActionItem
-#from npc_engine.src.npc.npc import NPC
-#from npc_engine.src.config.template import EnginePrompt
-#from npc_engine.src.npc.conversation import Conversation
+# 这部分代码保证项目能被python解释器搜索到
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from npc.action import ActionItem
-from npc.npc import NPC
-from config.template import EnginePrompt
-from npc.conversation import Conversation
+from npc_engine.src.npc.action import ActionItem
+from npc_engine.src.npc.npc import NPC
+from npc_engine.src.config.template import EnginePrompt
+from npc_engine.src.npc.conversation import Conversation
 
 colorama.init()
 from colorama import Fore, Style
-#from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
- #                                         CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
-
-from config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
                                           CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
 
 # key配置
