@@ -10,10 +10,9 @@ packages = [{include = "npc_engine"}]
 python = "^3.9"
 langchain = "^0.0.220"
 openai = "^0.27.8"
-<<<<<<< HEAD
 anybadge = "^1.14.0"
-=======
->>>>>>> main
+pickledb = "^0.9.2"
+pinecone-client = "^2.2.2"
 
 
 [build-system]

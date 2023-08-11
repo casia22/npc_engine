@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: zhipuai
+Version: 1.0.7
+Summary: A SDK library for accessing big model apis from ZhipuAI
+Home-page: https://open.bigmodel.cn/
+Author: Zhipu AI
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: PyJWT
+Requires-Dist: dataclasses
+Requires-Dist: cachetools
+
+# Overview

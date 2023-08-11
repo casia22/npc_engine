@@ -1,0 +1,6 @@
+{
+ "all_actions": ["mov", "get", "put"],
+ "all_places": ["default_village","forest","mine"],
+ "all_moods": ["正常", "焦急", "严肃", "开心", "伤心"],
+ "all_people": ["李大爷","王大妈","村长","警长"]
+ }

@@ -1,0 +1,66 @@
+Metadata-Version: 2.1
+Name: pybadge
+Version: 0.0.1
+Summary: Badges for Humans
+Home-page: https://pypi.org/project/pybadge
+License: BSD-3-Clause
+Author: Yi Zhang
+Author-email: yizhang.dev@gmail.com
+Requires-Python: >=3.7,<4.0
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Project-URL: Documentation, https://pybadge.readthedocs.io/en/latest/
+Project-URL: Repository, https://github.com/imyizhang/pybadge
+Description-Content-Type: text/markdown
+
+# PyBadge
+
+[![GitHub][github_badge]][github_link] [![PyPI][pypi_badge]][pypi_link]
+
+Generate your badges in seconds.
+
+
+
+
+## Installation
+
+```bash
+pip install pybadge
+```
+
+
+
+## Quickstart
+
+```python
+import pybadge
+```
+
+
+
+## License
+
+PyBadge has a BSD license, as found in the [LICENSE](https://github.com/imyizhang/pybadge/blob/main/LICENSE) file.
+
+
+
+## Contributing
+
+
+
+## Changelog
+
+
+
+[github_badge]: https://badgen.net/badge/icon/GitHub?icon=github&color=black&label
+[github_link]: https://github.com/imyizhang/pybadge
+
+
+
+[pypi_badge]: https://badgen.net/pypi/v/pybadge?icon=pypi&color=black&label
+[pypi_link]: https://www.pypi.org/project/pybadge

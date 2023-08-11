@@ -1,0 +1,7 @@
+{
+  "name": "chat",
+  "log_template":{
+    "success": "{npc_name}对{object}说：{parameters}",
+    "fail": "{npc_name}试图与{object}对话，但是失败了. 原因是{reason}"
+  }
+}

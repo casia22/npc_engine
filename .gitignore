@@ -2,19 +2,22 @@
 __pycache__/
 *.py[cod]
 *.so
-<<<<<<< HEAD
 *.meta
-=======
->>>>>>> main
 *.egg
 *.egg-info/
-dist/
 build/
-<<<<<<< HEAD
 npc_memory/*
+
+
+yzj*
+dist/code/*
+dist/release/windows_ver/code/*
+
 test/npc_memory/*
-=======
->>>>>>> main
+*.log
+src/npc_memory/*.log
+src/data/*.log
+src/data/*.db
 *.egg-info
 *.egg-info/
 *.dist-info/
@@ -25,6 +28,11 @@ test/npc_memory/*
 *.swo
 
 .pytest_cache/
+.pyarmor
+.idea
+
+.github
+
 test/.pytest_cache/
 
 
