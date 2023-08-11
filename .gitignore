@@ -5,9 +5,13 @@ __pycache__/
 *.meta
 *.egg
 *.egg-info/
-dist/
 build/
 npc_memory/*
+
+
+yzj*
+dist/code/*
+dist/release/windows_ver/code/*
 
 test/npc_memory/*
 *.log
@@ -24,6 +28,11 @@ src/data/*.db
 *.swo
 
 .pytest_cache/
+.pyarmor
+.idea
+
+.github
+
 test/.pytest_cache/
 
 
