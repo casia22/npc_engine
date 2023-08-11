@@ -24,6 +24,49 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 
 ## 文档
 
+### 使用方式
+#### 启动
+引擎可以使用对应平台的**运行脚本**(windows下是.bat)或者手动使用**python src/engine.py**运行。
+
+#### 端口
+引擎启动后，会在8199(默认)端口监听游戏发过来的UDP包。
+unity(或其他需要群体AI的应用程序)发送UDP包到引擎8199端口。
+引擎会发送处理后的信息到8084(默认)端口。
+
+#### 项目结构与引擎配置
+#### 项目结构
+- python_lib(依赖库)
+- code
+  - npc-engine\
+    - logs\(运行日志)
+    - src\(源代码)
+      - config\(配置文件)
+        - action\(场景中允许的动作配置文件)
+        - npc\(npc描述配置文件)
+        - knowledge\(知识、场景配置文件)
+          - game_world.json(基础场景入口配置文件)
+          - scenes\(子场景配置文件)
+            - xxxx.json(具体场景配置文件)
+ 
+release中code存储项目代码，python_lib存储python依赖库。
+npc-engine\logs 存储着每次运行的日志文件
+npc-engine\src\config 存储着NPC人物、场景、动作的配置文件。
+#### 引擎配置
+项目通过“配置文件”+“UDP”包的方式进行交互操作。
+
+init包发送的时候，会读取game_world.json和scene_name.json，然后初始化场景。
+game_world.json中包含了所有场景的入口，scene_name.json中包含了具体场景的配置信息。
+如果init包中指定了npc，那么会在game_world.json+scene_name.json的基础上添加npc。
+
+注意每个场景都要求action.json和npc.json，如果不存在指定npc就会报错。
+
+NPC的行动是通过action包的交互实现的。
+初始化引擎后什么都不会发生，只是把npc加载到了引擎里；
+游戏端需要对每个npc发送wakeup包让其产生思维并返回action包。
+(长时间没有行为的npc需要游戏端自行检测，发送wakeup包到引擎)
+游戏端执行对应的action包之后，需要发送action_done包到引擎，这样引擎才会继续生成npc下一步行为。
+
+
 ### 数据包格式记录
 https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
 #### 引擎初始化：
@@ -154,11 +197,13 @@ engine接收到action_done包之后会继续返回action行为包。
 
 ## 测试方式
 
-### NPC_ACTION测试
+### NPC_ACTION测试参考代码:
 1.test_npc_action.py
 运行这个脚本然后查看logs/下的日志
 2.test_npc_action.ipynb
 运行CELL然后查看logs/下的日志，可以自定义自己的包。
+上面的代码仅供参考，可以自己写一个脚本来测试。
+在npc_engine父目录中import npc_engine 然后 engine = NPCEngine() 就可以启动。
 
 
 ## 版本发布
