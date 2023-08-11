@@ -160,3 +160,20 @@ engine接收到action_done包之后会继续返回action行为包。
 2.test_npc_action.ipynb
 运行CELL然后查看logs/下的日志，可以自定义自己的包。
 
+
+## 版本发布
+
+### 打包方式
+
+项目使用pyarmor加密，然后在windows中使用嵌入式的python执行engine.py。
+
+打包脚本为npc_engine/dist/release_windows.sh
+
+打包后可运行的windows项目在npc_engine/dist/release/windows_ver，其中脚本start_engine.bat用来启动engine
+
+
+
+
+
+
+
