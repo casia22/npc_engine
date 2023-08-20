@@ -164,7 +164,7 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
-            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent) and (("“" in sent and "”" in sent) or len(sent.split("\"")) == 3):
+            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
                 # 归为英文的角色交互一类
                 if self.language == "E":
                     line = {
