@@ -27,7 +27,33 @@ logger.setLevel(logging.DEBUG)
 
 class Conversation:
     """
-    Conversation类，内有剧本初生成函数、剧本再生成函数、LLM调用函数、剧本解析函数、记忆添加函数
+    Conversation 是动态维护多Agent对话的数据结构
+
+    Conversation 对象创建：
+    [1] 对象初创建所需要的游戏端信息包括：初始对话Agent实体，初始对话主题、初始对话地点
+    [2] 对象创建后会自动调用generate_script()方法生成初始剧本
+    
+    Conversation 对象运行：
+    [1] Conversation 对象在运行的时候占用所有对话Agent的信息更改权，但是该权限可以被阻塞
+    [2] Conversation 对象自行决定Agent的退出，但无法决定Agent的加入
+    [3] Conversation 决定某个Agent退出对话后，会在退出Agent中更新数据并自动释放占用权限
+    [4] Conversation 对象默认执行所有角色的move动作和chat动作，除非在Agent相关属性中特殊声明
+    
+    Conversation 对象关闭：
+    [1] 当剧本展演的所有确认包都接收到后会检测Agent实体列表，当没有任何Agent实体的时候，默认自动关闭，并且返回Engine端删除该对象的确认信号
+    [2] 调用close()方法可以强制关闭对象，但是会发出警告，
+
+    Conversation 对象维护的主要游戏端信息如下：
+    (1) 所有对话Agent实体
+    (2) 对话发生的当前地点
+    (3) 对话的主要主题
+    (4) 剧本内容
+    Conversation可对外开放的接口及其对应功能如下：
+    (1) generate_script() 在Conversation对象刚开始创建的时候会调用的生成初始剧本的方法，
+    (2) re_generate_script() 在有新Agent加入或者玩家插话的时候调用的方法，续写剧本
+    (3) set_topic() 重新设定新的主题，根据新主题续写剧本
+    (4) set_location() 重新设定新的地点，对剧本内容改动不是很大
+    (5) release() 强制让Conversation释放对某角色的占用权限
     """
     def __init__(
         self,
@@ -295,7 +321,15 @@ class Conversation:
         }
         logger.debug(f"New script of conversation {self.convo_id} is generated.")
         return script
-
+    
+    def set_topic(self, new_topic):
+        """
+        游戏端或者world添加新的topic，conversation根据新主题续写新的剧本
+        :params new_topic:
+        return ?????
+        """
+        return new_topic
+    
     def add_temp_memory(
         self,
         index: int,

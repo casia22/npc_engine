@@ -345,7 +345,7 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
-            script = convo.re_generate_script(system_prompt, query_prompt)
+            script = convo.re_generate_script(character, system_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
