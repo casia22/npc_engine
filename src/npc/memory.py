@@ -16,8 +16,11 @@ import logging
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-from npc_engine.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
-from npc_engine.src.utils.database import PickleDB
+#from npc_engine.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
+#from npc_engine.src.utils.database import PickleDB
+
+from config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
+from utils.database import PickleDB
 
 # LOGGER配置
 logger = logging.getLogger("NPC_MEMORY")

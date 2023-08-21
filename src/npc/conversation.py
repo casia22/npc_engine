@@ -49,9 +49,9 @@ class Conversation:
         self.language: str = language
         self.model: str = model
         # 由self.names派生出的变量，用于添加到角色的记忆中，会动态更新
-        self.memory_head_names: Dict[str, List[str]] = {}
-        for name in self.names:
-            self.memory_head_names[name] = copy.deepcopy(self.names)
+        #self.memory_head_names: Dict[str, List[str]] = {}
+        ##for name in self.names:
+        #    self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
         # self.convo_id: str = str(uuid4())
         self.convo_id = "1234567890"
@@ -263,6 +263,7 @@ class Conversation:
 
     def re_generate_script(
         self,
+        new_name: str,
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
     ) -> Dict[str, Any]:
@@ -270,10 +271,13 @@ class Conversation:
         函数根据实例中与对话创建相关的关键信息以及新加入的角色或新插入的玩家回复，继续生成剧本并以标准格式解析成json发送到游戏端
         函数中涉及到字典格式的剧本信息，具体格式详见generate_script()函数
 
+        :params new_name:
         :params system_prompt:
         :params query_prompt:
         :return script:
         """
+        # 首先将新接收到的new_name信息添加到names上面
+        self.names.append(new_name)
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
@@ -343,7 +347,8 @@ class Conversation:
                     # 如果退出的角色是无人的话，处理下一个剧本行
                     if exit_character == "无人":
                         continue
-                    memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}这{len(self.memory_head_names[exit_character])}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
+                    #memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}这{len(self.memory_head_names[exit_character])}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
+                    memory_head = rf"""{"，".join(self.names)}这{len(self.names)}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
                     memory_add[exit_character] = [memory_head] + self.temp_memory
                     # 提取退出角色在退出时的心情作为最新的心情
@@ -355,6 +360,10 @@ class Conversation:
                     self.script_perform.append(self.sentences[i])
                     # 从会话的角色姓名列表中删除退出的角色
                     self.names.remove(exit_character)
+                    ## 更新其他角色的会话对象
+                    #del self.memory_head_names[exit_character]
+                    #for chat_name in self.memory_head_names.keys():
+                    #    self.memory_head_names[chat_name] = copy.deepcopy(self.names)
                 # Error及结束符这两种类型的剧本行不做处理
                 else:
                     continue
