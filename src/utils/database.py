@@ -18,7 +18,6 @@ from pathlib import Path
 #from npc_engine.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
 from config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
 
-
 # LOGGER配置
 logger = logging.getLogger("DATABASE")
 logger.addHandler(CONSOLE_HANDLER)
