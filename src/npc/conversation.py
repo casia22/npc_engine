@@ -219,6 +219,7 @@ class Conversation:
                     "words": "",
                     "action": None}
                 continue
+            print(line)
             self.lines.append(line)
 
     def generate_script(
@@ -303,7 +304,8 @@ class Conversation:
         :return script:
         """
         # 首先将新接收到的new_name信息添加到names上面
-        self.names.append(new_name)
+        if new_name != "":
+            self.names.append(new_name)
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
