@@ -43,7 +43,7 @@ class TestGame():
             engine_port=engine_port,
             game_url=game_url,
             game_port=game_port,
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-16k",
         )
         self.engine_url = engine_url
         self.engine_port = engine_port

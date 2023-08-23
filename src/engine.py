@@ -62,7 +62,7 @@ class NPCEngine:
         engine_port=8199,
         game_url="::1",
         game_port=8084,
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo-16k",
         logo=True,
     ):
         logger.info("initializing NPC-ENGINE")

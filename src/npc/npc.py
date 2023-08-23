@@ -35,7 +35,7 @@ class NPC:
         ob: List[str] = [],
         memory: List[str] = [],
         memory_k: int = 3,
-        model: str = "gpt-3.5-turbo",
+        model: str = "gpt-3.5-turbo-16k",
     ) -> None:
         # model
         self.model: str = model
@@ -91,29 +91,6 @@ class NPC:
         if not self.purpose:
             # 如果没有目的，那就参照最近记忆
             role_play_instruct = f"""
-            下面请你扮演一个角色，根据他的个性描述、记忆内容、当前心情等因素推测该角色可能的下一阶段的心情和计划是什么。
-            我们提供的信息包括：角色姓名、个性描述、角色当前心情、角色所处地点、当前的时间
-            角色记忆最近记忆中的内容以及角色当前观测到的信息。
-
-            你生成的该角色的下一步目的的模板是：
-            [情绪]<目的>
-            其中[情绪]可以从一系列情绪列表中选择
-            <目的>是一个陈述句，描述该角色接下来想要做什么
-            <目的>首先是一个目标做的事情的短句，接着是一句原因
-            <目的>要在20个字以内
-
-            例子1：
-            输入：
-
-            输出：
-
-
-            例子2：
-            输入：
-
-            输出：
-
-
             请你扮演{self.name}，特性是：{self.desc}，
             可有的心情是{self.moods}，
             当前心情是{self.mood}，正在{self.location}，现在时间是{time},

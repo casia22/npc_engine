@@ -64,7 +64,7 @@ class Conversation:
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
         language: str = "C",
-        model: str = "gpt-3.5-turbo",
+        model: str = "gpt-3.5-turbo-16k",
     ) -> None:
         # 系统时间戳
         self.start_time = datetime.datetime.now()
@@ -75,6 +75,10 @@ class Conversation:
         self.topic: str = topic
         self.language: str = language
         self.model: str = model
+        # 存储每一个角色参与对话的记忆起始索引值
+        self.start_memory: Dict[str, int] = {}
+        for name in self.names:
+            self.start_memory[name] = 0
         # 由self.names派生出的变量，用于添加到角色的记忆中，会动态更新
         #self.memory_head_names: Dict[str, List[str]] = {}
         ##for name in self.names:
@@ -304,9 +308,15 @@ class Conversation:
         :params query_prompt:
         :return script:
         """
-        # 首先将新接收到的new_name信息添加到names上面
+        # 如果添加的新角色已经在角色列表中，则报错并返回空
+        if new_name in self.names:
+            logger.debug(f"{new_name} is already in this conversation. Re-creation fails.")
+            return None
+        # 如果新角色信息不为空，则加入更新对话对象的角色列表、temp_memory序列以及对话记忆起始索引值字典
         if new_name != "":
             self.names.append(new_name)
+            self.temp_memory.append(rf"""{new_name}加入了对话。""")
+            self.start_memory[new_name] = len(self.temp_memory)
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
@@ -362,7 +372,6 @@ class Conversation:
         if index > self.index :
             # 遍历temp_lines的每一行剧本，判断其所属类型并更新self.temp_memory和self.names的数值
             for i in range(self.index + 1, index + 1):
-                print(self.temp_memory)
                 line = self.lines[i]
                 # 如果是角色交互类型的剧本行
                 if line["type"] == "Interaction":
@@ -379,7 +388,7 @@ class Conversation:
                     #memory_head = rf"""{"，".join(self.memory_head_names[exit_character])}这{len(self.memory_head_names[exit_character])}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     memory_head = rf"""{"，".join(self.names)}这{len(self.names)}个角色在地点{self.location}中共同交流有关{self.topic}的内容。"""
                     # 将temp_memory加入到退出角色的记忆中
-                    memory_add[exit_character] = [memory_head] + self.temp_memory
+                    memory_add[exit_character] = [memory_head] + self.temp_memory[self.start_memory[exit_character]:]
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
@@ -387,8 +396,9 @@ class Conversation:
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     self.script_perform.append(self.sentences[i])
-                    # 从会话的角色姓名列表中删除退出的角色
+                    # 从会话的角色姓名列表中删除退出的角色并删除相应的对话记忆起始索引值
                     self.names.remove(exit_character)
+                    del self.start_memory[exit_character]
                     ## 更新其他角色的会话对象
                     #del self.memory_head_names[exit_character]
                     #for chat_name in self.memory_head_names.keys():
@@ -418,7 +428,7 @@ if __name__ == '__main__':
         all_moods = ["calm", "happy", "sad", "anxious"],
         starting = "Hi, bro",
     )
-    #print(openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a singer and you know my name is Austin"},{"role": "user", "content": "You are a singer and you know my name is Austin.who are you and do you know who I am"}]))
+    #print(openai.ChatCompletion.create(model="gpt-3.5-turbo-16k", messages=[{"role": "system", "content": "You are a singer and you know my name is Austin"},{"role": "user", "content": "You are a singer and you know my name is Austin.who are you and do you know who I am"}]))
     convo = Conversation(names = ["Tony", "Austin"],location = "park",system_prompt = a,query_prompt = b)
     print(convo.add_temp_memory("123",0))
     print(convo.add_temp_memory("123",1))
