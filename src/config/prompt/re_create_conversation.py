@@ -8,7 +8,7 @@ from typing import List, Tuple, Dict
 
 class EnginePrompt:
     """
-    EnginePrompt类，内有三个用于对话的提示词函数，一个主题创建的提示词函数以及两个NPC单体规划提示词函数
+    EnginePrompt类，内有四个函数提供大模型提示词
     """
     def __init__(
         self,
@@ -697,72 +697,6 @@ class EnginePrompt:
         query_prompt = {"role": "user", "content": query_content}
 
         return system_prompt, query_prompt
-
-    def get_agent_purpose(
-        self,
-        purpose: bool = True,
-        name: str = "",
-        desc: str = "",
-        moods: List[str] = None,
-        mood: str = "",
-        location: str = "",
-        time: str = None,
-        queue_memory: List[str] = None,
-        observation: str = "",
-        history: List[str] = None,
-    ) -> Tuple[Dict[str, str], Dict[str, str]]:
-
-        if not purpose:
-            # 如果没有目的，那就参照最近记忆
-            system_content = f"""
-            请你扮演{name}，特性是：{desc}，
-            可有的心情是{moods}，
-            当前心情是{mood}，正在{location}，现在时间是{time},
-            最近记忆:{queue_memory},
-            {name}现在看到:{observation}
-            """
-            
-            quert_content = f"""
-            请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
-            例2：[{self.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
-            要求：
-            1.按照[情绪]<目的>的方式来返回内容
-            2.尽量使用第三人称来描述
-            3.如果目的达成了一部分，那就去除完成的部分并继续规划
-            4.目的要在20字以内。
-            """
-        else:
-            # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict:Dict[str] = self.memory.search_memory(query_text=self.purpose,query_game_time=time, k=k)
-            memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
-            memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
-
-            # 结合最近记忆和相关记忆来生成目的
-            role_play_instruct = f"""
-            请你扮演{self.name}，特性是：{self.desc}，
-            可有的心情是{self.moods}，
-            心情是{self.mood}，正在{self.location}，现在时间是{time},
-            {self.name}的最近记忆:{memory_latest_text}，
-            {self.name}脑海中相关记忆:{memory_related_text}，
-            {self.name}现在看到:{self.observation}，
-            {self.name}之前的目的是:{self.purpose}
-            """
-            prompt = f"""
-            请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXXXXXX。>
-            例2：[{self.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
-            要求：
-            1.按照[情绪]<目的>的方式来返回内容
-            2.尽量使用第三人称来描述
-            3.如果目的达成了一部分，那就去除完成的部分并继续规划
-            4.如果目的不改变，可以返回: [情绪]<S>
-            5.目的要在20字以内。
-            """
-        return system_content, quert_content
-
 
 if __name__ == '__main__':
     knowledge1 = {"all_actions" : ["chat","move"],

@@ -37,11 +37,11 @@ class Conversation:
     [1] Conversation 对象在运行的时候占用所有对话Agent的信息更改权，但是该权限可以被阻塞
     [2] Conversation 对象自行决定Agent的退出，但无法决定Agent的加入
     [3] Conversation 决定某个Agent退出对话后，会在退出Agent中更新数据并自动释放占用权限
-    [4] Conversation 对象默认执行所有角色的move动作和chat动作，除非在Agent相关属性中特殊声明
+    [4] Conversation 对象默认执行所有角色的move动作和chat动作，除非在Agent相关属性中特殊声明角色的动作列表
     
     Conversation 对象关闭：
-    [1] 当剧本展演的所有确认包都接收到后会检测Agent实体列表，当没有任何Agent实体的时候，默认自动关闭，并且返回Engine端删除该对象的确认信号
-    [2] 调用close()方法可以强制关闭对象，但是会发出警告，
+    [1] 当剧本展演完后对象会自动检测Agent实体列表，当没有任何Agent实体剩余的时候，会向Engine端返回关闭信号。
+        收到关闭信号后Engine会调用close()方法清空该对象的所有数据并删除该对象。
 
     Conversation 对象维护的主要游戏端信息如下：
     (1) 所有对话Agent实体
@@ -54,6 +54,7 @@ class Conversation:
     (3) set_topic() 重新设定新的主题，根据新主题续写剧本
     (4) set_location() 重新设定新的地点，对剧本内容改动不是很大
     (5) release() 强制让Conversation释放对某角色的占用权限
+    (6) close() 清空对象的所有数据
     """
     def __init__(
         self,
@@ -323,15 +324,7 @@ class Conversation:
         }
         logger.debug(f"New script of conversation {self.convo_id} is generated.")
         return script
-    
-    def set_topic(self, new_topic):
-        """
-        游戏端或者world添加新的topic，conversation根据新主题续写新的剧本
-        :params new_topic:
-        return ?????
-        """
-        return new_topic
-    
+
     def add_temp_memory(
         self,
         index: int,

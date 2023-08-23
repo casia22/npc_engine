@@ -10,10 +10,12 @@ import re, os, datetime
 #from npc_engine.src.npc.memory import NPCMemory
 #from npc_engine.src.npc.action import ActionItem
 #from npc_engine.src.config.config import CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+#from npc_engine.src.config.template import *
 
 from npc.memory import NPCMemory
 from npc.action import ActionItem
 from config.config import CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from config.template import *
 
 #zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
@@ -89,6 +91,29 @@ class NPC:
         if not self.purpose:
             # 如果没有目的，那就参照最近记忆
             role_play_instruct = f"""
+            下面请你扮演一个角色，根据他的个性描述、记忆内容、当前心情等因素推测该角色可能的下一阶段的心情和计划是什么。
+            我们提供的信息包括：角色姓名、个性描述、角色当前心情、角色所处地点、当前的时间
+            角色记忆最近记忆中的内容以及角色当前观测到的信息。
+
+            你生成的该角色的下一步目的的模板是：
+            [情绪]<目的>
+            其中[情绪]可以从一系列情绪列表中选择
+            <目的>是一个陈述句，描述该角色接下来想要做什么
+            <目的>首先是一个目标做的事情的短句，接着是一句原因
+            <目的>要在20个字以内
+
+            例子1：
+            输入：
+
+            输出：
+
+
+            例子2：
+            输入：
+
+            输出：
+
+
             请你扮演{self.name}，特性是：{self.desc}，
             可有的心情是{self.moods}，
             当前心情是{self.mood}，正在{self.location}，现在时间是{time},
@@ -134,6 +159,7 @@ class NPC:
             4.如果目的不改变，可以返回: [情绪]<S>
             5.目的要在20字以内。
             """
+        #role_play_instruct, prompt=prompt = get_agent_purpose()
         # 发起请求
         purpose_response: str = self.call_llm(instruct=role_play_instruct, prompt=prompt)
         # 解析返回
