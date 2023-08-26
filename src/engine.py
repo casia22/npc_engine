@@ -547,9 +547,9 @@ class NPCEngine:
         # 添加NPC记忆
         npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
-        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
+        npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
-        new_action:Dict[str, Any] = npc.get_action(time=json_data["time"], k=3)
+        new_action:Dict[str, Any] = await npc.get_action(time=json_data["time"], k=3)
         action_packet = new_action
         action_packet["name"] = "action"
         # 发送新的action到环境
@@ -589,9 +589,9 @@ class NPCEngine:
         npc.set_location(json_data["position"])
         npc.set_observation(json_data["observation"])
         # 更新NPC的purpose
-        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
+        npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
-        new_action = npc.get_action(time=json_data["time"], k=3)
+        new_action = await npc.get_action(time=json_data["time"], k=3)
         action_packet = new_action
         action_packet["name"] = "action"
         # 发送新的action到环境

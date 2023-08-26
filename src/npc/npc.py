@@ -74,7 +74,7 @@ class NPC:
     def set_mood(self, mood: str) -> None:
         self.mood = mood
 
-    def get_purpose(self, time:str, k:int=3) -> str:
+    async def get_purpose(self, time:str, k:int=3) -> str:
         """
         根据位置和时间+NPC记忆获取NPC的目的
         如果没有目的，那就参照最近记忆生成一个目的
@@ -104,7 +104,7 @@ class NPC:
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict:Dict[str, Any] = self.memory.search_memory(query_text=self.purpose,query_game_time=time, k=k)
+            memory_dict:Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose,query_game_time=time, k=k)
             memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
             memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
 
@@ -152,7 +152,7 @@ class NPC:
         self.purpose = purpose
         return purpose
 
-    def get_action(self, time:str, k:int=3) -> Dict[str, Any]:
+    async def get_action(self, time:str, k:int=3) -> Dict[str, Any]:
         # TODO: 将返回的action做成类似conversation一样的list，然后返回游戏执行错误/成功，作为一个memoryitem
         """
         结合NPC的记忆、目的、情绪、位置、时间等信息来生成动作和参数
@@ -162,14 +162,14 @@ class NPC:
             todo：返回一个action列表
             [<mov|箱子>,<take|箱子|西瓜汁>]
         函数返回例：
-            {'action': 'take', 'object': '箱子', 'parameters': ['西瓜汁', '桃子', '枕头']}
+            {'npc_name': '李大妈', 'action': 'take', 'object': '箱子', 'parameters': ['西瓜汁', '桃子', '枕头']}
         :param time:
         :param k:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
         query_text:str = self.purpose + ",".join(self.observation) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
-        memory_dict:Dict[str, Any] = self.memory.search_memory(query_text=query_text,query_game_time=time,k=k)
+        memory_dict:Dict[str, Any] = await self.memory.search_memory(query_text=query_text,query_game_time=time,k=k)
         memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
         memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
         # 构造prompt请求
@@ -207,6 +207,8 @@ class NPC:
         # 抽取动作和参数
         action_dict:Dict[str, Any] = ActionItem.str2json(response)
         self.action_dict = action_dict
+        # 添加npc_name
+        self.action_dict["npc_name"] = self.name
         logger.debug(f"""
                     <发起ACTION请求>
                     <请求内容>:{instruct}
