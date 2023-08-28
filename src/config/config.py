@@ -37,11 +37,6 @@ FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
 FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
 FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
-# 根记录器
-ROOT_LOGGER = logging.getLogger()
-ROOT_LOGGER.setLevel(logging.DEBUG)
-ROOT_LOGGER.addHandler(CONSOLE_HANDLER)
-ROOT_LOGGER.addHandler(FILE_HANDLER)
 
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
