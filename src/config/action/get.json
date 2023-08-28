@@ -1,5 +1,7 @@
 {
   "name": "get",
+  "definition": "<get|object1|object2>，从[object2]中获得[object1]，[object2]处可为空",
+  "example": "<get|西瓜|>，获得西瓜",
   "log_template":{
     "success": "{npc_name}成功地从{object}获得了{parameters}",
     "fail": "{npc_name}试图从{object}里获得{parameters}，但是失败了. 原因是{reason}"
