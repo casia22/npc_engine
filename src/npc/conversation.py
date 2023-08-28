@@ -12,7 +12,7 @@ import os
 import logging
 import openai
 #import zhipuai
-from config.config import (CONSOLE_HANDLER,FILE_HANDLER)
+from npc_engine.src.config.config import (CONSOLE_HANDLER,FILE_HANDLER)
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
