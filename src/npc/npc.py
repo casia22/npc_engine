@@ -25,16 +25,16 @@ logger.setLevel(logging.DEBUG)
 
 class NPC:
     def __init__(
-            self,
-            name: str,
-            desc: str,
-            knowledge: Dict[str, Any],
-            location: str,
-            mood: str = "正常",
-            ob: List[str] = [],
-            memory: List[str] = [],
-            memory_k: int = 3,
-            model: str = "gpt-3.5-turbo",
+        self,
+        name: str,
+        desc: str,
+        knowledge: Dict[str, Any],
+        location: str,
+        mood: str = "正常",
+        ob: List[str] = [],
+        memory: List[str] = [],
+        memory_k: int = 3,
+        model: str = "gpt-3.5-turbo-16k"
     ) -> None:
         # model
         self.model: str = model
@@ -60,7 +60,7 @@ class NPC:
         self.memory.touch_memory()
 
         ####################### 先清空现有VB #######################
-        self.memory.clear_memory()
+        # self.memory.clear_memory()
         ################# 等到记忆添加实现闭环时删除 #################
 
         # 将初始化的记忆内容加入到memory中
@@ -87,6 +87,7 @@ class NPC:
         如果没有目的，那就参照最近记忆生成一个目的
         如果有了目的，那就以当前记忆检索重新生成一个目的
         :param time: str
+        :param k: int
         :return: str
         """
         if not self.purpose:
