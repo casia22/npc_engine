@@ -106,8 +106,17 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func":"wake_up",
     "npc_name": "王大妈",
-    "position": "李大爷家",
-    "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]","床"]
+
+    "npc_state": {
+      "position": "李大爷家",
+      "observation": {
+              "people": ["李大爷", "村长", "李飞飞"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳 
 }
 
@@ -118,11 +127,19 @@ engine接收到action_done包之后会继续返回action行为包。
     "status": "success",
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
 
-    "observation": ["李大爷", "村长", "椅子#1","椅子#2","椅子#3[李大爷占用]",床], # 本次动作的观察结果
-    "position": "李大爷家", # NPC的位置
+    "npc_state": {
+      "position": "李大爷家",
+      "observation": {
+              "people": ["李大爷", "村长", "李飞飞"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+
     "action":"mov",
-    "object":"李大爷家",
-    "parameters":[],
+    "object":"李大爷家",  # 之前传过来的动作对象
+    "parameters":[], # 之前传过来的参数
     "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
         
@@ -147,14 +164,33 @@ engine接收到action_done包之后会继续返回action行为包。
 # create_conversation游戏端发给引擎的包
 {
     "func": "create_conversation",
-    "npc": "{npc}",
-    "location": "{location}",
-    "topic": "{topic}",
-    "observations": "{observations}",
-    "starting": "{starting}",
-    "player_desc": "{player_desc}",
-    "memory_k": "{memory_k}",
-    "length": "{length}"
+    "npc": ["王大妈","李大爷"],
+    "location": "李大爷家",
+    "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
+    "npc_states": {
+              "王大妈": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["李大爷", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+                       },
+              "李大爷": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["王大妈", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["黄瓜", "1000元", "老报纸"]
+                       },
+                  },
+    "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
+    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+    "memory_k": 3,  # npc的记忆检索条数，必须填写
+    "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
 }
 
 # 引擎端创造并生成剧本后传给游戏端的数据包
