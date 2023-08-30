@@ -1,5 +1,7 @@
 {
   "name": "mov",
+  "definition": "<mov|location|>，向[location]移动",
+  "example": "<mov|卧室|>",
   "log_template":{
     "success": "{npc_name}成功到达了{object}",
     "fail": "{npc_name}试图前往{object}，但是失败了. 原因是{reason}"

@@ -1,8 +1,9 @@
 {
   "name": "put",
+  "definition": "<put|object1|object2>，把[object2]放入[object1]",
+  "example": "<put|冰箱|西瓜>",
   "log_template":{
     "success": "{npc_name}成功地把{parameters}放到了{object}里",
     "fail": "{npc_name}试图把{parameters}放到{object}里，但是失败了. 原因是{reason}"
   }
-
 }
