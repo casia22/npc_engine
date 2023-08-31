@@ -429,10 +429,17 @@ class NPCEngine:
             with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
                 npc_json = json.load(file)
             npc = NPC(
+                # TODO 初始化NPC的state，目前背包和观察都初始化为空
                 name=npc_json["name"],
                 desc=npc_json["desc"],
                 knowledge=self.knowledge,
-                location=npc_json["location"],
+                state={
+                    'position': npc_json["location"],
+                    'backpack': [],
+                    'ob_people': [],
+                    'ob_items': [],
+                    'ob_positions': []
+                },
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
@@ -445,7 +452,13 @@ class NPCEngine:
                     name=npc_data["name"],
                     desc=npc_data["desc"],
                     knowledge=self.knowledge,
-                    location=npc_data["location"],
+                    state={
+                        'position': npc_json["location"],
+                        'backpack': [],
+                        'ob_people': [],
+                        'ob_items': [],
+                        'ob_positions': []
+                    },
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
@@ -542,8 +555,10 @@ class NPCEngine:
             action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
         # 更新NPC的观察,位置,actions
         npc.set_all_actions(list(self.action_dict.keys()))
-        npc.set_observation(json_data["observation"])
-        npc.set_location(json_data["position"])
+        # TODO 更新backpack
+        npc.set_observation(json_data['npc_state']["observation"])
+        npc.set_location(json_data['npc_state']["position"])
+        npc.set_backpack([])
         # 添加NPC记忆
         npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
@@ -586,9 +601,12 @@ class NPCEngine:
         npc = self.npc_dict[npc_name]
         # 更新NPC的观察,位置,actions
         npc.set_all_actions(list(self.action_dict.keys()))
-        npc.set_location(json_data["position"])
-        npc.set_observation(json_data["observation"])
+        npc.set_location(json_data['npc_state']["position"])
+        npc.set_observation(json_data['npc_state']["observation"])
+        # TODO 更新backpack
+        npc.set_backpack([])
         # 更新NPC的purpose
+        # TODO [bug] TypeError: object str can't be used in 'await' expression
         npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
         new_action = await npc.get_action(time=json_data["time"], k=3)
