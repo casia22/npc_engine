@@ -429,10 +429,10 @@ class NPCEngine:
             with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
                 npc_json = json.load(file)
             npc = NPC(
-                # TODO 初始化NPC的state，目前背包和观察都初始化为空
                 name=npc_json["name"],
                 desc=npc_json["desc"],
                 knowledge=self.knowledge,
+                # 初始化NPC的状态，目前背包和观察都初始化为空
                 state={
                     'position': npc_json["location"],
                     'backpack': [],
@@ -452,6 +452,7 @@ class NPCEngine:
                     name=npc_data["name"],
                     desc=npc_data["desc"],
                     knowledge=self.knowledge,
+                    # 初始化NPC的状态，目前背包和观察都初始化为空
                     state={
                         'position': npc_json["location"],
                         'backpack': [],
@@ -525,17 +526,25 @@ class NPCEngine:
         GAME传回数据例子:
         {
             "func":"action_done",
-            "npc_name": "李大妈",
+            "npc_name": "王大妈",
             "status": "success/fail",
+            "npc_state": {
+              "position": "李大爷家",
+              "observation": {
+                      "people": ["李大爷", "村长", "李飞飞"],
+                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                            },
+              "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+            },
             "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-            "position": "李大爷家", # NPC的位置
-            "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]",床], # 本次动作的观察结果
 
             "action":"mov",
             "object":"李大爷家",
             "parameters":[],
             "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
         }
+
         本函数返回给GAME的数据例子:
         {
         "name":"action",
@@ -553,12 +562,10 @@ class NPCEngine:
             action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
         else:
             action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
-        # 更新NPC的观察,位置,actions
+        # 更新NPC允许的动作
         npc.set_all_actions(list(self.action_dict.keys()))
-        # TODO 更新backpack
-        npc.set_observation(json_data['npc_state']["observation"])
-        npc.set_location(json_data['npc_state']["position"])
-        npc.set_backpack([])
+        # 更新NPC的状态
+        npc.set_state(json_data['npc_state'])
         # 添加NPC记忆
         npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
@@ -569,7 +576,11 @@ class NPCEngine:
         action_packet["name"] = "action"
         # 发送新的action到环境
         self.send_script(action_packet)
-        logger.debug(f"[NPC-ENGINE]<action_done> npc_name:{npc.name}, purpose: {npc.purpose} action:{action_packet} to game")
+        logger.debug(f"""[NPC-ENGINE]<action_done> 
+                        npc_name:{npc.name}, 
+                        purpose: {npc.purpose},
+                        action:{action_packet}
+                        to game""")
 
     async def wake_up(self, json_data):
         """
@@ -581,10 +592,18 @@ class NPCEngine:
         {
             "func":"wake_up",
             "npc_name": "王大妈",
-            "position": "李大爷家",
-            "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]",床]
+            "npc_state": {
+              "position": "李大爷家",
+              "observation": {
+                      "people": ["李大爷", "村长", "李飞飞"],
+                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                            },
+              "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+            },
             "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
         }
+
         本函数返回给GAME的数据例子:
         {
             "name":"action",
@@ -599,14 +618,11 @@ class NPCEngine:
         # 获得NPC的引用
         npc_name = json_data["npc_name"]
         npc = self.npc_dict[npc_name]
-        # 更新NPC的观察,位置,actions
+        # 更新NPC允许的动作
         npc.set_all_actions(list(self.action_dict.keys()))
-        npc.set_location(json_data['npc_state']["position"])
-        npc.set_observation(json_data['npc_state']["observation"])
-        # TODO 更新backpack
-        npc.set_backpack([])
+        # 更新NPC的状态
+        npc.set_state(json_data['npc_state'])
         # 更新NPC的purpose
-        # TODO [bug] TypeError: object str can't be used in 'await' expression
         npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
         new_action = await npc.get_action(time=json_data["time"], k=3)

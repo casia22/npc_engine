@@ -131,15 +131,21 @@ def test_action_done():
     发送动作完成包到引擎
     GAME发送
     的包：
-
     {
         "func":"action_done",
-        "npc_name":"王大妈",
+        "npc_name": "王大妈",
         "status": "success",
+        "npc_state": {
+            "position": "李大爷家",
+            "observation": {
+                "people": ["李大爷", "村长", "李飞飞"],
+                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+            },
+            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        },
         "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
 
-        "observation": ["李大爷", "村长", "椅子#1","椅子#2","椅子#3[李大爷占用]",床], # 本次动作的观察结果
-        "position": "李大爷家", # NPC的位置
         "action":"mov",
         "object":"李大爷家",
         "parameters":[],
@@ -165,12 +171,13 @@ def test_action_done():
         "time": "2021-01-01 13:00:00", # 游戏世界的时间戳
 
         "npc_state": {
+            "position": "李大爷家",
             "observation": {
-                "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
-                "people": ["李大爷", "村长",],
-                "positions": ["李大爷家"]
-            },  # 本次动作的观察结果
-            "position": "李大爷家",  # NPC的位置
+                "people": ["李大爷", "村长", "李飞飞"],
+                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+            },
+            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
         },
 
         "action":"chat",

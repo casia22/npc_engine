@@ -95,9 +95,9 @@ class NPC:
         self.state = State(
             position=state['position'],
             backpack=state['backpack'],
-            ob_people=state['ob_people'],
-            ob_items=state['ob_items'],
-            ob_positions=state['ob_positions']
+            ob_people=state['observation']['people'],
+            ob_items=state['observation']['items'],
+            ob_positions=state['observation']['positions']
         )
 
     def set_backpack(self, backpack: List[str]) -> None:
@@ -119,7 +119,7 @@ class NPC:
     def set_mood(self, mood: str) -> None:
         self.mood = mood
 
-    def get_purpose(self, time: str, k: int = 3) -> str:
+    async def get_purpose(self, time: str, k: int = 3) -> str:
         """
         根据位置和时间+NPC记忆获取NPC的目的
         如果没有目的，那就参照最近记忆生成一个目的
@@ -151,12 +151,9 @@ class NPC:
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
-            # TODO [bug] 'coroutine' object is not subscriptable
-            # memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
-            # memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
-            memory_latest_text = ""
-            memory_related_text = ""
+            memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
+            memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
+            memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
 
             # 结合最近记忆和相关记忆来生成目的
             role_play_instruct = f"""
@@ -205,7 +202,7 @@ class NPC:
         return purpose
 
     # 生成行为
-    def get_action(self, time: str, k: int = 3) -> Dict[str, Any]:
+    async def get_action(self, time: str, k: int = 3) -> Dict[str, Any]:
         # TODO: 将返回的action做成类似conversation一样的list，然后返回游戏执行错误/成功，作为一个memoryitem
         """
         结合NPC的记忆、目的、情绪、位置、时间等信息来生成动作和参数
@@ -221,13 +218,10 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        # TODO [bug] 搜索记忆目前有问题'coroutine' object is not subscriptable;取空作为测试
-        # query_text: str = self.purpose + ",".join(self.state.observation.items)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
-        # memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
-        # memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
-        # memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
-        memory_related_text = ''
-        memory_latest_text = ''
+        query_text: str = self.purpose + ",".join(self.state.observation.items)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
+        memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
+        memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
 
         # 根据声明的动作范围，加载相应动作的定义和例子
         action_template = []
