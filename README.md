@@ -106,8 +106,17 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func":"wake_up",
     "npc_name": "王大妈",
-    "position": "李大爷家",
-    "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]","床"]
+
+    "npc_state": {
+      "position": "李大爷家",
+      "observation": {
+              "people": ["李大爷", "村长", "李飞飞"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳 
 }
 
@@ -118,11 +127,19 @@ engine接收到action_done包之后会继续返回action行为包。
     "status": "success",
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
 
-    "observation": ["李大爷", "村长", "椅子#1","椅子#2","椅子#3[李大爷占用]",床], # 本次动作的观察结果
-    "position": "李大爷家", # NPC的位置
+    "npc_state": {
+      "position": "李大爷家",
+      "observation": {
+              "people": ["李大爷", "村长", "李飞飞"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+
     "action":"mov",
-    "object":"李大爷家",
-    "parameters":[],
+    "object":"李大爷家",  # 之前传过来的动作对象
+    "parameters":[], # 之前传过来的参数
     "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
         
@@ -147,50 +164,71 @@ engine接收到action_done包之后会继续返回action行为包。
 # create_conversation游戏端发给引擎的包
 {
     "func": "create_conversation",
-    "npc": "{npc}",
-    "location": "{location}",
-    "topic": "{topic}",
-    "observations": "{observations}",
-    "starting": "{starting}",
-    "player_desc": "{player_desc}",
-    "memory_k": "{memory_k}",
-    "length": "{length}"
+    "npc": ["王大妈","李大爷"],
+    "location": "李大爷家",
+    "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
+    "npc_states": {
+              "王大妈": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["李大爷", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+                       },
+              "李大爷": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["王大妈", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["黄瓜", "1000元", "老报纸"]
+                       },
+                  },
+    "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
+    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+    "memory_k": 3,  # npc的记忆检索条数，必须填写
+    "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
 }
 
 # 引擎端创造并生成剧本后传给游戏端的数据包
 {
     "name": "conversation",
-    "id": "{id}",
-    "length": "{length}",
-    "location": "{location}",
-    "lines": "{lines}"
+    "id": "123456789",  # conversation对象的索引号
+    "length": "M",  # 可以选择的剧本长度，S M L X 可选。 
+    "location": "李大爷家",  # 对话发生所在的地点
+    "lines": [line1, line2, line3, line4, ...]  # 剧本信息，由若干行对话组成的序列
 }
 
 # 引擎端生成剧本的每一行的格式
 {
-    "type": "{type}",
-    "state": "{state}",
-    "name": "{name}",
-    "mood": "{mood}",
-    "words": "{words}",
-    "action": "{action}"
+    "type": "Interaction",  # 剧本行的类型，可以是State，Interaction，Error
+    "state": "李大爷退出。剩下的角色：王大妈",  # 当剧本行类型是State和Error时，"state"才会有具体内容
+    "name": "李大爷",  # 剧本行对应的角色姓名，当剧本行类型是Interaction时才不为空
+    "mood": "开心",  # 剧本行对应角色的情绪，当剧本行类型是Interaction时才不为空
+    "words": "我喜好吃西瓜",  # 剧本行对应角色的说话内容，当剧本行类型是Interaction时才不为空
+    "action": {
+              "type": "对话",
+              "args": "王大妈"}  # 剧本行对应角色的动作，当剧本行类型是Interaction时不为空
 }
 
 # 游戏端传给引擎端的剧本演示确认包
 {
     "func": "confirm_conversation_line",
-    "conversation_id": "{id}",
-    "index": "{index}"
+    "conversation_id": "123456789",  # conversation对象的索引号
+    "index": 2,  # 游戏端展示完成的剧本行索引号
 }
 
 # re_create_conversation游戏端发给引擎的包
 {
     "func": "re_create_conversation",
-    "id": "{id}",
-    "character": "{character}",
-    "interruption": "{interruption}",
-    "player_desc": "{player_desc}",
-    "length": "{length}"
+    "id": "123456789",  # conversation对象的索引号
+    "character": "警长",  # 新加入角色的名称
+    "interruption": "大家好呀，你们刚刚在说什么",  # 玩家插入的说话内容
+    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+    "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
 }
 
 ```

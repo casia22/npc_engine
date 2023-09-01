@@ -54,7 +54,7 @@ class NPCEngine:
         engine_port=8199,
         game_url="::1",
         game_port=8084,
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo-16k",
         logo=True,
     ):
         logger.info("initializing NPC-ENGINE")
@@ -337,7 +337,7 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
-            script = convo.re_generate_script(system_prompt, query_prompt)
+            script = convo.re_generate_script(character, system_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
