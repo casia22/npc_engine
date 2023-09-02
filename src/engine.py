@@ -235,7 +235,8 @@ class NPCEngine:
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            topic = self.get_random_topic(names, location, states, self.language)
+            logger.error("There is no topic for creating a conversation")
+        #    topic = self.get_random_topic(names, location, obervations, self.language)
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(
