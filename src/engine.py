@@ -359,7 +359,7 @@ class NPCEngine:
             self.send_script(script)
 
     async def get_random_topic(
-        self, names: List[str], location: str, states: List[Any], language: str
+        self, names: List[str], location: str, states: Dict[str, Dict[str, Any]], language: str
     ) -> str:
         """
         使用GPT为对话生成一个随机的topic
