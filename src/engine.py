@@ -188,21 +188,39 @@ class NPCEngine:
     async def create_conversation(self, json_data):
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
-        直到对话都被确认，Conversation才会被销毁，
-        否则，存在的Conversation会被保存在self.conversation_dict中。
-
+        直到对话都被确认，Conversation才会被销毁.
+        create_conversation游戏端发给引擎的包
         {
-            "func":"create_conversation",
-            "npc":["李大爷","王大妈","村长"],   # 参与对话的NPC
-            "location":"酒吧",                # 对话地点
-            "topic":"村长的紫色内裤",           # 对话主题,可以留空,gpt会自发选择一个主题。
-
-            # 下面是为了解决玩家/npc插入对话的问题
-            "starting": "你好我是玩家，你们在干什么？",  # 玩家插入发言,可以留空
-            "player_desc": "是一个律师，是小村村长的儿子。",
-            "memory_k": 3,
-            "length": "S"
+            "func": "create_conversation",
+            "npc": ["王大妈","李大爷"],     # 参与对话的NPC
+            "location": "李大爷家",      # 对话地点
+            "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 对话主题，可以留空，会自动生成topic
+            "npc_states": {
+                    "王大妈": {
+                        "position": "李大爷家",
+                        "observation": {
+                                "people": ["李大爷", "村长", "隐形李飞飞"],
+                                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                        },
+                        "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+                            },
+                    "李大爷": {
+                        "position": "李大爷家",
+                        "observation": {
+                                "people": ["王大妈", "村长", "隐形李飞飞"],
+                                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                        },
+                        "backpack":["黄瓜", "1000元", "老报纸"]
+                            },
+                        },
+            "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
+            "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+            "memory_k": 3,  # npc的记忆检索条数，必须填写
+            "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
         }
+
         :param json_data:
         :return:
         """
@@ -213,11 +231,11 @@ class NPCEngine:
         topic: str = json_data["topic"]
         length: str = json_data["length"]
         memory_k = json_data["memory_k"]
+        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
 
         # 初始化群体描述、心情、状态和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
-        states: List[Any] = [npc.state for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
         memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
@@ -235,7 +253,7 @@ class NPCEngine:
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            logger.error("There is no topic for creating a conversation")
+            logger.error("There is no topic for creating a conversation.")
         #    topic = self.get_random_topic(names, location, obervations, self.language)
 
         # 根据语言选择对应的系统提示函数

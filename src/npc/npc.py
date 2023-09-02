@@ -29,16 +29,16 @@ class Knowledge:
 
 # npc的状态
 class State:
-    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_positions: List[str]):
+    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_locations: List[str]):
         self.position = position
         self.backpack = backpack
-        self.observation = self.Observation(ob_people, ob_items, ob_positions)
+        self.observation = self.Observation(ob_people, ob_items, ob_locations)
 
     class Observation:
-        def __init__(self, people: List[str], items: List[str], positions: List[str]):
+        def __init__(self, people: List[str], items: List[str], locations: List[str]):
             self.people = people
             self.items = items
-            self.positions = positions
+            self.locations = locations
 
 # NPC类
 class NPC:
@@ -71,7 +71,7 @@ class NPC:
             backpack=state['backpack'],
             ob_people=state['ob_people'],
             ob_items=state['ob_items'],
-            ob_positions=state['ob_positions']
+            ob_locations=state['ob_locations']
         )
 
         self.action_dict = {}
