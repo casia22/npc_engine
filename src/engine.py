@@ -226,12 +226,12 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data["npc"]
-        npc_refs = [self.npc_dict[name] for name in names] 
+        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
+        npc_refs = [self.npc_dict[name] for name in names]
         location: str = json_data["location"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
         memory_k = json_data["memory_k"]
-        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
 
         # 初始化群体描述、心情、状态和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
@@ -253,8 +253,8 @@ class NPCEngine:
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            logger.error("There is no topic for creating a conversation.")
-        #    topic = self.get_random_topic(names, location, obervations, self.language)
+            #logger.error("There is no topic for creating a conversation.")
+            topic = self.get_random_topic(names, location, states, self.language)
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(

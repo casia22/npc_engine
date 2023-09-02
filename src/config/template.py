@@ -34,7 +34,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: List[Any] = None,
+        states: Dict[str, Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -122,9 +122,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
                                 In {name}'s memory : {" ".join(memories[i])}
                                 {name}'s current mood is : {moods[i]}. 
-                                {name}'s current observation of people are: {", ".join(states[i].Observation.people)}.
-                                {name}'s current observation of items are: {", ".join(states[i].Observation.items)}.
-                                {name}'s current observation of locations are: {", ".join(states[i].Observation.locations)}."""
+                                {name}'s current observation of people are: {", ".join(states[name]["observation"]["people"])}.
+                                {name}'s current observation of items are: {", ".join(states[name]["observation"]["items"])}.
+                                {name}'s current observation of locations are: {", ".join(states[name]["observation"]["locations"])}."""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -221,7 +221,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: List[Any] = None,
+        states: Dict[str, Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -309,9 +309,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
                                 {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[i].Observation.people)}。
-                                {name}当前观测到的物体有：{"，".join(states[i].Observation.items)}。
-                                {name}当前观测到的地点有：{"，".join(states[i].Observation.locations)}。"""
+                                {name}当前观测到的人有：{"，".join(states[name]["observation"]["people"])}。
+                                {name}当前观测到的物体有：{"，".join(states[name]["observation"]["items"])}。
+                                {name}当前观测到的地点有：{"，".join(states[name]["observation"]["locations"])}。"""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -404,7 +404,7 @@ class EnginePrompt:
     def prompt_for_topic(
         names: List[str],
         location: str,
-        observations: str,
+        states: Dict[str, Dict[str, Any]],
         language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
@@ -415,7 +415,7 @@ class EnginePrompt:
         For example : the big tree nearby.
 
         中文系统提示词例子：
-        现在有2个角色在地点：公园，一起交流，他们分别是小白，小黑，他们观测到周围信息是树、花、草。
+        现在有2个角色在地点：公园，一起交流，他们分别是小白，小黑，他们观测到周围信息是小白，小黑，树，花，草，学校。
         请根据上述信息生成一个他们可能共同交谈的主题。
         比如：身边的大树。
 
@@ -427,18 +427,30 @@ class EnginePrompt:
 
         :param names:
         :param location:
-        :param observations:
+        :param states:
         :param language:
         :return system_prompt, query_prompt:
         """
+        ##################################################
+        # 下面观测信息的提取过于死板，后续需要更改
+        ##################################################
+        obs_people = []
+        obs_items = []
+        obs_locations = []
+        for _, state in states.items:
+            obs_people.extend(state["observation"]["people"])
+            obs_items.extend(state["observation"]["items"])
+            obs_locations.extend(state["observation"]["locations"])
+        observations = obs_people + obs_items + obs_locations
+
         # 获取系统提示词和查询提示词的内容
         if language == "E":
-            system_content = rf"""Now there are {len(names)} characters communicating together at the location : {location}. They are {", ".join(names)}, and their observations are: {observations}.
+            system_content = rf"""Now there are {len(names)} characters communicating together at the location : {location}. They are {", ".join(names)}, and their observations are: {", ".join(observations)}.
                                 Please generate a topic they might be discussed by them based on the above information.
                                 For example : the big tree nearby."""
             query_content = """Generate your topic."""
         else:
-            system_content = rf"""现在有{len(names)}个角色在地点：{location}，一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{observations}。
+            system_content = rf"""现在有{len(names)}个角色在地点：{location}，一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{"，".join(observations)}。
                                 请根据上述信息生成一个他们可能共同交谈的主题。
                                 比如：身边的大树。"""
             query_content = """生成你的主题。"""
