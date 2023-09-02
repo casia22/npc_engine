@@ -196,7 +196,6 @@ class NPCEngine:
             "npc":["李大爷","王大妈","村长"],   # 参与对话的NPC
             "location":"酒吧",                # 对话地点
             "topic":"村长的紫色内裤",           # 对话主题,可以留空,gpt会自发选择一个主题。
-            "observations":"旁边有两颗大树",    # 描述的是角色个体或者角色团体观测到的场景信息
 
             # 下面是为了解决玩家/npc插入对话的问题
             "starting": "你好我是玩家，你们在干什么？",  # 玩家插入发言,可以留空
@@ -209,15 +208,16 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data["npc"]
-        npc_refs = [self.npc_dict[name] for name in names]  # todo:altert！！！有问题！！
+        npc_refs = [self.npc_dict[name] for name in names] 
         location: str = json_data["location"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
         memory_k = json_data["memory_k"]
 
-        # 初始化群体描述、心情和记忆
+        # 初始化群体描述、心情、状态和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
+        states: List[Any] = [npc.state for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
         memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
@@ -227,7 +227,6 @@ class NPCEngine:
             memories.append(memory_content)
 
         # 初始化群体观察和常识
-        observations: str = json_data["observations"]
         all_actions: List[str] = self.knowledge["actions"]
         all_places: List[str] = self.knowledge["places"]
         all_people: List[str] = self.knowledge["people"]
@@ -236,7 +235,7 @@ class NPCEngine:
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            topic = self.get_random_topic(names, location, observations, self.language)
+            topic = self.get_random_topic(names, location, states, self.language)
 
         # 根据语言选择对应的系统提示函数
         system_prompt_func = getattr(
@@ -249,7 +248,7 @@ class NPCEngine:
             descs=descs,
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
-            observations=observations,
+            states = states,
             starting=starting,
             length=length
         )
@@ -341,18 +340,18 @@ class NPCEngine:
             self.send_script(script)
 
     async def get_random_topic(
-        self, names: List[str], location: str, observations: str, language: str
+        self, names: List[str], location: str, states: List[Any], language: str
     ) -> str:
         """
         使用GPT为对话生成一个随机的topic
         :param names: 参与对话的NPC名称列表
         :param location: 对话地点
-        :param observations: 观测到的场景信息
+        :param states: 角色状态信息
         :param language: 语言
         :return: 随机生成的话题
         """
         system_topic, query_prompt = self.engine_prompt.prompt_for_topic(
-            names=names, location=location, observations=observations, language=language
+            names=names, location=location, states=states, language=language
         )
         response = openai.ChatCompletion.create(
             model=self.model, messages=[system_topic, query_prompt]
