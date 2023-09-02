@@ -233,7 +233,7 @@ class NPCEngine:
         length: str = json_data["length"]
         memory_k = json_data["memory_k"]
 
-        # 初始化群体描述、心情、状态和记忆
+        # 初始化群体描述、心情和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
