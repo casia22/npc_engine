@@ -14,7 +14,8 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 首先，你需要安装 Poetry。你可以使用以下命令安装 Poetry：
 
 ```bash
-curl -sSL https://install.python-poetry.org | python -
+curl -sSL https://install.python-poetry.org | python - # 安装 Poetry
+poetry export -f requirements.txt --without-hashes -o requirements.txt # 生成 requirements.txt(提供给pip使用)
 ```
 
 然后，你可以使用以下命令在项目目录中安装依赖：
@@ -90,9 +91,10 @@ NPC的行动是通过action包的交互实现的。
 
 ### 数据包格式记录
 https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
-#### 引擎初始化：
+#### 引擎初始化和关闭：
 在游戏场景初始化加载的时候发送给engine，需要指定加载的场景json
 ```python
+# 引擎初始化的包
 {
     "func":"init",
     # 必填字段，代表在什么场景初始化
@@ -103,16 +105,37 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
         {
             "name":"李大爷",
             "desc":"是个好人",
+            "npc_state": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["王大妈", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["黄瓜", "1000元", "老报纸"]
+                       },
             "mood":"正常",
-            "location":"李大爷家",
             "memory":[ ]
         },
-        {"name":"王大妈",
-        "desc":"是个好人",
+        {
+            "name":"王大妈",
+            "desc":"是个好人",
+            "npc_state": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["李大爷", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+                       },
         "mood":"焦急",
-        "location":"王大妈家",
         "memory":[ ]
         }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
+}
+# 引擎关闭的包
+{
+    "func":"close" # 关闭引擎,并保存所有NPC到json
 }
 ```
 
@@ -255,6 +278,9 @@ engine接收到action_done包之后会继续返回action行为包。
 ```
 
 ## 测试方式
+
+### 测试数据
+测试数据统一放在test/test_packets.py中，可以自己添加测试数据。
 
 ### NPC_ACTION测试参考代码:
 1.test_npc_action.py
