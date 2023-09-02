@@ -3,10 +3,10 @@
 测试脚本统一从这个脚本导入测试数据包
 """
 
-init_pack = {
-    "func":"init",
+init_packet = {
+    "func": "init",
     # 必填字段，代表在什么场景初始化
-    "scene":"default_village",
+    "scene": "default_village",
     "language": "E" or "C",
     # 下面是🉑️选
     "npc": [
@@ -52,96 +52,94 @@ init_pack = {
                 "一日作息：清晨起床后进行锻炼和瞄准训练，白天进行狩猎和追踪，傍晚返回小屋整理装备并准备晚餐，晚上休息并回顾一天的狩猎经历。"
             ]
         }
-        ], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
+    ],  # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
 }
 
 wakeup_packet_1 = {
-            "func":"wake_up",
-            "npc_name": "王大妈",
-            "npc_state": {
-              "position": "李大爷家",
-              "observation": {
-                      "people": ["李大爷", "村长", "隐形李飞飞"],
-                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                            },
-              "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-            },
-            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-        }
+    "func": "wake_up",
+    "npc_name": "王大妈",
+    "npc_state": {
+        "position": "李大爷家",
+        "observation": {
+            "people": ["李大爷", "村长", "隐形李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+            "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
+        },
+        "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
+}
 
 wakeup_packet_2 = {
-            "func":"wake_up",
-            "npc_name": "李大爷",
-            "npc_state": {
-              "position": "李大爷家",
-              "observation": {
-                      "people": ["王大妈", "村长", "隐形李飞飞"],
-                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                            },
-              "backpack": ["黄瓜", "1000元", "老报纸"]
-            },
-            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-        }
+    "func": "wake_up",
+    "npc_name": "李大爷",
+    "npc_state": {
+        "position": "李大爷家",
+        "observation": {
+            "people": ["王大妈", "村长", "隐形李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+            "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
+        },
+        "backpack": ["黄瓜", "1000元", "老报纸"]
+    },
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
+}
 
 wakeup_packet_3 = {
-            "func":"wake_up",
-            "npc_name": "村长",
-            "npc_state": {
-              "position": "李大爷家",
-              "observation": {
-                      "people": ["王大妈", "村长", "隐形李飞飞"],
-                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                            },
-              "backpack": ["中华烟[剩余4根]", "1000元", "吃了一半的西瓜"]
-            },
-            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-        }
+    "func": "wake_up",
+    "npc_name": "村长",
+    "npc_state": {
+        "position": "李大爷家",
+        "observation": {
+            "people": ["王大妈", "村长", "隐形李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+            "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
+        },
+        "backpack": ["中华烟[剩余4根]", "1000元", "吃了一半的西瓜"]
+    },
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
+}
 
-
-action_done_pack_1 = {
-    "func":"action_done",
-    "npc_name":"王大妈",
+action_done_packet_1 = {
+    "func": "action_done",
+    "npc_name": "王大妈",
     "status": "success",
-    "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
 
     "npc_state": {
-      "position": "李大爷家",
-      "observation": {
-              "people": ["李大爷", "村长", "李飞飞"],
-              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                    },
-      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        "position": "李大爷家",
+        "observation": {
+            "people": ["李大爷", "村长", "李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+            "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
+        },
+        "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
     },
 
-    "action":"mov",
-    "object":"李大爷家",  # 之前传过来的动作对象
-    "parameters":[], # 之前传过来的参数
-    "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
+    "action": "mov",
+    "object": "李大爷家",  # 之前传过来的动作对象
+    "parameters": [],  # 之前传过来的参数
+    "reason": "",  # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
 
-action_done_pack_2 = {
-    "func":"action_done",
-    "npc_name":"李大爷",
+action_done_packet_2 = {
+    "func": "action_done",
+    "npc_name": "李大爷",
     "status": "fail",
-    "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
 
     "npc_state": {
-      "position": "李大爷家",
-      "observation": {
-              "people": ["王大妈", "村长", "李飞飞"],
-              "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
-              "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
-                    },
-      "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
+        "position": "李大爷家",
+        "observation": {
+            "people": ["王大妈", "村长", "李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+            "positions": ["李大爷家大门", "李大爷家后门", "李大爷家院子"]
+        },
+        "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
     },
 
-    "action":"mov",
-    "object":"警察局",  # 之前传过来的动作对象
-    "parameters":[], # 之前传过来的参数
-    "reason": "李大爷在去往‘警察局’的路上被王大妈打断", # "王大妈在去往‘警察局’的路上被李大爷打断"
+    "action": "mov",
+    "object": "警察局",  # 之前传过来的动作对象
+    "parameters": [],  # 之前传过来的参数
+    "reason": "李大爷在去往‘警察局’的路上被王大妈打断",  # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
-

@@ -103,14 +103,31 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
         {
             "name":"李大爷",
             "desc":"是个好人",
+            "npc_state": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["王大妈", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["黄瓜", "1000元", "老报纸"]
+                       },
             "mood":"正常",
-            "location":"李大爷家",
             "memory":[ ]
         },
-        {"name":"王大妈",
-        "desc":"是个好人",
+        {
+            "name":"王大妈",
+            "desc":"是个好人",
+            "npc_state": {
+                  "position": "李大爷家",
+                  "observation": {
+                          "people": ["李大爷", "村长", "隐形李飞飞"],
+                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                },
+                  "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+                       },
         "mood":"焦急",
-        "location":"王大妈家",
         "memory":[ ]
         }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
 }
@@ -255,6 +272,9 @@ engine接收到action_done包之后会继续返回action行为包。
 ```
 
 ## 测试方式
+
+### 测试数据
+测试数据统一放在test/test_packets.py中，可以自己添加测试数据。
 
 ### NPC_ACTION测试参考代码:
 1.test_npc_action.py
