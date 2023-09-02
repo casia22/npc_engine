@@ -13,7 +13,6 @@ import logging
 import multiprocessing
 import time,os
 
-
 from npc_engine.src.engine import NPCEngine
 from npc_engine.src.config.config import FILE_HANDLER, CONSOLE_HANDLER, PROJECT_ROOT_PATH
 
@@ -22,9 +21,9 @@ logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
-# 启动服务器进程
-path = PROJECT_ROOT_PATH / "src" / "engine.py"
-os.popen("python " + str(path))
+# # 启动服务器进程
+# path = PROJECT_ROOT_PATH / "src" / "engine.py"
+# os.popen("python " + str(path))
 
 def send_data(data, max_packet_size=6000):
         engine_url = "::1"
@@ -106,12 +105,12 @@ def test_engine_init():
              "npc": []
              }
     # 发送初始化包到引擎
-    print("sending first")
+    print("sending first init packet")
     send_data(pack1)
     time.sleep(5)
-    print("sending second")
-    send_data(pack2)
-    print("all done")
+    # print("sending second")
+    # send_data(pack2)
+    # print("all done")
 
 def test_get_purpose():
     """
@@ -132,15 +131,21 @@ def test_action_done():
     发送动作完成包到引擎
     GAME发送
     的包：
-
     {
         "func":"action_done",
-        "npc_name":"王大妈",
+        "npc_name": "王大妈",
         "status": "success",
+        "npc_state": {
+            "position": "李大爷家",
+            "observation": {
+                "people": ["李大爷", "村长", "李飞飞"],
+                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+            },
+            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        },
         "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
 
-        "observation": ["李大爷", "村长", "椅子#1","椅子#2","椅子#3[李大爷占用]",床], # 本次动作的观察结果
-        "position": "李大爷家", # NPC的位置
         "action":"mov",
         "object":"李大爷家",
         "parameters":[],
@@ -165,8 +170,15 @@ def test_action_done():
         "status": "success",
         "time": "2021-01-01 13:00:00", # 游戏世界的时间戳
 
-        "observation": ["李大爷", "村长", "椅子#1","椅子#2","椅子#3[李大爷占用]","床"], # 本次动作的观察结果
-        "position": "李大爷家", # NPC的位置
+        "npc_state": {
+            "position": "李大爷家",
+            "observation": {
+                "people": ["李大爷", "村长", "李飞飞"],
+                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+            },
+            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        },
 
         "action":"chat",
         "object":"李大爷",
@@ -184,13 +196,21 @@ def test_wake_up():
     测试引擎wake_up函数
     向引擎发送初始化包，检查引擎是否正确初始化
     wakeup包例：
-        {
-            "func":"wake_up",
-            "npc_name": "王大妈",
-            "position": "李大爷家",
-            "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]",床]
-            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-        }
+    {
+        "func":"wake_up",
+        "npc_name": "王大妈",
+        "npc_state": {
+          "position": "李大爷家",
+          "observation": {
+                  "people": ["李大爷", "村长", "李飞飞"],
+                  "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                  "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                        },
+          "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        },
+        "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+    }
+
     预期返回包:
     {
             "name":"action",
@@ -204,14 +224,21 @@ def test_wake_up():
 
     # 初始化包
     pack1 = {
-            "func":"wake_up",
-            "npc_name": "王大妈",
-            "position": "李大爷家",
-            "observation": ["李大爷", "椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-        }
+        "func":"wake_up",
+        "npc_name": "王大妈",
+        "npc_state": {
+          "position": "李大爷家",
+          "observation": {
+                  "people": ["李大爷", "村长", "李飞飞"],
+                  "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                  "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                        },
+          "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+        },
+        "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+    }
     # 发送初始化包到引擎
-    print("sending first")
+    print("sending first wake_up packet")
     send_data(pack1)
     print("all done")
     time.sleep(10)
