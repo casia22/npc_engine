@@ -143,3 +143,7 @@ action_done_packet_2 = {
     "parameters": [],  # 之前传过来的参数
     "reason": "李大爷在去往‘警察局’的路上被王大妈打断",  # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
+
+close_packet = {
+    "func": "close"
+}

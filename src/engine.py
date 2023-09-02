@@ -154,6 +154,8 @@ class NPCEngine:
                             logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
                         if "confirm_conversation" in json_data["func"]:
                             logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
+                        if "close" in json_data["func"]:
+                            logger.info(f"[NPC-ENGINE]<close>: {json_data}")
 
                 except json.JSONDecodeError:
                     # print the raw data and the address of the sender and the time and the traceback
@@ -418,8 +420,15 @@ class NPCEngine:
 
         # 按照npc字段，添加磁盘中JSON对应的NPC
         for npc_name in npc_list:
-            with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
-                npc_json = json.load(file)
+            try:
+                with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
+                    npc_json = json.load(file)
+            except FileNotFoundError:
+                logger.warning(f"NPC {npc_name} not found in disk, skip")
+                continue
+            except json.decoder.JSONDecodeError:
+                logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
+                continue
             """
             {
               "name":"李大爷",
@@ -703,21 +712,34 @@ class NPCEngine:
         kb_size = byte_size / 1024
         return kb_size
 
-    def close(self):
+    def save_npc_json(self):
         """
-        关闭socket,结束Engine
-        保存所有NPC的记忆到本地
+        保存NPC的json数据到本地
         :return:
         """
-        self.sock.close()
-        print("socket closed")
-        logger.debug("socket closed")
-        logger.debug("saving memory")
+        logger.info(f"saving npc json, names:{self.npc_dict.keys()}")
         for npc in self.npc_dict.values():
             npc.save_memory()
-        print("all memory saved")
-        print("Engine closed")
-        logger.debug("Engine closed")
+        logger.info("npc json saved")
+
+    def close(self, json_data):
+        """
+        关闭socket,结束Engine
+        保存所有NPC的记忆到本地.
+        可以被数据包触发：
+            {
+                "func":"close"
+            }
+        :return:
+        """
+        # 关闭socket
+        self.sock.close()
+        logger.debug("socket closed")
+        # 保存所有NPC到本地
+        self.save_npc_json()
+        logger.info("Engine closing")
+        # 退出程序
+        sys.exit(0)
 
 if __name__ == "__main__":
     engine = NPCEngine()

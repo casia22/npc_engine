@@ -29,6 +29,9 @@ class Knowledge:
 
 # npc的状态
 class State:
+    """
+    游戏提供给NPC的状态
+    """
     def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_positions: List[str]):
         self.position = position
         self.backpack = backpack
@@ -40,8 +43,45 @@ class State:
             self.items = items
             self.positions = positions
 
+        def __str__(self):
+            return f'{{\n\t\t"people": {self.people},\n\t\t"items": {self.items},\n\t\t"positions": {self.positions}\n\t}}'
+
+        def to_dict(self):
+            return {
+                    "people": self.people,
+                    "items": self.items,
+                    "positions": self.positions
+                }
+
+
+    def __str__(self):
+        return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"positions": {self.observation.positions}\n\t}},\n\t"backpack": {self.backpack}\n}}'
+
+    def to_dict(self):
+        return {
+            "position": self.position,
+            "observation": {
+                "people": self.observation.people,
+                "items": self.observation.items,
+                "positions": self.observation.positions
+            },
+            "backpack": self.backpack
+        }
+
 # NPC类
 class NPC:
+    """
+    NPC类，用于存储NPC的信息，生成行为ACTION和目的PURPOSE
+    初始化所需的参数Args:
+        name (str): NPC的名称
+        desc (str): NPC的描述
+        knowledge (Dict[str, Any]): NPC的常识，包括动作、地点、人物和情绪
+        state (Dict[str, Any]): NPC的状态，包括位置、背包、观察到的人物、物品和地点
+        mood (str, optional): NPC的心情，默认为"正常"
+        memory (List[str], optional): NPC的记忆列表，默认为空列表
+        memory_k (int, optional): NPC记忆的长度，默认为3
+        model (str, optional): 使用的语言模型，默认为"gpt-3.5-turbo-16k"
+    """
     def __init__(
             self,
             name: str,
@@ -285,21 +325,37 @@ class NPC:
         以npc_name.json的形式保存npc的状态
         """
         NPC_CONFIG_PATH = CONFIG_PATH / "npc" / f"{self.name}.json"
+        """ 保存示例: 李大爷.json
+        {
+          "name":"李大爷",
+          "desc": "李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜",
+          "mood":"开心",
+          "npc_state": {
+                "position": "李大爷家",
+                "observation": {
+                        "people": ["王大妈", "村长", "隐形李飞飞"],
+                        "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                        "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                              },
+                "backpack":["黄瓜", "1000元", "老报纸"]
+                     },
+          "memory":["20年前在工厂表现优异获得表彰。","15年前在工厂收了两个徒弟。","8年前李大爷的两个徒弟在工厂表现优异都获得表彰。","6年前从工厂辞职并过上普通的生活。","4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。"]
+        }
+        """
         data = {
             # 初始化的必填参数
             "name": self.name,
             "desc": self.desc,
-            "location": self.location,
             "mood": self.mood,
-            "memory": self.memory.latest_k.queue,
+            "npc_state": self.state.to_dict(),
+            "memory": [item.text for item in list(self.memory.latest_k.queue)],
 
             # 无任何意义只是记录的参数
             "purpose": self.purpose,
-            "observation": self.observation,
             "action": self.action_dict,
         }
         # 以json字符串的形式保存
         with open(NPC_CONFIG_PATH, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        logger.debug(f"保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
+        logger.debug(f"已保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
 
