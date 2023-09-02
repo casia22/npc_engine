@@ -97,7 +97,7 @@ class NPC:
             backpack=state['backpack'],
             ob_people=state['observation']['people'],
             ob_items=state['observation']['items'],
-            ob_positions=state['observation']['positions']
+            ob_locations=state['observation']['locations']
         )
 
     def set_backpack(self, backpack: List[str]) -> None:
@@ -107,7 +107,7 @@ class NPC:
         self.state.observation = State.Observation(
             people=observation['people'],
             items=observation["items"],
-            positions=observation["positions"]
+            locations=observation["locations"]
         )
 
     def set_all_actions(self, actions: List[str]) -> None:
@@ -137,7 +137,7 @@ class NPC:
             最近记忆:{self.memory.latest_k.queue},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}现在看到的地点:{self.state.observation.positions}，            
+            {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
@@ -165,7 +165,7 @@ class NPC:
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}现在看到的地点:{self.state.observation.positions}，    
+            {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
             prompt = f"""
@@ -241,7 +241,7 @@ class NPC:
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
-            你现在看到的地点:{self.state.observation.positions}，
+            你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
         prompt = f"""
@@ -289,7 +289,7 @@ class NPC:
             # 初始化的必填参数
             "name": self.name,
             "desc": self.desc,
-            "location": self.location,
+            "position": self.state.position,
             "mood": self.mood,
             "memory": self.memory.latest_k.queue,
 

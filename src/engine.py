@@ -201,7 +201,7 @@ class NPCEngine:
                         "observation": {
                                 "people": ["李大爷", "村长", "隐形李飞飞"],
                                 "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                             },
@@ -210,7 +210,7 @@ class NPCEngine:
                         "observation": {
                                 "people": ["王大妈", "村长", "隐形李飞飞"],
                                 "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["黄瓜", "1000元", "老报纸"]
                             },
@@ -394,13 +394,13 @@ class NPCEngine:
                     {"name":"李大爷",
                     "desc":"是个好人",
                     "mood":"正常",
-                    "location":"李大爷家",
+                    "position":"李大爷家",
                     "memory":[ ]},
 
                     {"name":"王大妈",
                     "desc":"是个好人",
                     "mood":"焦急",
-                    "location":"王大妈家",
+                    "position":"王大妈家",
                     "memory":[ ]}
                       ], # 可以留空，默认按照game_world.json+scene初始化场景NPC。非空则在之前基础上添加。
 
@@ -452,11 +452,11 @@ class NPCEngine:
                 knowledge=self.knowledge,
                 # 初始化NPC的状态，目前背包和观察都初始化为空
                 state={
-                    'position': npc_json["location"],
+                    'position': npc_json["position"],
                     'backpack': [],
                     'ob_people': [],
                     'ob_items': [],
-                    'ob_positions': []
+                    'ob_locations': []
                 },
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
@@ -472,11 +472,11 @@ class NPCEngine:
                     knowledge=self.knowledge,
                     # 初始化NPC的状态，目前背包和观察都初始化为空
                     state={
-                        'position': npc_json["location"],
+                        'position': npc_json["position"],
                         'backpack': [],
                         'ob_people': [],
                         'ob_items': [],
-                        'ob_positions': []
+                        'ob_locations': []
                     },
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
@@ -551,7 +551,7 @@ class NPCEngine:
               "observation": {
                       "people": ["李大爷", "村长", "李飞飞"],
                       "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                      "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                             },
               "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
             },
@@ -615,7 +615,7 @@ class NPCEngine:
               "observation": {
                       "people": ["李大爷", "村长", "李飞飞"],
                       "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                      "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                      "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                             },
               "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
             },

@@ -83,13 +83,13 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
             "name":"李大爷",
             "desc":"是个好人",
             "mood":"正常",
-            "location":"李大爷家",
+            "position":"李大爷家",
             "memory":[ ]
         },
         {"name":"王大妈",
         "desc":"是个好人",
         "mood":"焦急",
-        "location":"王大妈家",
+        "position":"王大妈家",
         "memory":[ ]
         }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
 }
@@ -112,7 +112,7 @@ engine接收到action_done包之后会继续返回action行为包。
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+              "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                     },
       "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
     },
@@ -132,7 +132,7 @@ engine接收到action_done包之后会继续返回action行为包。
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-              "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+              "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                     },
       "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
     },
@@ -173,7 +173,7 @@ engine接收到action_done包之后会继续返回action行为包。
                   "observation": {
                           "people": ["李大爷", "村长", "隐形李飞飞"],
                           "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                        },
@@ -182,7 +182,7 @@ engine接收到action_done包之后会继续返回action行为包。
                   "observation": {
                           "people": ["王大妈", "村长", "隐形李飞飞"],
                           "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["黄瓜", "1000元", "老报纸"]
                        },
