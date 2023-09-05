@@ -300,6 +300,8 @@ class NPC:
         # 抽取动作和参数
         action_dict: Dict[str, Any] = ActionItem.str2json(response)
         self.action_dict = action_dict
+        # 添加npc_name
+        self.action_dict["npc_name"] = self.name
         logger.debug(f"""
                     <发起ACTION请求>
                     <请求内容>:{instruct}
