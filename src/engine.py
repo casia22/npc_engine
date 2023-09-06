@@ -48,13 +48,17 @@ logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
 class NPCEngine:
+    """
+    项目的核心入口类，扮演着一个Router的角色，负责接受相应的包并出发对应函数返回结果给游戏。
+    engine的实现是基于socket UDP的，并发处理主要靠coroutine实现。
+    """
     def __init__(
         self,
         engine_url="::1",
         engine_port=8199,
         game_url="::1",
         game_port=8084,
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo-16k",
         logo=True,
     ):
         logger.info("initializing NPC-ENGINE")
@@ -150,6 +154,8 @@ class NPCEngine:
                             logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
                         if "confirm_conversation" in json_data["func"]:
                             logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
+                        if "close" in json_data["func"]:
+                            logger.info(f"[NPC-ENGINE]<close>: {json_data}")
 
                 except json.JSONDecodeError:
                     # print the raw data and the address of the sender and the time and the traceback
@@ -337,7 +343,7 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
-            script = convo.re_generate_script(system_prompt, query_prompt)
+            script = convo.re_generate_script(character, system_prompt, query_prompt)
             self.send_script(script)
 
     async def get_random_topic(
@@ -367,25 +373,13 @@ class NPCEngine:
         2.如果init包npc字段不为空，那就在内存中覆盖掉对应的NPC对象。
                                 如果不存在这个NPC，就新建一个NPC对象。
         例子：
-        {"func":"init",
-                # 必填字段，代表在什么场景初始化
-                "scene":"default_village",
-                "language":"E" or "C"
-                # 下面是🉑️选
-                "npc":[
-                    {"name":"李大爷",
-                    "desc":"是个好人",
-                    "mood":"正常",
-                    "location":"李大爷家",
-                    "memory":[ ]},
-
-                    {"name":"王大妈",
-                    "desc":"是个好人",
-                    "mood":"焦急",
-                    "location":"王大妈家",
-                    "memory":[ ]}
-                      ], # 可以留空，默认按照game_world.json+scene初始化场景NPC。非空则在之前基础上添加。
-
+        {
+        "func":"init",
+        # 必填字段，代表在什么场景初始化
+        "scene":"default_village",
+        "language": "E" or "C",
+        # 下面是🉑️选
+        "npc": [], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
         }
         :param json_data:
         :return:
@@ -424,21 +418,45 @@ class NPCEngine:
         self.engine_prompt = EnginePrompt(knowledge=self.knowledge)
         logger.debug(f"generate engine prompt done")
 
-        # 按照npc字段，添加新的NPC
+        # 按照npc字段，添加磁盘中JSON对应的NPC
         for npc_name in npc_list:
-            with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
-                npc_json = json.load(file)
+            try:
+                with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
+                    npc_json = json.load(file)
+            except FileNotFoundError:
+                logger.warning(f"NPC {npc_name} not found in disk, skip")
+                continue
+            except json.decoder.JSONDecodeError:
+                logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
+                continue
+            """
+            {
+              "name":"李大爷",
+              "desc": "李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜",
+              "mood":"开心",
+              "npc_state": {
+                    "position": "李大爷家",
+                    "observation": {
+                            "people": ["王大妈", "村长", "隐形李飞飞"],
+                            "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                            "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                  },
+                    "backpack":["黄瓜", "1000元", "老报纸"]
+                         },
+              "memory":["20年前在工厂表现优异获得表彰。","15年前在工厂收了两个徒弟。","8年前李大爷的两个徒弟在工厂表现优异都获得表彰。","6年前从工厂辞职并过上普通的生活。","4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。"]
+            }
+            """
             npc = NPC(
                 name=npc_json["name"],
                 desc=npc_json["desc"],
                 knowledge=self.knowledge,
                 # 初始化NPC的状态，目前背包和观察都初始化为空
                 state={
-                    'position': npc_json["location"],
-                    'backpack': [],
-                    'ob_people': [],
-                    'ob_items': [],
-                    'ob_positions': []
+                    'position': npc_json["npc_state"]["position"],
+                    'backpack': npc_json["npc_state"]["backpack"],
+                    'ob_people': npc_json["npc_state"]["observation"]["people"],
+                    'ob_items': npc_json["npc_state"]["observation"]["items"],
+                    'ob_positions': npc_json["npc_state"]["observation"]["positions"]
                 },
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
@@ -446,6 +464,7 @@ class NPCEngine:
             )
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
+        # 按照GAME回传的init包中的npc字段，添加新的NPC
         if "npc" in json_data:
             for npc_data in json_data["npc"]:
                 npc = NPC(
@@ -454,11 +473,11 @@ class NPCEngine:
                     knowledge=self.knowledge,
                     # 初始化NPC的状态，目前背包和观察都初始化为空
                     state={
-                        'position': npc_json["location"],
-                        'backpack': [],
-                        'ob_people': [],
-                        'ob_items': [],
-                        'ob_positions': []
+                        'position': npc_data["npc_state"]["position"],
+                        'backpack': npc_data["npc_state"]["backpack"],
+                        'ob_people': npc_data["npc_state"]["observation"]["people"],
+                        'ob_items': npc_data["npc_state"]["observation"]["items"],
+                        'ob_positions': npc_data["npc_state"]["observation"]["positions"]
                     },
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
@@ -466,6 +485,10 @@ class NPCEngine:
                 )
                 self.npc_dict[npc.name] = npc
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
+        # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
+        self.knowledge["people"] = list(set(npc_list + [npc.name for npc in self.npc_dict.values()]))
+        logger.debug(f"knowledge update done，people:{self.knowledge['people']}，"
+                     f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in npc_list]}")
         # 按照action字段，添加新的ACTION
         for action_name in action_list:
             with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
@@ -689,21 +712,34 @@ class NPCEngine:
         kb_size = byte_size / 1024
         return kb_size
 
-    def close(self):
+    def save_npc_json(self):
         """
-        关闭socket,结束Engine
-        保存所有NPC的记忆到本地
+        保存NPC的json数据到本地
         :return:
         """
-        self.sock.close()
-        print("socket closed")
-        logger.debug("socket closed")
-        logger.debug("saving memory")
+        logger.info(f"saving npc json, names:{self.npc_dict.keys()}")
         for npc in self.npc_dict.values():
             npc.save_memory()
-        print("all memory saved")
-        print("Engine closed")
-        logger.debug("Engine closed")
+        logger.info("npc json saved")
+
+    def close(self, json_data):
+        """
+        关闭socket,结束Engine
+        保存所有NPC的记忆到本地.
+        可以被数据包触发：
+            {
+                "func":"close"
+            }
+        :return:
+        """
+        # 关闭socket
+        self.sock.close()
+        logger.debug("socket closed")
+        # 保存所有NPC到本地
+        self.save_npc_json()
+        logger.info("Engine closing")
+        # 退出程序
+        sys.exit(0)
 
 if __name__ == "__main__":
     engine = NPCEngine()
