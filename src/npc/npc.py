@@ -7,9 +7,10 @@ import openai
 # import zhipuai
 import re, os, datetime
 
-from npc_engine.src.npc.memory import NPCMemory
-from npc_engine.src.npc.action import ActionItem
-from npc_engine.src.config.config import CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+#npc_engine.src.
+from npc.memory import NPCMemory
+from npc.action import ActionItem
+from config.config import CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
@@ -82,7 +83,7 @@ class NPC:
         self.memory.touch_memory()
 
         ####################### 先清空现有VB #######################
-        # self.memory.clear_memory()
+        self.memory.clear_memory()
         ################# 等到记忆添加实现闭环时删除 #################
 
         # 将初始化的记忆内容加入到memory中

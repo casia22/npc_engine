@@ -12,7 +12,8 @@ import os
 import logging
 import openai
 #import zhipuai
-from npc_engine.src.config.config import (CONSOLE_HANDLER,FILE_HANDLER)
+#npc_engine.src.
+from config.config import (CONSOLE_HANDLER,FILE_HANDLER)
 
 openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
 openai.api_base = "https://api.ai-yyds.com/v1"
@@ -85,6 +86,7 @@ class Conversation:
         #    self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
         self.convo_id: str = str(uuid4())
+        print(self.convo_id)
         # self.convo_id = "1234567890"
         # 将展示结束的剧本行作为记忆存起来
         self.temp_memory: List[str] = []
@@ -186,6 +188,7 @@ class Conversation:
 
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
+            print(sent)
             # 归为结束状态和会话状态两类
             if sent[0] == "<" and sent[-1] == ">":
                 line = {
