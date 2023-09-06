@@ -186,6 +186,9 @@ class Conversation:
 
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
+            logger.debug(f"get a new sentence of script : {sent}")
+            if len(sent) == 0:
+                continue
             # 归为结束状态和会话状态两类
             if sent[0] == "<" and sent[-1] == ">":
                 line = {
@@ -224,7 +227,7 @@ class Conversation:
                     "words": "",
                     "action": None}
                 continue
-            print(line)
+            logger.debug(f"parser out a new line of script : {line}")
             self.lines.append(line)
 
     def generate_script(
