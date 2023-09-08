@@ -8,6 +8,7 @@ import json
 import logging
 from pathlib import Path
 import time
+import os
 
 # 项目主路径
 PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
@@ -37,11 +38,18 @@ FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
 FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
 FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
-
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
-OPENAI_KEY = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
-OPENAI_BASE = "https://api.ai-yyds.com/v1"
+OPENAI_KEY = "sk-hJs89lkQMzlzoOcADb6739A9091d41229c2c3c0547932fBe"
+OPENAI_BASE = "https://api.qaqgpt.com/v1"
+OPENAI_MODEL = "gpt-3.5-turbo-16k"
+
+# get OPENAI KEY and BASE_URL from local json file
+OPENAI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "openai_config.json")
+openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
+OPENAI_KEY = openai_config_data["OPENAI_KEY"]
+OPENAI_BASE = openai_config_data["OPENAI_BASE"]
+OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
 
 # PACKS
 INIT_PACK = json.loads(
@@ -191,7 +199,3 @@ NPC_MEMORY_CONFIG = {
 assert (
     PINECONE_CONFIG["pinecone_index_dim"] == NPC_MEMORY_CONFIG["hf_dim"]
 ), "dim of hf model != dim of pinecone index"
-
-
-if __name__ == "__main__":
-    pass

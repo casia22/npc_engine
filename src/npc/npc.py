@@ -9,11 +9,11 @@ import re, os, datetime
 
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.action import ActionItem
-from npc_engine.src.config.config import CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
-openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
-openai.api_base = "https://api.ai-yyds.com/v1"
+openai.api_key = OPENAI_KEY
+openai.api_base = OPENAI_BASE
 
 # LOGGER配置
 logger = logging.getLogger("NPC")
@@ -80,7 +80,7 @@ class NPC:
         mood (str, optional): NPC的心情，默认为"正常"
         memory (List[str], optional): NPC的记忆列表，默认为空列表
         memory_k (int, optional): NPC记忆的长度，默认为3
-        model (str, optional): 使用的语言模型，默认为"gpt-3.5-turbo-16k"
+        model (str, optional): 使用的语言模型，默认为OPENAI_MODEL
     """
     def __init__(
             self,
@@ -91,7 +91,7 @@ class NPC:
             mood: str = "正常",
             memory: List[str] = [],
             memory_k: int = 3,
-            model: str = "gpt-3.5-turbo-16k"
+            model: str = OPENAI_MODEL
         ) -> None:
         # model
         self.model: str = model
