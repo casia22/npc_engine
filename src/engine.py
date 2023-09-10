@@ -32,7 +32,7 @@ from npc_engine.src.npc.conversation import Conversation
 
 colorama.init()
 from colorama import Fore, Style
-from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
                                           CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
 
 # key配置
@@ -58,7 +58,7 @@ class NPCEngine:
         engine_port=8199,
         game_url="::1",
         game_port=8084,
-        model="gpt-3.5-turbo-16k",
+        model=OPENAI_MODEL,
         logo=True,
     ):
         logger.info("initializing NPC-ENGINE")

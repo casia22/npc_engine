@@ -12,10 +12,10 @@ import os
 import logging
 import openai
 #import zhipuai
-from npc_engine.src.config.config import (CONSOLE_HANDLER,FILE_HANDLER)
+from npc_engine.src.config.config import (OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER)
 
-openai.api_key = "sk-8p38chfjXbbL1RT943B051229a224a8cBdE1B53b5e2c04E2"
-openai.api_base = "https://api.ai-yyds.com/v1"
+openai.api_key = OPENAI_KEY
+openai.api_base = OPENAI_BASE
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
 
@@ -64,7 +64,7 @@ class Conversation:
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
         language: str = "C",
-        model: str = "gpt-3.5-turbo-16k",
+        model: str = OPENAI_MODEL,
     ) -> None:
         # 系统时间戳
         self.start_time = datetime.datetime.now()
