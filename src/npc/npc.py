@@ -17,6 +17,9 @@ openai.api_base = OPENAI_BASE
 
 # LOGGER配置
 logger = logging.getLogger("NPC")
+CONSOLE_HANDLER.setLevel(logging.DEBUG)
+logger.addHandler(CONSOLE_HANDLER)
+logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
 # npc的宽泛知识
@@ -230,6 +233,7 @@ class NPC:
             <发起PURPOSE请求>
             <请求内容>:{role_play_instruct}
             <请求提示>:{prompt}
+            <返回内容>:{purpose_response}
             <返回目的>:{purpose}
             <返回情绪>:{mood}
             """)
@@ -259,13 +263,15 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        query_text: str = self.purpose + ",".join(self.state.observation.items)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        # todo [bug]似乎是pinecone数据库中存储的李大爷的记忆有问题
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.positions) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
         memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
 
         # 根据声明的动作范围，加载相应动作的定义和例子
         action_template = []
+        # TODO 不使用文件加载，预先加载好
         for act in self.knowledge.actions:
             file_path = os.path.join(CONFIG_PATH, f'action/{act}.json')
             if os.path.isfile(file_path):
@@ -296,7 +302,6 @@ class NPC:
         """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
-        logger.debug(response)
         # 抽取动作和参数
         action_dict: Dict[str, Any] = ActionItem.str2json(response)
         self.action_dict = action_dict
@@ -306,7 +311,8 @@ class NPC:
                     <发起ACTION请求>
                     <请求内容>:{instruct}
                     <请求提示>:{prompt}
-                    <返回目的>:{action_dict}
+                    <返回内容>:{response}
+                    <返回行为>:{action_dict}
                     """)
         return action_dict
 
