@@ -10,6 +10,7 @@ import re, os, datetime
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = OPENAI_KEY
@@ -17,6 +18,9 @@ openai.api_base = OPENAI_BASE
 
 # LOGGER配置
 logger = logging.getLogger("NPC")
+CONSOLE_HANDLER.setLevel(logging.DEBUG)
+logger.addHandler(CONSOLE_HANDLER)
+logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
 # npc的宽泛知识
@@ -88,13 +92,16 @@ class NPC:
             desc: str,
             knowledge: Dict[str, Any],
             state: Dict[str, Any],
+            action_dict: Dict[str, ActionItem],
+            embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
             memory: List[str] = [],
             memory_k: int = 3,
-            model: str = OPENAI_MODEL
+            model: str = OPENAI_MODEL,
         ) -> None:
         # model
         self.model: str = model
+        self.embedding_model = embedding_model
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
@@ -113,12 +120,13 @@ class NPC:
             ob_items=state['ob_items'],
             ob_locations=state['ob_locations']
         )
-
-        self.action_dict = {}
+        # 为了和engine的action_dict保持一致，把输出的action结果改成了action_result
+        self.action_dict = action_dict
+        self.action_result = {}
         self.mood: str = mood
         self.purpose: str = ""
         # NPC的记忆
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k, embedding_model=self.embedding_model)
         self.memory.touch_memory()
 
         ####################### 先清空现有VB #######################
@@ -150,8 +158,11 @@ class NPC:
             locations=observation["locations"]
         )
 
-    def set_all_actions(self, actions: List[str]) -> None:
+    def set_known_actions(self, actions: List[str]) -> None:
         self.knowledge.actions = actions
+
+    def set_action_dict(self, action_dict):
+        self.action_dict = action_dict
 
     def set_location(self, location: str) -> None:
         self.state.position = location
@@ -230,6 +241,7 @@ class NPC:
             <发起PURPOSE请求>
             <请求内容>:{role_play_instruct}
             <请求提示>:{prompt}
+            <返回内容>:{purpose_response}
             <返回目的>:{purpose}
             <返回情绪>:{mood}
             """)
@@ -259,21 +271,14 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        query_text: str = self.purpose + ",".join(self.state.observation.items)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        # todo [bug]似乎是pinecone数据库中存储的李大爷的记忆有问题
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.positions) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
         memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
 
-        # 根据声明的动作范围，加载相应动作的定义和例子
-        action_template = []
-        for act in self.knowledge.actions:
-            file_path = os.path.join(CONFIG_PATH, f'action/{act}.json')
-            if os.path.isfile(file_path):
-                f = open(file_path, 'r')  # 加载预定义的动作
-            else:
-                f = open(os.path.join(CONFIG_PATH, 'action/stand.json'), 'r')  # 如果动作未被定义则映射到stand
-            data = json.load(f)
-            action_template.append({'name': data['name'], 'definition': data['definition'], 'example': data['example']})
+        # 根据允许动作的预定义模版设置prompt
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict.items()]
         # 构造prompt请求
         instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
@@ -287,7 +292,7 @@ class NPC:
         prompt = f"""
         请你根据[行为定义]以及你现在看到的事物生成一个完整的行为，并且按照<动作|参数1|参数2>的结构返回：
         行为定义：
-            {action_template}
+            {action_prompt}
         要求:
             1.请务必按照以下形式返回动作、参数1、参数2的三元组以及行为描述："<动作|参数1|参数2>, 行为的描述"
             2.动作和参数要在20字以内。
@@ -296,19 +301,18 @@ class NPC:
         """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
-        logger.debug(response)
         # 抽取动作和参数
-        action_dict: Dict[str, Any] = ActionItem.str2json(response)
-        self.action_dict = action_dict
+        self.action_result: Dict[str, Any] = ActionItem.str2json(response)
         # 添加npc_name
-        self.action_dict["npc_name"] = self.name
+        self.action_result["npc_name"] = self.name
         logger.debug(f"""
                     <发起ACTION请求>
                     <请求内容>:{instruct}
                     <请求提示>:{prompt}
-                    <返回目的>:{action_dict}
+                    <返回内容>:{response}
+                    <返回行为>:{self.action_result}
                     """)
-        return action_dict
+        return self.action_result
 
     def call_llm(self, instruct: str, prompt: str) -> str:
         llm_prompt_list = [{
@@ -354,7 +358,7 @@ class NPC:
 
             # 无任何意义只是记录的参数
             "purpose": self.purpose,
-            "action": self.action_dict,
+            "action": self.action_result,
         }
         # 以json字符串的形式保存
         with open(NPC_CONFIG_PATH, "w", encoding="utf-8") as file:

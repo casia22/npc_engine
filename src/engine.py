@@ -33,7 +33,8 @@ from npc_engine.src.npc.conversation import Conversation
 colorama.init()
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
-                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
+                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
+from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding,BaseEmbeddingModel
 
 # key配置
 zhipuai.api_key = ZHIPU_KEY
@@ -93,6 +94,7 @@ class NPCEngine:
                             __/ |
                            |___/
             """)
+        # 加载引擎网络组件
         self.engine_port = engine_port
         self.engine_url = engine_url
         self.game_url = game_url
@@ -102,7 +104,6 @@ class NPCEngine:
         self.action_dict = {}
         self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)  # 使用IPv6地址
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
-        # color print
         print(
             Fore.GREEN
             + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}"
@@ -112,6 +113,13 @@ class NPCEngine:
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
+        # 加载模型embedding模型
+        if NPC_MEMORY_CONFIG["hf_embedding_online"]:
+            logger.info("using online embedding model")
+            self.embedding_model = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        else:
+            logger.info("using local embedding model")
+            self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         logger.info("initialized NPC-ENGINE")
 
     def listen(self, buffer_size=40000):
@@ -148,6 +156,7 @@ class NPCEngine:
                             func = getattr(self, func_name)
                             asyncio.run(func(json_data))
                         # test
+                        # TODO 打印了两遍包内容，是否应该删掉
                         if "init" in json_data["func"]:
                             logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
                         if "create_conversation" in json_data["func"]:
@@ -436,6 +445,19 @@ class NPCEngine:
         self.engine_prompt = EnginePrompt(knowledge=self.knowledge)
         logger.debug(f"generate engine prompt done")
 
+        # 按照action字段，添加新的ACTION
+        for action_name in action_list:
+            with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
+                action_json = json.load(file)
+            action_item = ActionItem(
+                name=action_json["name"],
+                definition=action_json['definition'],
+                example=action_json['example'],
+                log_template=action_json["log_template"],
+            )
+            self.action_dict[action_item.name] = action_item
+            logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
+
         # 按照npc字段，添加磁盘中JSON对应的NPC
         for npc_name in npc_list:
             try:
@@ -476,9 +498,11 @@ class NPCEngine:
                     'ob_items': npc_json["npc_state"]["observation"]["items"],
                     'ob_locations': npc_json["npc_state"]["observation"]["locations"]
                 },
+                action_dict=self.action_dict,
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
+                embedding_model=self.embedding_model
             )
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
@@ -489,7 +513,7 @@ class NPCEngine:
                     name=npc_data["name"],
                     desc=npc_data["desc"],
                     knowledge=self.knowledge,
-                    # 初始化NPC的状态，目前背包和观察都初始化为空
+                    # 初始化NPC的状态
                     state={
                         'position': npc_data["npc_state"]["position"],
                         'backpack': npc_data["npc_state"]["backpack"],
@@ -497,9 +521,11 @@ class NPCEngine:
                         'ob_items': npc_data["npc_state"]["observation"]["items"],
                         'ob_locations': npc_data["npc_state"]["observation"]["locations"]
                     },
+                    action_dict=self.action_dict,
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
+                    embedding_model=self.embedding_model
                 )
                 self.npc_dict[npc.name] = npc
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
@@ -507,16 +533,6 @@ class NPCEngine:
         self.knowledge["people"] = list(set(npc_list + [npc.name for npc in self.npc_dict.values()]))
         logger.debug(f"knowledge update done，people:{self.knowledge['people']}，"
                      f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in npc_list]}")
-        # 按照action字段，添加新的ACTION
-        for action_name in action_list:
-            with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
-                action_json = json.load(file)
-            action_item = ActionItem(
-                name=action_json["name"],
-                log_template=action_json["log_template"],
-            )
-            self.action_dict[action_item.name] = action_item
-            logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
 
         # language
         self.language = json_data["language"]
@@ -604,7 +620,8 @@ class NPCEngine:
         else:
             action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
         # 更新NPC允许的动作
-        npc.set_all_actions(list(self.action_dict.keys()))
+        npc.set_known_actions(list(self.action_dict.keys()))
+        npc.set_action_dict(self.action_dict)
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
         # 添加NPC记忆
@@ -660,7 +677,7 @@ class NPCEngine:
         npc_name = json_data["npc_name"]
         npc = self.npc_dict[npc_name]
         # 更新NPC允许的动作
-        npc.set_all_actions(list(self.action_dict.keys()))
+        npc.set_known_actions(list(self.action_dict.keys()))
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
         # 更新NPC的purpose
