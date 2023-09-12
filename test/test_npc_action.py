@@ -15,6 +15,9 @@ import time,os
 
 from npc_engine.src.engine import NPCEngine
 from npc_engine.src.config.config import FILE_HANDLER, CONSOLE_HANDLER, PROJECT_ROOT_PATH
+from test_config.test_packets import init_packet, wakeup_packet_1, wakeup_packet_2, wakeup_packet_3, \
+                                     action_done_packet_1,action_done_packet_2
+
 
 logger = logging.getLogger("TEST")
 logger.addHandler(CONSOLE_HANDLER)
@@ -49,68 +52,18 @@ def send_data(data, max_packet_size=6000):
 
 
 def test_engine_init():
-
     """
     测试引擎初始化
     向引擎发送初始化包，检查引擎是否正确初始化
     初始化包例：
-         {"func":"init",
-                # 必填字段，代表在什么场景初始化
-                "scene":"default_village",
-                "language":"E" or "C"
-                # 下面是🉑️选
-                "npc":[
-                    {"name":"李大爷",
-                    "desc":"是个好人",
-                    "mood":"正常",
-                    "location":"李大爷家",
-                    "memory":[ ]},
-
-                    {"name":"王大妈",
-                    "desc":"是个好人",
-                    "mood":"焦急",
-                    "location":"王大妈家",
-                    "memory":[ ]}
-                      ], # 可以留空，默认按照game_world.json+scene初始化场景NPC。非空则在之前基础上添加。
-
-        }
+         请参考test_config.test_packets
     :return:
     """
-
-    # 初始化包
-    pack1 = {"func":"init",
-                # 必填字段，代表在什么场景初始化
-                "scene": "default_village",
-                "language": "C",
-                # 下面是🉑️选
-                "npc": [
-                    {"name":"超级史莱姆",
-                    "desc":"喜欢吃人",
-                    "mood":"愤怒",
-                    "location": "村口",
-                    "memory":[]},
-
-                    {"name":"警长",
-                    "desc":"是个好人,但是不喜欢超级史莱姆，非常会使用武器，很勇敢",
-                    "mood":"焦急",
-                    "location":"村口",
-                    "memory":[]}
-                      ]
-        }
-    pack2 = {"func": "init",
-             # 必填字段，代表在什么场景初始化
-             "scene": "default_village",
-             "language": "C",
-             # 下面是🉑️选
-             "npc": []
-             }
+    print(init_packet)
     # 发送初始化包到引擎
-    print("sending first init packet")
-    send_data(pack1)
-    time.sleep(5)
-    # print("sending second")
-    # send_data(pack2)
-    # print("all done")
+    print("sending first")
+    send_data(init_packet)
+    print("sent first")
 
 def test_get_purpose():
     """
@@ -129,29 +82,8 @@ def test_get_action():
 def test_action_done():
     """
     发送动作完成包到引擎
-    GAME发送
-    的包：
-    {
-        "func":"action_done",
-        "npc_name": "王大妈",
-        "status": "success",
-        "npc_state": {
-            "position": "李大爷家",
-            "observation": {
-                "people": ["李大爷", "村长", "李飞飞"],
-                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-            },
-            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-        },
-        "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-
-        "action":"mov",
-        "object":"李大爷家",
-        "parameters":[],
-        "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
-    }
-
+    GAME发送的包：
+    参考test_config.test_packets
     引擎返回的包：
     {
         "func":"action_done",
@@ -160,57 +92,23 @@ def test_action_done():
         "object":"李大爷",
         "parameters":["你吃饭了没？"],
     }
-
     :return:
     """
 
-    action_done_pack =  {
-        "func":"action_done",
-        "npc_name":"王大妈",
-        "status": "success",
-        "time": "2021-01-01 13:00:00", # 游戏世界的时间戳
-
-        "npc_state": {
-            "position": "李大爷家",
-            "observation": {
-                "people": ["李大爷", "村长", "李飞飞"],
-                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-            },
-            "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-        },
-
-        "action":"chat",
-        "object":"李大爷",
-        "parameters":['李大爷', '你吃了吗？'],
-        "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
-    }
-    send_data(action_done_pack)
+    print("sending")
+    send_data(action_done_packet_1)
+    print(action_done_packet_1)
+    send_data(action_done_packet_2)
+    print(action_done_packet_2)
     print("all done")
-    time.sleep(10)
 
 
 def test_wake_up():
-
     """
     测试引擎wake_up函数
     向引擎发送初始化包，检查引擎是否正确初始化
     wakeup包例：
-    {
-        "func":"wake_up",
-        "npc_name": "王大妈",
-        "npc_state": {
-          "position": "李大爷家",
-          "observation": {
-                  "people": ["李大爷", "村长", "李飞飞"],
-                  "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                  "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                        },
-          "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-        },
-        "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-    }
-
+        请参考test_config.test_packets
     预期返回包:
     {
             "name":"action",
@@ -221,24 +119,12 @@ def test_wake_up():
         }
     :return:
     """
-
-    # 初始化包
-    pack1 = {
-        "func":"wake_up",
-        "npc_name": "王大妈",
-        "npc_state": {
-          "position": "李大爷家",
-          "observation": {
-                  "people": ["李大爷", "村长", "李飞飞"],
-                  "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                  "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                        },
-          "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-        },
-        "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-    }
     # 发送初始化包到引擎
-    print("sending first wake_up packet")
-    send_data(pack1)
+    print("sending first")
+    send_data(wakeup_packet_1)
+    print(wakeup_packet_1)
+    send_data(wakeup_packet_2)
+    print(wakeup_packet_2)
+    send_data(wakeup_packet_3)
+    print(wakeup_packet_1)
     print("all done")
-    time.sleep(10)
