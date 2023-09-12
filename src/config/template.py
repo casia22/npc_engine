@@ -210,7 +210,12 @@ class EnginePrompt:
             query_content = query_content.replace("    ","",24)
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
-
+        
+        print("system prompt content for conversation creation in English:")
+        print(whole_statements)
+        print("query prompt content for conversation creation in English:")
+        print(query_content)
+        
         return system_prompt, query_prompt
 
     def prompt_for_conversation_c(
@@ -398,6 +403,11 @@ class EnginePrompt:
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
 
+        print("system prompt content for conversation creation in Chinese:")
+        print(whole_statements)
+        print("query prompt content for conversation creation in Chinese:")
+        print(query_content)
+
         return system_prompt, query_prompt
 
     @staticmethod
@@ -458,6 +468,11 @@ class EnginePrompt:
         # 获取系统提示词和查询提示词
         system_prompt = {"role": "system", "content": system_content}
         query_prompt = {"role": "user", "content": query_content}
+
+        print("system prompt content for topic generation:")
+        print(system_content)
+        print("query prompt content for topic generation:")
+        print(query_content)
 
         return system_prompt, query_prompt
 
@@ -719,6 +734,11 @@ class EnginePrompt:
             query_content = "\n".join([query_title, query_history, query_ending])
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
+
+        print("system prompt content for conversation re-creation in Chinese:")
+        print(whole_statements)
+        print("query prompt content for conversation re-creation in Chinese:")
+        print(query_content)
 
         return system_prompt, query_prompt
 

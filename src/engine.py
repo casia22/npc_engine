@@ -25,16 +25,14 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-#npc_engine.src.
-from npc.action import ActionItem
-from npc.npc import NPC
-from config.template import EnginePrompt
-from npc.conversation import Conversation
+from npc_engine.src.npc.action import ActionItem
+from npc_engine.src.npc.npc import NPC
+from npc_engine.src.config.template import EnginePrompt
+from npc_engine.src.npc.conversation import Conversation
 
 colorama.init()
 from colorama import Fore, Style
-#npc_engine.src.
-from config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, ZHIPU_KEY,CONFIG_PATH,
                                           CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
 
 # key配置
