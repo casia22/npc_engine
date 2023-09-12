@@ -18,6 +18,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from npc_engine.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
 from npc_engine.src.utils.database import PickleDB
+from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 
 # LOGGER配置
 logger = logging.getLogger("NPC_MEMORY")
@@ -63,7 +64,7 @@ class NPCMemory:
         self,
         npc_name: str,
         k: int,
-        model_name: str = "huggingface",
+        embedding_model: BaseEmbeddingModel,
         the_npc_memory_config: Dict[str, Any] = NPC_MEMORY_CONFIG,
     ):
         """
@@ -71,18 +72,20 @@ class NPCMemory:
         k: latest_k队列的长度
         pinecone_api_key: Pinecone的API密钥
         pinecone_index_name: Pinecone的索引名称
-        model_name: 使用的模型名称，可以是'openai'或'huggingface'
+        embeding_model: embedding模型的引用，需要提供embed_text(text)方法
         """
         # npc_memory设置
         self.npc_name = npc_name
         self.latest_k = queue.Queue(maxsize=k)
-        self.model_name = model_name
 
         """embedding model设置"""
-        # huggingface embedding model
+        # huggingface online embedding model config
         self.hf_api_url = the_npc_memory_config["hf_api_url"]
         self.hf_headers = the_npc_memory_config["hf_headers"]
         self.hf_dim = the_npc_memory_config["hf_dim"]
+        # ‼️huggingface local embedding model config. AlreadyDone in config.py
+        self.embedding_model = embedding_model
+
         # openai embedding model
         # TODO
 
@@ -95,39 +98,18 @@ class NPCMemory:
             api_key=self.pinecone_api_key, environment=self.pinecone_environment
         )
         self.vector_engine = pinecone.Index(self.pinecone_index_name)
-        logger.debug(f"{self.npc_name} memory init done, k={k}, model_name={model_name}")
+        logger.debug(f"{self.npc_name} memory init done, k={k}, model_name={embedding_model.model_name}")
 
         """数据库设置"""
         self.memory_db = PickleDB(MEMORY_DB_PATH)
 
-    def embed_text_openai(self, text: str) -> list:
-        """使用OpenAI模型对文本进行嵌入"""
-        pass
-
-    def embed_text_huggingface(self, text: str) -> list:
-        """使用Hugging Face模型对文本进行嵌入"""
-        try:
-            response = requests.post(
-                self.hf_api_url,
-                headers=self.hf_headers,
-                json={"inputs": text, "options": {"wait_for_model": True}},
-                timeout=10,
-            )
-            response.raise_for_status()  # Raises stored HTTPError, if one occurred.
-        except requests.Timeout:
-            print("The request timed out")
-            logger.info(f"The embedding request of {text} timed out")
-            return [0.0] * self.hf_dim
-        except requests.HTTPError as http_err:
-            print(f"The embedding of {text} HTTP error occurred: {http_err}")
-            return [0.0] * self.hf_dim
-        except Exception as err:
-            print(f"The embedding of {text} other error occurred: {err}")
-            return [0.0] * self.hf_dim
-        vector: List[float] = response.json()
-        assert (
-            len(vector) == self.hf_dim
-        ), f"len(vector)={len(vector)} != self.hf_dim={self.hf_dim}"
+    def embed_text(self, text: str) -> list:
+        """使用用户指定的embedding模型对文本进行embedding，返回一个list
+        默认模型:
+            LocalEmbedding(model_name="uer/sbert-base-chinese-nli", vector_width=768)
+        模型在引擎启动时初始化，可以通过修改配置文件更换模型以及是否本地化推理(配置文件也就是config.py)。
+        """
+        vector = self.embedding_model.embed_text(text)
         return vector
 
     def add_memory_text(self, text: str, game_time: str, direct_upload: bool = False):
@@ -230,25 +212,6 @@ class NPCMemory:
         # TODO：实现记忆的时间分数
         # score = float(game_time) - float(memory_game_time)
         return 1
-
-    def embed_text(self, text: str):
-        """
-        根据model_name选择不同的embedding方法
-        :param text:
-        :return:
-        """
-        if self.model_name == "openai":
-            embedding = self.embed_text_openai(text)
-        else:
-            try:
-                embedding = self.embed_text_huggingface(text)
-            except Exception as e:
-                logger.error(f"embed_text_huggingface error: {e}")
-                embedding = [0.0 for i in range(self.hf_dim)]
-            assert (len(embedding) == self.hf_dim), f"len(embedding)={len(embedding)} != self.hf_dim={self.hf_dim}"
-        assert len(embedding) != 0, "The embedding vector should not be empty."
-
-        return embedding
 
     async def search_memory(
         self, query_text: str, query_game_time: str, k: int, top_p: float = 0.8

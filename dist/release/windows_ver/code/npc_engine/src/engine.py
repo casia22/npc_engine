@@ -538,7 +538,7 @@ class NPCEngine:
         else:
             action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
         # 更新NPC的观察,位置,actions
-        npc.set_known_actions(list(self.action_dict.keys()))
+        npc.set_all_actions(list(self.action_dict.keys()))
         npc.set_observation(json_data["observation"])
         npc.set_location(json_data["position"])
         # 添加NPC记忆
@@ -582,7 +582,7 @@ class NPCEngine:
         npc_name = json_data["npc_name"]
         npc = self.npc_dict[npc_name]
         # 更新NPC的观察,位置,actions
-        npc.set_known_actions(list(self.action_dict.keys()))
+        npc.set_all_actions(list(self.action_dict.keys()))
         npc.set_location(json_data["position"])
         npc.set_observation(json_data["observation"])
         # 更新NPC的purpose
