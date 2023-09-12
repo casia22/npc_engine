@@ -8,6 +8,8 @@ __pycache__/
 build/
 npc_memory/*
 
+# material
+material/models/embedding/*
 
 yzj*
 dist/code/*

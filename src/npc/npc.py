@@ -10,6 +10,7 @@ import re, os, datetime
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 openai.api_key = OPENAI_KEY
@@ -92,13 +93,15 @@ class NPC:
             knowledge: Dict[str, Any],
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
+            embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
             memory: List[str] = [],
             memory_k: int = 3,
-            model: str = OPENAI_MODEL
+            model: str = OPENAI_MODEL,
         ) -> None:
         # model
         self.model: str = model
+        self.embedding_model = embedding_model
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
@@ -123,7 +126,7 @@ class NPC:
         self.mood: str = mood
         self.purpose: str = ""
         # NPC的记忆
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k, embedding_model=self.embedding_model)
         self.memory.touch_memory()
 
         ####################### 先清空现有VB #######################
@@ -275,7 +278,7 @@ class NPC:
         memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
 
         # 根据允许动作的预定义模版设置prompt
-        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict]
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict.items()]
         # 构造prompt请求
         instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
@@ -307,9 +310,9 @@ class NPC:
                     <请求内容>:{instruct}
                     <请求提示>:{prompt}
                     <返回内容>:{response}
-                    <返回行为>:{action_result}
+                    <返回行为>:{self.action_result}
                     """)
-        return action_result
+        return self.action_result
 
     def call_llm(self, instruct: str, prompt: str) -> str:
         llm_prompt_list = [{

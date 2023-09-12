@@ -15,6 +15,7 @@ PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
 LOG_FILE_PATH = PROJECT_ROOT_PATH / "logs"
 CONFIG_PATH = PROJECT_ROOT_PATH / "src" / "config"
 MEMORY_DB_PATH = PROJECT_ROOT_PATH / "src" / "data" / "npc_memory.db"
+MODEL_BASE_PATH = PROJECT_ROOT_PATH / "material" / "models"
 
 # 时间(兼容windows文件名)
 time_format = "%Y-%m-%d-%H-%M-%S"
@@ -191,6 +192,7 @@ NPC_MEMORY_CONFIG = {
     "hf_dim": HF_EMBEDDING_SBERT_CHINESE["dim"],
     "hf_api_url": HF_EMBEDDING_SBERT_CHINESE["hf_url"],
     "hf_headers": {"Authorization": f"Bearer {HF_TOKEN}"},
+    "hf_embedding_online": False,  # 默认离线推理模型
     # db
     "db_dir": "./npc_memory.db",
 }

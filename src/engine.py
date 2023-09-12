@@ -33,7 +33,8 @@ from npc_engine.src.npc.conversation import Conversation
 colorama.init()
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
-                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH)
+                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
+from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding,BaseEmbeddingModel
 
 # key配置
 zhipuai.api_key = ZHIPU_KEY
@@ -93,6 +94,7 @@ class NPCEngine:
                             __/ |
                            |___/
             """)
+        # 加载引擎网络组件
         self.engine_port = engine_port
         self.engine_url = engine_url
         self.game_url = game_url
@@ -102,7 +104,6 @@ class NPCEngine:
         self.action_dict = {}
         self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)  # 使用IPv6地址
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
-        # color print
         print(
             Fore.GREEN
             + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}"
@@ -112,6 +113,13 @@ class NPCEngine:
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
+        # 加载模型embedding模型
+        if NPC_MEMORY_CONFIG["hf_embedding_online"]:
+            logger.info("using online embedding model")
+            self.embedding_model = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        else:
+            logger.info("using local embedding model")
+            self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         logger.info("initialized NPC-ENGINE")
 
     def listen(self, buffer_size=40000):
@@ -476,6 +484,7 @@ class NPCEngine:
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
+                embedding_model=self.embedding_model
             )
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
@@ -498,6 +507,7 @@ class NPCEngine:
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
+                    embedding_model=self.embedding_model
                 )
                 self.npc_dict[npc.name] = npc
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")

@@ -4,10 +4,8 @@ import re
 
 
 class ActionItem:
-    def __init__(self, name: str, definition: str, example: str, log_template:Dict[str, str]):
+    def __init__(self, name: str, log_template:Dict[str, str]):
         self.name = name
-        self.definition = definition,
-        self.example = example,
         self.log_template = log_template
         """
         log_template的例子：
