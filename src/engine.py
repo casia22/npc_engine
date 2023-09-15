@@ -454,6 +454,7 @@ class NPCEngine:
                 definition=action_json['definition'],
                 example=action_json['example'],
                 log_template=action_json["log_template"],
+                multi_param=action_json["multi_param"],
             )
             self.action_dict[action_item.name] = action_item
             logger.debug(f"<DISK ACT INIT> action:{action_item.name}")

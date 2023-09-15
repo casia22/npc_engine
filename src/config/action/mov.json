@@ -1,6 +1,7 @@
 {
   "name": "mov",
-  "definition": "<mov|location|>，向[location]移动",
+  "definition": "<mov|location|>，向[location]移动，[location]必须是之前出现的位置",
+  "multi_param": false,
   "example": "<mov|卧室|>",
   "log_template":{
     "success": "{npc_name}成功到达了{object}",

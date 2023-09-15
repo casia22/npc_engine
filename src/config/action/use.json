@@ -1,7 +1,8 @@
 {
   "name": "use",
   "definition": "<use|object1|object2>，使用[object1]作用于[object2]",
-  "example": "<use|筷子|羊肉串>，使用筷子吃羊肉串",
+  "multi_param": true,
+  "example": "<use|筷子|羊肉串>，使用筷子夹羊肉串给自己吃",
   "log_template":{
     "success": "{npc_name}成功地使用{object}对{parameters}进行活动",
     "fail": "{npc_name}试图使用{object}对{parameters}进行活动，但是失败了. 原因是{reason}"
