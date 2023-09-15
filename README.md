@@ -110,7 +110,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
                   "observation": {
                           "people": ["王大妈", "村长", "隐形李飞飞"],
                           "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["黄瓜", "1000元", "老报纸"]
                        },
@@ -125,7 +125,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
                   "observation": {
                           "people": ["李大爷", "村长", "隐形李飞飞"],
                           "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                          "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                        },
