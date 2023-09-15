@@ -188,6 +188,7 @@ class NPC:
             最近记忆:{[item.text for item in list(self.memory.latest_k.queue)]},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
+            {self.name}现在身上的物品:{self.state.backpack}，
             {self.name}可去的地方:{self.knowledge.places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
@@ -288,6 +289,7 @@ class NPC:
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
+            你现在身上的物品:{self.state.backpack}，
             你可去的地方:{self.knowledge.places}，
             你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
@@ -306,6 +308,16 @@ class NPC:
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
         # 抽取动作和参数
         self.action_result: Dict[str, Any] = ActionItem.str2json(response)
+        # 检查action合法性，如不合法那就返回默认动作
+        action_name = self.action_result["action"]
+        if action_name not in self.action_dict.keys():
+            illegal_action = self.action_result
+            self.action_result = {"name": "stand", "object": "", "parameters": []}
+            logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+        # 按照配置文件决定是否分割参数
+        if not self.action_dict[action_name].multi_param:
+            # 如果非多参数，比如对话，那就把参数合并成一个字符串
+            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         # 添加npc_name
         self.action_result["npc_name"] = self.name
         logger.debug(f"""
