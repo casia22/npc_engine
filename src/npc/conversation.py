@@ -200,7 +200,7 @@ class Conversation:
                     "action": None}
             elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
                 # 归为英文的角色交互一类
-                if self.language == "E":
+                if self.language.lower() == "e":
                     line = {
                         "type": "Interaction",
                         "state": "",
@@ -209,7 +209,7 @@ class Conversation:
                         "words": sent.split(":")[1].strip(),
                         "action": {"type": ((sent.split(")")[0]).split("|")[1]).strip(), "args": ((sent.split(")")[0]).split("|")[2]).strip()}}
                 # 归为中文的角色交互一类
-                elif self.language == "C":
+                elif self.language.lower() == "c":
                     line = {
                         "type": "Interaction",
                         "state": "",

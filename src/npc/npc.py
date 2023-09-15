@@ -36,30 +36,30 @@ class State:
     """
     游戏提供给NPC的状态
     """
-    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_positions: List[str]):
+    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_locations: List[str]):
         self.position = position
         self.backpack = backpack
-        self.observation = self.Observation(ob_people, ob_items, ob_positions)
+        self.observation = self.Observation(ob_people, ob_items, ob_locations)
 
     class Observation:
-        def __init__(self, people: List[str], items: List[str], positions: List[str]):
+        def __init__(self, people: List[str], items: List[str], locations: List[str]):
             self.people = people
             self.items = items
-            self.positions = positions
+            self.locations = locations
 
         def __str__(self):
-            return f'{{\n\t\t"people": {self.people},\n\t\t"items": {self.items},\n\t\t"positions": {self.positions}\n\t}}'
+            return f'{{\n\t\t"people": {self.people},\n\t\t"items": {self.items},\n\t\t"positions": {self.locations}\n\t}}'
 
         def to_dict(self):
             return {
                     "people": self.people,
                     "items": self.items,
-                    "positions": self.positions
+                    "positions": self.locations
                 }
 
 
     def __str__(self):
-        return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"positions": {self.observation.positions}\n\t}},\n\t"backpack": {self.backpack}\n}}'
+        return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"positions": {self.observation.locations}\n\t}},\n\t"backpack": {self.backpack}\n}}'
 
     def to_dict(self):
         return {
@@ -67,7 +67,7 @@ class State:
             "observation": {
                 "people": self.observation.people,
                 "items": self.observation.items,
-                "positions": self.observation.positions
+                "positions": self.observation.locations
             },
             "backpack": self.backpack
         }
@@ -118,7 +118,7 @@ class NPC:
             backpack=state['backpack'],
             ob_people=state['ob_people'],
             ob_items=state['ob_items'],
-            ob_positions=state['ob_positions']
+            ob_locations=state['ob_locations']
         )
         # 为了和engine的action_dict保持一致，把输出的action结果改成了action_result
         self.action_dict = action_dict
@@ -130,7 +130,7 @@ class NPC:
         self.memory.touch_memory()
 
         ####################### 先清空现有VB #######################
-        # self.memory.clear_memory()
+        self.memory.clear_memory()
         ################# 等到记忆添加实现闭环时删除 #################
 
         # 将初始化的记忆内容加入到memory中
@@ -145,7 +145,7 @@ class NPC:
             backpack=state['backpack'],
             ob_people=state['observation']['people'],
             ob_items=state['observation']['items'],
-            ob_positions=state['observation']['positions']
+            ob_locations=state['observation']['locations']
         )
 
     def set_backpack(self, backpack: List[str]) -> None:
@@ -155,7 +155,7 @@ class NPC:
         self.state.observation = State.Observation(
             people=observation['people'],
             items=observation["items"],
-            positions=observation["positions"]
+            locations=observation["locations"]
         )
 
     def set_known_actions(self, actions: List[str]) -> None:
@@ -188,7 +188,7 @@ class NPC:
             最近记忆:{self.memory.latest_k.queue},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}现在看到的地点:{self.state.observation.positions}，            
+            {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
@@ -216,7 +216,7 @@ class NPC:
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}现在看到的地点:{self.state.observation.positions}，    
+            {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
             prompt = f"""
@@ -286,7 +286,7 @@ class NPC:
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
-            你现在看到的地点:{self.state.observation.positions}，
+            你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
         prompt = f"""

@@ -4,7 +4,7 @@ Author : Yangzejun
 Contact : yzj_cs_ilstar@163.com
 """
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 
 class EnginePrompt:
     """
@@ -34,7 +34,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        observations: str = "",
+        states: Dict[str, Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -46,10 +46,15 @@ class EnginePrompt:
         Tony's characteristic descriptions are : He is a teacher.
         In Tony's memory : He finished homework just now. He was a singer 10 years ago.
         Tony's current mood is : calm.
+        Tony's current observation of people are: Austin, Lily.
+        Tony's current observation of items are: tree, flower.
+        Tony's current observation of locations are: church, school.
         Austin's characteristic descriptions are : He is a docter.
         In Austin's memory : He had courses just now. He was a dancer.
         Austin's current mood is : calm.
-        These characters observe that : tree, grass, flower.
+        Austin's current observation of people are: Tony, Lily.
+        Austin's current observation of items are: tree, flower.
+        Austin's current observation of locations are: church, school.
         Based on the information provided above, please use your imagination and generate a script of how these characters interact with each other or respond to me around the topic.
 
         The script consists of multiple lines of characters' interactions and conversation states.
@@ -97,7 +102,7 @@ class EnginePrompt:
         :param descs:
         :param moods:
         :param memories:
-        :param observations:
+        :param states:
         :param starting:
         :param length:
         :return system_prompt, query_prompt:
@@ -116,14 +121,15 @@ class EnginePrompt:
         for i, name in enumerate(names):
             supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
                                 In {name}'s memory : {" ".join(memories[i])}
-                                {name}'s current mood is : {moods[i]}. """
-            supplementary_new = supplementary_new.replace("    ","",16)
+                                {name}'s current mood is : {moods[i]}. 
+                                {name}'s current observation of people are: {", ".join(states[name]["observation"]["people"])}.
+                                {name}'s current observation of items are: {", ".join(states[name]["observation"]["items"])}.
+                                {name}'s current observation of locations are: {", ".join(states[name]["observation"]["locations"])}."""
+            supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
-        # 获取对话角色的观测信息
-        observe = rf"""These characters observe that : {observations}"""
         # 蒋对话介绍、角色信息、观测信息和任务信息按顺序整合成预陈述
-        pre_statement = "\n".join([introduction, supplementary, observe, task])
+        pre_statement = "\n".join([introduction, supplementary, task])
 
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
         constraint_statement = rf"""The script consists of multiple lines of characters' interactions and conversation states.
@@ -204,7 +210,12 @@ class EnginePrompt:
             query_content = query_content.replace("    ","",24)
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
-
+        
+        print("system prompt content for conversation creation in English:")
+        print(whole_statements)
+        print("query prompt content for conversation creation in English:")
+        print(query_content)
+        
         return system_prompt, query_prompt
 
     def prompt_for_conversation_c(
@@ -215,7 +226,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        observations: str = "",
+        states: Dict[str, Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -227,10 +238,15 @@ class EnginePrompt:
         小白的个性描述是：他是一位老师。
         在小白的记忆中：他刚刚做完作业。 他10年前是个歌手。
         小白此刻的心情是：稳定。
+        小白当前观测到的人有：小黑，小蓝。
+        小白当前观测到的物体有：大树，月季花。
+        小白当前观测到的地点有：教堂，学校。
         小黑的个性描述是：他是一个医生。
         在小黑的记忆中：他刚刚上完课。 他曾经是一个舞蹈演员。
         小黑此刻的心情是：稳定。
-        这些角色观测到：树、花、草
+        小黑当前观测到的人有：小白，小蓝。
+        小黑当前观测到的物体有：大树，月季花。
+        小黑当前观测到的地点有：教堂，学校。
         基于上述信息，请发挥你的想象力，生成一个剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
 
         这个剧本由许多行角色交互和会话状态组成。
@@ -278,7 +294,7 @@ class EnginePrompt:
         :param descs:
         :param moods:
         :param memories:
-        :param observations:
+        :param states:
         :param starting:
         :param length:
         :return system_prompt, query_prompt:
@@ -297,14 +313,15 @@ class EnginePrompt:
         for i, name in enumerate(names):
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
-                                {name}此刻的心情是：{moods[i]}。"""
-            supplementary_new = supplementary_new.replace("    ","",16)
+                                {name}此刻的心情是：{moods[i]}。
+                                {name}当前观测到的人有：{"，".join(states[name]["observation"]["people"])}。
+                                {name}当前观测到的物体有：{"，".join(states[name]["observation"]["items"])}。
+                                {name}当前观测到的地点有：{"，".join(states[name]["observation"]["locations"])}。"""
+            supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
-        # 获取对话角色的观测信息
-        observe = rf"""这些角色观测到：{observations}"""
         # 蒋对话介绍、角色信息、观测信息和任务信息按顺序整合成预陈述
-        pre_statement = "\n".join([introduction, supplementary, observe, task])
+        pre_statement = "\n".join([introduction, supplementary, task])
 
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
         constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
@@ -386,13 +403,18 @@ class EnginePrompt:
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
 
+        print("system prompt content for conversation creation in Chinese:")
+        print(whole_statements)
+        print("query prompt content for conversation creation in Chinese:")
+        print(query_content)
+
         return system_prompt, query_prompt
 
     @staticmethod
     def prompt_for_topic(
         names: List[str],
         location: str,
-        observations: str,
+        states: Dict[str, Dict[str, Any]],
         language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
@@ -403,7 +425,7 @@ class EnginePrompt:
         For example : the big tree nearby.
 
         中文系统提示词例子：
-        现在有2个角色在地点：公园，一起交流，他们分别是小白，小黑，他们观测到周围信息是树、花、草。
+        现在有2个角色在地点：公园，一起交流，他们分别是小白，小黑，他们观测到周围信息是小白，小黑，树，花，草，学校。
         请根据上述信息生成一个他们可能共同交谈的主题。
         比如：身边的大树。
 
@@ -415,18 +437,30 @@ class EnginePrompt:
 
         :param names:
         :param location:
-        :param observations:
+        :param states:
         :param language:
         :return system_prompt, query_prompt:
         """
+        ##################################################
+        # 下面观测信息的提取过于死板，后续需要更改
+        ##################################################
+        obs_people = []
+        obs_items = []
+        obs_locations = []
+        for _, state in states.items:
+            obs_people.extend(state["observation"]["people"])
+            obs_items.extend(state["observation"]["items"])
+            obs_locations.extend(state["observation"]["locations"])
+        observations = obs_people + obs_items + obs_locations
+
         # 获取系统提示词和查询提示词的内容
         if language == "E":
-            system_content = rf"""Now there are {len(names)} characters communicating together at the location : {location}. They are {", ".join(names)}, and their observations are: {observations}.
+            system_content = rf"""Now there are {len(names)} characters communicating together at the location : {location}. They are {", ".join(names)}, and their observations are: {", ".join(observations)}.
                                 Please generate a topic they might be discussed by them based on the above information.
                                 For example : the big tree nearby."""
             query_content = """Generate your topic."""
         else:
-            system_content = rf"""现在有{len(names)}个角色在地点：{location}，一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{observations}。
+            system_content = rf"""现在有{len(names)}个角色在地点：{location}，一起交流，他们分别是{"，".join(names)}，他们观测到周围信息是{"，".join(observations)}。
                                 请根据上述信息生成一个他们可能共同交谈的主题。
                                 比如：身边的大树。"""
             query_content = """生成你的主题。"""
@@ -434,6 +468,11 @@ class EnginePrompt:
         # 获取系统提示词和查询提示词
         system_prompt = {"role": "system", "content": system_content}
         query_prompt = {"role": "user", "content": query_content}
+
+        print("system prompt content for topic generation:")
+        print(system_content)
+        print("query prompt content for topic generation:")
+        print(query_content)
 
         return system_prompt, query_prompt
 
@@ -695,6 +734,11 @@ class EnginePrompt:
             query_content = "\n".join([query_title, query_history, query_ending])
         # 获取查询提示词
         query_prompt = {"role": "user", "content": query_content}
+
+        print("system prompt content for conversation re-creation in Chinese:")
+        print(whole_statements)
+        print("query prompt content for conversation re-creation in Chinese:")
+        print(query_content)
 
         return system_prompt, query_prompt
 
