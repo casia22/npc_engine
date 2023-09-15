@@ -237,8 +237,13 @@ class NPC:
         # 发起请求
         purpose_response: str = self.call_llm(instruct=role_play_instruct, prompt=prompt)
         # 解析返回
-        purpose: str = purpose_response.split("]<")[1].replace(">", "")
-        mood: str = purpose_response.split("]<")[0].replace("[", "")
+        try:
+            purpose: str = purpose_response.split("]<")[1].replace(">", "")
+            mood: str = purpose_response.split("]<")[0].replace("[", "")
+        except IndexError:
+            logger.error(f"返回的目的格式不正确，返回内容为：{purpose_response}, 设定purpose为''")
+            purpose = "" # NULL
+            mood = self.mood
 
         logger.debug(f"""
             <发起PURPOSE请求>
