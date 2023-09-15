@@ -48,18 +48,18 @@ class State:
             self.locations = locations
 
         def __str__(self):
-            return f'{{\n\t\t"people": {self.people},\n\t\t"items": {self.items},\n\t\t"positions": {self.locations}\n\t}}'
+            return f'{{\n\t\t"people": {self.people},\n\t\t"items": {self.items},\n\t\t"locations": {self.locations}\n\t}}'
 
         def to_dict(self):
             return {
                     "people": self.people,
                     "items": self.items,
-                    "positions": self.locations
+                    "locations": self.locations
                 }
 
 
     def __str__(self):
-        return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"positions": {self.observation.locations}\n\t}},\n\t"backpack": {self.backpack}\n}}'
+        return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"locations": {self.observation.locations}\n\t}},\n\t"backpack": {self.backpack}\n}}'
 
     def to_dict(self):
         return {
@@ -67,7 +67,7 @@ class State:
             "observation": {
                 "people": self.observation.people,
                 "items": self.observation.items,
-                "positions": self.observation.locations
+                "locations": self.observation.locations
             },
             "backpack": self.backpack
         }
@@ -185,9 +185,10 @@ class NPC:
             请你扮演{self.name}，特性是：{self.desc}，
             可有的心情是{self.knowledge.moods}，
             当前心情是{self.mood}，正在{self.state.position}，现在时间是{time},
-            最近记忆:{self.memory.latest_k.queue},
+            最近记忆:{[item.text for item in list(self.memory.latest_k.queue)]},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
+            {self.name}可去的地方:{self.knowledge.places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
@@ -216,6 +217,7 @@ class NPC:
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
+            {self.name}可去的地方:{self.knowledge.places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
@@ -272,7 +274,7 @@ class NPC:
         """
         # 按照NPC目的和NPC观察检索记忆
         # todo [bug]似乎是pinecone数据库中存储的李大爷的记忆有问题
-        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.positions) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.locations) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
         memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
@@ -286,6 +288,7 @@ class NPC:
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
+            你可去的地方:{self.knowledge.places}，
             你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
@@ -341,7 +344,7 @@ class NPC:
                 "observation": {
                         "people": ["王大妈", "村长", "隐形李飞飞"],
                         "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                        "positions": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                        "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                               },
                 "backpack":["黄瓜", "1000元", "老报纸"]
                      },
