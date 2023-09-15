@@ -198,25 +198,39 @@ class Conversation:
                     "mood": "",
                     "words": "",
                     "action": None}
+
             elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
-                # 归为英文的角色交互一类
-                if self.language.lower() == "e":
-                    line = {
-                        "type": "Interaction",
-                        "state": "",
-                        "name": sent.split("(")[0].strip(),
-                        "mood": (sent.split("(")[1]).split("|")[0].strip(),
-                        "words": sent.split(":")[1].strip(),
-                        "action": {"type": ((sent.split(")")[0]).split("|")[1]).strip(), "args": ((sent.split(")")[0]).split("|")[2]).strip()}}
-                # 归为中文的角色交互一类
-                elif self.language.lower() == "c":
-                    line = {
-                        "type": "Interaction",
-                        "state": "",
-                        "name": sent.split("（")[0].strip(),
-                        "mood": (sent.split("（")[1]).split("|")[0].strip(),
-                        "words": sent.split("：")[1].strip(),
-                        "action": {"type": ((sent.split("）")[0]).split("|")[1]).strip(), "args": ((sent.split("）")[0]).split("|")[2]).strip()}}
+                # 根据左括号是全角还是半角来解析name和mood信息
+                if "(" in sent:
+                    name = sent.split("(")[0].strip()
+                    mood = (sent.split("(")[1]).split("|")[0].strip()
+                elif "（" in sent:
+                    name = sent.split("（")[0].strip()
+                    mood = (sent.split("（")[1]).split("|")[0].strip()
+                
+                # 根据冒号是全角还是半角来解析words信息
+                if ":" in sent:
+                    words = sent.split(":")[1].strip()
+                elif "：" in sent:
+                    words = sent.split("：")[1].strip()
+                
+                # 根据右括号是全角还是半角来解析action信息
+                if ")" in sent:
+                    action_type = ((sent.split(")")[0]).split("|")[1]).strip()
+                    action_args = ((sent.split(")")[0]).split("|")[2]).strip()
+                elif "）" in sent:
+                    action_type = ((sent.split("）")[0]).split("|")[1]).strip()
+                    action_args = ((sent.split("）")[0]).split("|")[2]).strip()
+
+                # 将信息整合成最终的一行格式化剧本
+                line = {
+                    "type": "Interaction",
+                    "state": "",
+                    "name": name,
+                    "mood": mood,
+                    "words": words,
+                    "action": {"type": action_type, "args": action_args}}
+                    
             # 归为错误内容一类
             else:
                 line = {
