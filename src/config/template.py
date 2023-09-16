@@ -34,7 +34,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -124,9 +124,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
                                 In {name}'s memory : {" ".join(memories[i])}
                                 {name}'s current mood is : {moods[i]}. 
-                                {name}'s current observation of people are: {", ".join(states[name]["observation"]["people"])}.
-                                {name}'s current observation of items are: {", ".join(states[name]["observation"]["items"])}.
-                                {name}'s current observation of locations are: {", ".join(states[name]["observation"]["locations"])}."""
+                                {name}'s current observation of people are: {", ".join(states[i]["observation"]["people"])}.
+                                {name}'s current observation of items are: {", ".join(states[i]["observation"]["items"])}.
+                                {name}'s current observation of locations are: {", ".join(states[i]["observation"]["locations"])}."""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -230,7 +230,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -320,9 +320,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
                                 {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[name]["observation"]["people"])}。
-                                {name}当前观测到的物体有：{"，".join(states[name]["observation"]["items"])}。
-                                {name}当前观测到的地点有：{"，".join(states[name]["observation"]["locations"])}。"""
+                                {name}当前观测到的人有：{"，".join(states[i]["observation"]["people"])}。
+                                {name}当前观测到的物体有：{"，".join(states[i]["observation"]["items"])}。
+                                {name}当前观测到的地点有：{"，".join(states[i]["observation"]["locations"])}。"""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -422,7 +422,7 @@ class EnginePrompt:
     def prompt_for_topic(
         names: List[str],
         location: str,
-        states: Dict[str, Dict[str, Any]],
+        states: List[Dict[str, Any]],
         language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
@@ -455,7 +455,7 @@ class EnginePrompt:
         obs_people = []
         obs_items = []
         obs_locations = []
-        for _, state in states.items:
+        for state in states:
             obs_people.extend(state["observation"]["people"])
             obs_items.extend(state["observation"]["items"])
             obs_locations.extend(state["observation"]["locations"])
