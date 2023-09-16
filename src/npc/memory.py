@@ -30,7 +30,6 @@ logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)  # 设为 DEBUG 级别以显示所有日志
 
 
-
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):
         self.text = text
@@ -70,7 +69,9 @@ class NPCMemory:
             self,
             npc_name: str,
             k: int,
+            EmbeddingModel: BaseEmbeddingModel,
             the_npc_memory_config: Dict[str, Any] = NPC_MEMORY_CONFIG,
+
     ):
         """
         npc_name: NPC的名字
@@ -84,16 +85,21 @@ class NPCMemory:
         self.latest_k = queue.Queue(maxsize=k)
         self.base_path = os.path.join(PROJECT_ROOT_PATH, "src", "data")
         self.vdb_path = os.path.join(self.base_path, f"{self.npc_name}.pkl")
+        print("vdb_path", self.vdb_path)
         """embedding model设置"""
         # ‼️huggingface local embedding model config. AlreadyDone in config.py
-        self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"],
-                                              vector_width=NPC_MEMORY_CONFIG["hf_dim"])
-
+        self.embedding_model = EmbeddingModel
+        if os.path.exists(self.vdb_path):
+            print(f"'{self.vdb_path}' exists.")
+        else:
+            print(f"'{self.vdb_path}' does not exist.")
         # openai embedding model
         # TODO
 
         """vector database设置"""
         self.vector_database = VectorDatabase(dim=NPC_MEMORY_CONFIG["hf_dim"], vdb_file_path=self.vdb_path)
+        
+        # 如果向量数据库文件不存在，立即保存新创建的数据库
         if not os.path.exists(self.vdb_path):
             self.vector_database.save()
         logger.debug(f"{self.npc_name} memory init done, k={k}, model_name=sbert-base-chinese-nli")
@@ -192,8 +198,7 @@ class NPCMemory:
         # score = float(game_time) - float(memory_game_time)
         return 1
 
-
-    async def search_memory(self, query_text: str, query_game_time: str, k: int, top_p: float = 0.8) -> Dict[
+    async def search_memory(self, query_text: str, query_game_time: str, k: int, top_p: float = 1) -> Dict[
         str, List[MemoryItem]]:
 
         logger.debug(f"NPC:{self.npc_name} 开始搜索记忆, 检索语句为：{query_text}，检索数量为：{k}，top_p为：{top_p}")
@@ -308,7 +313,7 @@ async def main():
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
     """
     await npcM.add_memory_file(file_path=PROJECT_ROOT_PATH / 'src' / 'data' / 'stone91_mem.txt',
-                         game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
+                               game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
     print(await npcM.search_memory("我想要攻击外星人，有什么趁手的装备吗？", "2021-08-01 12:00:00", k=3))
 
     """

@@ -117,6 +117,7 @@ class NPCEngine:
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
+        
         # 加载模型embedding模型
         if NPC_MEMORY_CONFIG["hf_embedding_online"]:
             logger.info("using online embedding model")
@@ -196,8 +197,9 @@ class NPCEngine:
         loop = asyncio.get_event_loop()
         for npc in npcs:
             new_task = loop.create_task(npc.memory.search_memory(query_text=query,
-                                                                       query_game_time="Time",
-                                                                       k=memory_k))
+                                                                 query_game_time="Time",
+                                                                 k=memory_k))
+
             tasks[npc.name] = new_task
 
         for _, task in tasks.items():
@@ -509,6 +511,7 @@ class NPCEngine:
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
+                embedding_model=self.embedding_model
             )
             await npc.async_init()
             self.npc_dict[npc.name] = npc
@@ -534,6 +537,7 @@ class NPCEngine:
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
+                    embedding_model=self.embedding_model
                 )
                 await npc.async_init()
                 self.npc_dict[npc.name] = npc

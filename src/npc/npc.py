@@ -95,11 +95,13 @@ class NPC:
             scenario_name: str,
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
+            embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
             memory: List[str] = [],
             memory_k: int = 3,
             model: str = OPENAI_MODEL,
-        ) -> None:
+    ) -> None:
+
         # model
         self.model: str = model
         # NPC固定参数
@@ -123,7 +125,8 @@ class NPC:
         self.mood: str = mood
         self.purpose: str = ""
         # NPC的记忆
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
+        self.embedding_model = embedding_model
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k,EmbeddingModel=self.embedding_model)
 
         ####################### 先清空现有VB #######################
         self.memory.clear_memory()
