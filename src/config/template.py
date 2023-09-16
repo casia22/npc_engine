@@ -5,6 +5,7 @@ Contact : yzj_cs_ilstar@163.com
 """
 
 from typing import List, Tuple, Dict, Any
+from npc_engine.src.npc.knowledge import SceneConfig,PublicKnowledge
 
 class EnginePrompt:
     """
@@ -12,7 +13,8 @@ class EnginePrompt:
     """
     def __init__(
         self,
-        knowledge,
+        knowledge: PublicKnowledge,
+        scenario_name: str,
     ) -> None:
         # 剧本长字典{ 标识 : 长度范围 }
         self.number_of_lines: Dict[str, Tuple] = {
@@ -21,10 +23,22 @@ class EnginePrompt:
             "L" : (45 ,  70),
             'X' : (70 , 100),
         }
-        self.all_actions: List[str] = knowledge["actions"] #["all_actions"]
-        self.all_places: List[str] = knowledge["places"] #["all_places"]
-        self.all_people: List[str] = knowledge["people"] #["all_people"]
-        self.all_moods: List[str] = knowledge["moods"] #["all_moods"]
+        self.all_actions: List[str] = knowledge.get_actions(scenario_name=scenario_name)
+        self.all_places: List[str] = knowledge.get_places(scenario_name=scenario_name)
+        self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
+        self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
+
+    def reset_knowledge(self, knowledge: PublicKnowledge, scenario_name: str):
+        """
+        使用新的knowledge重置EnginePrompt类属性
+        :return:
+        """
+        self.all_actions: List[str] = knowledge.get_actions(scenario_name=scenario_name)
+        self.all_places: List[str] = knowledge.get_places(scenario_name=scenario_name)
+        self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
+        self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
+
+
 
     def prompt_for_conversation_e(
         self,
