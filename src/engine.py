@@ -210,8 +210,8 @@ class NPCEngine:
             "npc": ["王大妈","李大爷"],     # 参与对话的NPC
             "location": "李大爷家",      # 对话地点
             "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 对话主题，可以留空，会自动生成topic
-            "npc_states": {
-                    "王大妈": {
+            "npc_states": [
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["李大爷", "村长", "隐形李飞飞"],
@@ -219,8 +219,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-                            },
-                    "李大爷": {
+                    },
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["王大妈", "村长", "隐形李飞飞"],
@@ -228,8 +228,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["黄瓜", "1000元", "老报纸"]
-                            },
-                        },
+                    },
+                    ],
             "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
@@ -241,7 +241,7 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data["npc"]
-        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
+        states: List[Dict[str, Any]] = json_data["npc_states"]
         npc_refs = [self.npc_dict[name] for name in names]
         location: str = json_data["location"]
         topic: str = json_data["topic"]
