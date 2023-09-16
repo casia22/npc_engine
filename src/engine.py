@@ -117,7 +117,8 @@ class NPCEngine:
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
-
+        self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"],
+                                              vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
@@ -186,9 +187,9 @@ class NPCEngine:
         memories_items = {}
         loop = asyncio.get_event_loop()
         for npc in npcs:
-            new_task = loop.create_task(await npc.memory.search_memory(query_text=query,
-                                                                       query_game_time="Time",
-                                                                       k=memory_k))
+            new_task = loop.create_task(npc.memory.search_memory(query_text=query,
+                                                                 query_game_time="Time",
+                                                                 k=memory_k))
             tasks[npc.name] = new_task
 
         for _, task in tasks.items():
@@ -251,7 +252,7 @@ class NPCEngine:
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-        memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+        memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
         for name in names:
             items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
@@ -503,6 +504,7 @@ class NPCEngine:
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
+                embedding_model=self.embedding_model
             )
             await npc.async_init()
             self.npc_dict[npc.name] = npc
@@ -526,6 +528,7 @@ class NPCEngine:
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
+                    embedding_model=self.embedding_model
                 )
                 await npc.async_init()
                 self.npc_dict[npc.name] = npc
