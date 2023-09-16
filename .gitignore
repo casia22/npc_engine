@@ -19,6 +19,7 @@ test/npc_memory/*
 *.log
 src/npc_memory/*.log
 src/data/*.log
+src/data/*.pkl
 src/data/*.db
 *.egg-info
 *.egg-info/

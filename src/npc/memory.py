@@ -98,6 +98,7 @@ class NPCMemory:
 
         """vector database设置"""
         self.vector_database = VectorDatabase(dim=NPC_MEMORY_CONFIG["hf_dim"], vdb_file_path=self.vdb_path)
+        
         # 如果向量数据库文件不存在，立即保存新创建的数据库
         if not os.path.exists(self.vdb_path):
             self.vector_database.save()
@@ -330,7 +331,6 @@ async def main():
     await npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     await npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     print(await npcM.search_memory("AK有多少发子弹？", "2021-08-01 12:00:00", k=3))
-    npcM.clear_memory()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ Contact : yzj_cs_ilstar@163.com
 """
 
 from typing import List, Tuple, Dict, Any
+from npc_engine.src.npc.knowledge import SceneConfig,PublicKnowledge
 
 class EnginePrompt:
     """
@@ -12,7 +13,8 @@ class EnginePrompt:
     """
     def __init__(
         self,
-        knowledge,
+        knowledge: PublicKnowledge,
+        scenario_name: str,
     ) -> None:
         # 剧本长字典{ 标识 : 长度范围 }
         self.number_of_lines: Dict[str, Tuple] = {
@@ -21,10 +23,22 @@ class EnginePrompt:
             "L" : (45 ,  70),
             'X' : (70 , 100),
         }
-        self.all_actions: List[str] = knowledge["actions"] #["all_actions"]
-        self.all_places: List[str] = knowledge["places"] #["all_places"]
-        self.all_people: List[str] = knowledge["people"] #["all_people"]
-        self.all_moods: List[str] = knowledge["moods"] #["all_moods"]
+        self.all_actions: List[str] = knowledge.get_actions(scenario_name=scenario_name)
+        self.all_places: List[str] = knowledge.get_places(scenario_name=scenario_name)
+        self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
+        self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
+
+    def reset_knowledge(self, knowledge: PublicKnowledge, scenario_name: str):
+        """
+        使用新的knowledge重置EnginePrompt类属性
+        :return:
+        """
+        self.all_actions: List[str] = knowledge.get_actions(scenario_name=scenario_name)
+        self.all_places: List[str] = knowledge.get_places(scenario_name=scenario_name)
+        self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
+        self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
+
+
 
     def prompt_for_conversation_e(
         self,
@@ -34,7 +48,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -124,9 +138,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
                                 In {name}'s memory : {" ".join(memories[i])}
                                 {name}'s current mood is : {moods[i]}. 
-                                {name}'s current observation of people are: {", ".join(states[name]["observation"]["people"])}.
-                                {name}'s current observation of items are: {", ".join(states[name]["observation"]["items"])}.
-                                {name}'s current observation of locations are: {", ".join(states[name]["observation"]["locations"])}."""
+                                {name}'s current observation of people are: {", ".join(states[i]["observation"]["people"])}.
+                                {name}'s current observation of items are: {", ".join(states[i]["observation"]["items"])}.
+                                {name}'s current observation of locations are: {", ".join(states[i]["observation"]["locations"])}."""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -230,7 +244,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -320,9 +334,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
                                 {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[name]["observation"]["people"])}。
-                                {name}当前观测到的物体有：{"，".join(states[name]["observation"]["items"])}。
-                                {name}当前观测到的地点有：{"，".join(states[name]["observation"]["locations"])}。"""
+                                {name}当前观测到的人有：{"，".join(states[i]["observation"]["people"])}。
+                                {name}当前观测到的物体有：{"，".join(states[i]["observation"]["items"])}。
+                                {name}当前观测到的地点有：{"，".join(states[i]["observation"]["locations"])}。"""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -422,7 +436,7 @@ class EnginePrompt:
     def prompt_for_topic(
         names: List[str],
         location: str,
-        states: Dict[str, Dict[str, Any]],
+        states: List[Dict[str, Any]],
         language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
@@ -455,7 +469,7 @@ class EnginePrompt:
         obs_people = []
         obs_items = []
         obs_locations = []
-        for _, state in states.items:
+        for state in states:
             obs_people.extend(state["observation"]["people"])
             obs_items.extend(state["observation"]["items"])
             obs_locations.extend(state["observation"]["locations"])

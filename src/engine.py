@@ -29,6 +29,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.npc.npc import NPC
+from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.config.template import EnginePrompt
 from npc_engine.src.npc.conversation import Conversation
 
@@ -58,16 +59,15 @@ class NPCEngine:
     """
 
     def __init__(
-            self,
-            engine_url="::1",
-            engine_port=8199,
-            game_url="::1",
-            game_port=8084,
-            model=OPENAI_MODEL,
-            logo=True,
+        self,
+        engine_url="::1",
+        engine_port=8199,
+        game_url="::1",
+        game_port=8084,
+        model=OPENAI_MODEL,
+        logo=True,
     ):
         logger.info("initializing NPC-ENGINE")
-        self.knowledge = {}
         if logo:
             print(
                 Fore.BLUE
@@ -117,8 +117,17 @@ class NPCEngine:
         self.model = model
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
-        self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"],
-                                              vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        
+        # 加载模型embedding模型
+        if NPC_MEMORY_CONFIG["hf_embedding_online"]:
+            logger.info("using online embedding model")
+            self.embedding_model = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        else:
+            logger.info("using local embedding model")
+            self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        # 上面👆的embedding_model
+        self.public_knowledge = PublicKnowledge()
+
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
@@ -154,9 +163,9 @@ class NPCEngine:
                         func_name = json_data["func"]
                         if hasattr(self, func_name):
                             func = getattr(self, func_name)
+                            # TODO 多个func函数并没有异步函数
                             asyncio.run(func(json_data))
                         # test
-                        # TODO 打印了两遍包内容，是否应该删掉
                         if "init" in json_data["func"]:
                             logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
                         if "create_conversation" in json_data["func"]:
@@ -190,6 +199,7 @@ class NPCEngine:
             new_task = loop.create_task(npc.memory.search_memory(query_text=query,
                                                                  query_game_time="Time",
                                                                  k=memory_k))
+
             tasks[npc.name] = new_task
 
         for _, task in tasks.items():
@@ -208,10 +218,11 @@ class NPCEngine:
         {
             "func": "create_conversation",
             "npc": ["王大妈","李大爷"],     # 参与对话的NPC
-            "location": "李大爷家",      # 对话地点
+            "location": "李大爷家卧室",      # 对话地点
+            "scenario_name": "李大爷家",
             "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 对话主题，可以留空，会自动生成topic
-            "npc_states": {
-                    "王大妈": {
+            "npc_states": [
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["李大爷", "村长", "隐形李飞飞"],
@@ -219,8 +230,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-                            },
-                    "李大爷": {
+                    },
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["王大妈", "村长", "隐形李飞飞"],
@@ -228,8 +239,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["黄瓜", "1000元", "老报纸"]
-                            },
-                        },
+                    },
+                    ],
             "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
@@ -241,9 +252,10 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data["npc"]
-        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
+        states: List[Dict[str, Any]] = json_data["npc_states"]
         npc_refs = [self.npc_dict[name] for name in names]
         location: str = json_data["location"]
+        scenario_name: str = json_data["scenario_name"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
         memory_k = json_data["memory_k"]
@@ -260,18 +272,15 @@ class NPCEngine:
             memories.append(memory_content)
 
         # 初始化群体观察和常识
-        all_actions: List[str] = self.knowledge["actions"]
-        all_places: List[str] = self.knowledge["places"]
-        all_people: List[str] = self.knowledge["people"]
-        all_moods: List[str] = self.knowledge["moods"]
         starting: str = json_data["starting"]
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            # logger.error("There is no topic for creating a conversation.")
-            topic = self.get_random_topic(names, location, states, self.language)
+            #logger.error("There is no topic for creating a conversation.")
+            topic = self.get_random_topic(names, location, scenario_name, states, self.language)
 
         # 根据语言选择对应的系统提示函数
+        self.engine_prompt.reset_knowledge(knowledge=self.public_knowledge, scenario_name=scenario_name)
         system_prompt_func = getattr(
             self.engine_prompt, "prompt_for_conversation_" + self.language.lower()
         )
@@ -291,6 +300,7 @@ class NPCEngine:
         convo = Conversation(
             names=names,
             location=location,
+            scenario_name=scenario_name,
             topic=topic,
             system_prompt=system_prompt,
             query_prompt=query_prompt,
@@ -343,7 +353,7 @@ class NPCEngine:
             mood = self.npc_dict[character].mood
             npc_refs = [self.npc_dict[name] for name in names]
             descs = [npc.desc for npc in npc_refs]
-
+            
             if character != "":
                 npc_refs.append(self.npc_dict[character])
                 descs += [self.npc_dict[character].desc]
@@ -360,6 +370,17 @@ class NPCEngine:
 
             history = convo.script_perform
 
+            self.engine_prompt.reset_knowledge(knowledge=self.public_knowledge, scenario_name=convo.scenario_name)
+            system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
+                                                                                    location = location,
+                                                                                    topic = topic,
+                                                                                    character = character,
+                                                                                    mood = mood,
+                                                                                    descs = descs,
+                                                                                    memories = memories,
+                                                                                    interruption = interruption,
+                                                                                    length = length,
+                                                                                    history = history)
             system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names=names,
                                                                                     location=location,
                                                                                     topic=topic,
@@ -374,16 +395,18 @@ class NPCEngine:
             self.send_script(script)
 
     async def get_random_topic(
-            self, names: List[str], location: str, states: Dict[str, Dict[str, Any]], language: str
+        self, names: List[str], location: str, scenario_name:str, states: Dict[str, Dict[str, Any]], language: str
     ) -> str:
         """
         使用GPT为对话生成一个随机的topic
         :param names: 参与对话的NPC名称列表
         :param location: 对话地点
+        :param scenario_name: 对话场景
         :param states: 角色状态信息
         :param language: 语言
         :return: 随机生成的话题
         """
+        self.engine_prompt.reset_knowledge(knowledge=self.public_knowledge, scenario_name=scenario_name)
         system_topic, query_prompt = self.engine_prompt.prompt_for_topic(
             names=names, location=location, states=states, language=language
         )
@@ -396,58 +419,34 @@ class NPCEngine:
     async def init(self, json_data):
         """
         初始化NPC对象，ACTION对象。
-        1.读取game_world.json文件，初始化NPC和ACTION.
+        1.按init包中的scene字段加载指定场景的NPC和ACTION。
+            如果scenario文件中的npc已经初始化过了，就略过，不再初始化。
         2.如果init包npc字段不为空，那就在内存中覆盖掉对应的NPC对象。
                                 如果不存在这个NPC，就新建一个NPC对象。
+        3.如果init包npc字段不为空，会添加UDP参数的NPC到people knowledge里面
+
         例子：
         {
         "func":"init",
         # 必填字段，代表在什么场景初始化
-        "scene":"default_village",
+        "scene_name":"雁栖村"
         "language": "E" or "C",
         # 下面是🉑️选
-        "npc": [], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
+        "npc": [], # 可以留空，默认按照your_scene_name.json初始化场景NPC。非空则在之前基础上添加。
         }
         :param json_data:
         :return:
         """
-        # 先读取game_world.json
-        game_world_path = CONFIG_PATH / "knowledge" / "game_world.json"
-        with open(game_world_path, "r", encoding="utf-8") as file:
-            game_world_json = json.load(file)
-        all_places_config: List[str] = game_world_json["all_places"]  # ["default_village","forest","mine"] 读取对应场景json
-        scenes_permitted: List[str] = all_places_config  # ["default_village","forest","mine"] 顶层场景总览
-
-        # 按照scene字段，加载指定场景json
-        assert json_data["scene"] in scenes_permitted, f"场景{json_data['scene']}不在允许的场景列表中{scenes_permitted}"
-        assert len(all_places_config) > 0, "场景列表为空"
-        # 初始化列表
-        npc_list = []
-        action_list = []
-        moods_permitted = []
-        scene_subplaces_permitted = []
-
-        scene_name = json_data["scene"]
-        with open(CONFIG_PATH / "knowledge" / "scenes" / (scene_name + ".json"), "r", encoding="utf-8") as file:
-            scenario_json = json.load(file)
-        npc_list.extend(scenario_json["all_people"])  # ["李大爷", "王大妈","村长","警长"]
-        action_list.extend(scenario_json["all_actions"])  # ["mov", "get", "put"],
-        moods_permitted.extend(scenario_json["all_moods"])  # ["正常", "焦急", "严肃", "开心", "伤心"]
-        scene_subplaces_permitted.extend(
-            scenario_json["all_places"])  # ["村口","李大爷家", "王大妈家", "广场", "村长家", "瓜田", "酒吧", "警局","矿井入口","丛林入口"],
-
-        # 准备self.knowledge
-        self.knowledge["places"] = scene_subplaces_permitted + scenes_permitted
-        self.knowledge["actions"] = action_list
-        self.knowledge["moods"] = moods_permitted
-        self.knowledge["people"] = npc_list
+        # 获得场景对象
+        scene_name = json_data["scene_name"]
+        scene_config: SceneConfig = self.public_knowledge.get_scene(scene_name=scene_name)
 
         # 根据知识创建引擎提示词的实例
-        self.engine_prompt = EnginePrompt(knowledge=self.knowledge)
+        self.engine_prompt = EnginePrompt(knowledge=self.public_knowledge, scenario_name=scene_name)
         logger.debug(f"generate engine prompt done")
 
         # 按照action字段，添加新的ACTION
-        for action_name in action_list:
+        for action_name in self.public_knowledge.get_actions(scenario_name=scene_name):
             with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
                 action_json = json.load(file)
             action_item = ActionItem(
@@ -461,7 +460,7 @@ class NPCEngine:
             logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
 
         # 按照npc字段，添加磁盘中JSON对应的NPC
-        for npc_name in npc_list:
+        for npc_name in self.public_knowledge.get_people(scenario_name=scene_name):
             try:
                 with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
                     npc_json = json.load(file)
@@ -476,8 +475,9 @@ class NPCEngine:
               "name":"李大爷",
               "desc": "李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜",
               "mood":"开心",
+              "scenario_name": "李大爷家",
               "npc_state": {
-                    "position": "李大爷家",
+                    "position": "李大爷家卧室",
                     "observation": {
                             "people": ["王大妈", "村长", "隐形李飞飞"],
                             "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -488,10 +488,17 @@ class NPCEngine:
               "memory":["20年前在工厂表现优异获得表彰。","15年前在工厂收了两个徒弟。","8年前李大爷的两个徒弟在工厂表现优异都获得表彰。","6年前从工厂辞职并过上普通的生活。","4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。"]
             }
             """
+            # 如果已经存在NPC在内存中，则不再config从加载覆盖
+            if npc_json["name"] in self.npc_dict.keys():
+                npc_name = npc_json["name"]
+                logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
+                continue
+
             npc = NPC(
                 name=npc_json["name"],
                 desc=npc_json["desc"],
-                knowledge=self.knowledge,
+                public_knowledge=self.public_knowledge,
+                scenario_name=scene_name,
                 # 初始化NPC的状态，目前背包和观察都初始化为空
                 state={
                     'position': npc_json["npc_state"]["position"],
@@ -512,10 +519,12 @@ class NPCEngine:
         # 按照GAME回传的init包中的npc字段，添加新的NPC
         if "npc" in json_data:
             for npc_data in json_data["npc"]:
+                # 如果已经存在NPC在内存中，则依然从UDP参数覆盖(UDP参数我们认为有更高的优先级)
                 npc = NPC(
                     name=npc_data["name"],
                     desc=npc_data["desc"],
-                    knowledge=self.knowledge,
+                    public_knowledge=self.public_knowledge,
+                    scenario_name=scene_name,
                     # 初始化NPC的状态
                     state={
                         'position': npc_data["npc_state"]["position"],
@@ -534,9 +543,9 @@ class NPCEngine:
                 self.npc_dict[npc.name] = npc
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
         # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
-        self.knowledge["people"] = list(set(npc_list + [npc.name for npc in self.npc_dict.values()]))
-        logger.debug(f"knowledge update done，people:{self.knowledge['people']}，"
-                     f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in npc_list]}")
+        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + [npc.name for npc in self.npc_dict.values()])))
+        logger.debug(f"knowledge update done，people:{self.public_knowledge.get_people(scenario_name=scene_name)}，"
+                     f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in self.public_knowledge.get_people(scenario_name=scene_name)]}")
 
         # language
         self.language = json_data["language"]
@@ -589,8 +598,9 @@ class NPCEngine:
             "func":"action_done",
             "npc_name": "王大妈",
             "status": "success/fail",
+            "scenario_name": "李大爷家",
             "npc_state": {
-              "position": "李大爷家",
+              "position": "李大爷家卧室",
               "observation": {
                       "people": ["李大爷", "村长", "李飞飞"],
                       "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -615,10 +625,11 @@ class NPCEngine:
         "parameters":[],
         }
         """
-        status: str = json_data["status"]
-        action_item: ActionItem = self.action_dict[json_data["action"]]
-        npc_name: str = json_data["npc_name"]
-        npc: NPC = self.npc_dict[npc_name]
+        status:str = json_data["status"]
+        action_item:ActionItem = self.action_dict[json_data["action"]]
+        npc_name:str = json_data["npc_name"]
+        scenario_name:str = json_data["scenario_name"]
+        npc:NPC = self.npc_dict[npc_name]
         if status == "success":
             action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
                                                   reason=json_data["reason"])
@@ -630,6 +641,8 @@ class NPCEngine:
         npc.set_action_dict(self.action_dict)
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
+        # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
+        npc.set_scenario(scenario_name)
         # 添加NPC记忆
         await npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
@@ -656,8 +669,9 @@ class NPCEngine:
         {
             "func":"wake_up",
             "npc_name": "王大妈",
+            "scenario_name": "李大爷家",
             "npc_state": {
-              "position": "李大爷家",
+              "position": "李大爷家卧室",
               "observation": {
                       "people": ["李大爷", "村长", "李飞飞"],
                       "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -686,6 +700,7 @@ class NPCEngine:
         npc.set_known_actions(list(self.action_dict.keys()))
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
+        npc.set_scenario(scenario=json_data["scenario_name"])
         # 更新NPC的purpose
         npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
