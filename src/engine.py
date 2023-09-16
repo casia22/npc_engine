@@ -34,7 +34,7 @@ colorama.init()
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
                                           CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
-from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding,BaseEmbeddingModel
+from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
 # key配置
 zhipuai.api_key = ZHIPU_KEY
