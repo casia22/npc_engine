@@ -3,19 +3,14 @@ import logging
 import socket
 from typing import List, Dict, Any, Tuple
 import pickle
-import openai
-# import zhipuai
 import re, os, datetime
 
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.action import ActionItem
-from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, \
-    PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
+from npc_engine.src.utils.model_api import get_model_answer
 
-# zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
-openai.api_key = OPENAI_KEY
-openai.api_base = OPENAI_BASE
 
 # LOGGER配置
 logger = logging.getLogger("NPC")
@@ -23,7 +18,6 @@ CONSOLE_HANDLER.setLevel(logging.DEBUG)
 logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
-
 
 # npc的宽泛知识
 class Knowledge:
@@ -33,15 +27,12 @@ class Knowledge:
         self.people = people
         self.moods = moods
 
-
 # npc的状态
 class State:
     """
     游戏提供给NPC的状态
     """
-
-    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str],
-                 ob_locations: List[str]):
+    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_locations: List[str]):
         self.position = position
         self.backpack = backpack
         self.observation = self.Observation(ob_people, ob_items, ob_locations)
@@ -62,6 +53,7 @@ class State:
                 "locations": self.locations
             }
 
+
     def __str__(self):
         return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"locations": {self.observation.locations}\n\t}},\n\t"backpack": {self.backpack}\n}}'
 
@@ -75,7 +67,6 @@ class State:
             },
             "backpack": self.backpack
         }
-
 
 # NPC类
 class NPC:
@@ -91,7 +82,6 @@ class NPC:
         memory_k (int, optional): NPC记忆的长度，默认为3
         model (str, optional): 使用的语言模型，默认为OPENAI_MODEL
     """
-
     def __init__(
             self,
             name: str,
@@ -103,7 +93,7 @@ class NPC:
             memory: List[str] = [],
             memory_k: int = 3,
             model: str = OPENAI_MODEL,
-    ) -> None:
+        ) -> None:
         # model
         self.model: str = model
         # NPC固定参数
@@ -208,10 +198,9 @@ class NPC:
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose, query_game_time=time,
-                                                                          k=k)
-            memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
-            memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
+            memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
+            memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
+            memory_related_text = [each.text for each in memory_dict["related_memories"]]
 
             # 结合最近记忆和相关记忆来生成目的
             role_play_instruct = f"""
@@ -246,7 +235,7 @@ class NPC:
             mood: str = purpose_response.split("]<")[0].replace("[", "")
         except IndexError:
             logger.error(f"返回的目的格式不正确，返回内容为：{purpose_response}, 设定purpose为''")
-            purpose = ""  # NULL
+            purpose = "" # NULL
             mood = self.mood
 
         logger.debug(f"""
@@ -283,21 +272,17 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        # todo [bug]似乎是pinecone数据库中存储的李大爷的记忆有问题
-        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
-            self.state.observation.people) + ",".join(
-            self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.locations) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
-        memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
-        memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
+        memory_related_text = [each.text for each in memory_dict["related_memories"]]
+        memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
 
         # 根据允许动作的预定义模版设置prompt
-        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
-                         self.action_dict.items()]
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict.items()]
         # 构造prompt请求
         instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
-            你的最近记忆:{memory_latest_text}，
+            你的最近记忆:{memory_latest_text}
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
@@ -333,11 +318,11 @@ class NPC:
         # 添加npc_name
         self.action_result["npc_name"] = self.name
         logger.debug(f"""
-                    <发起ACTION请求>
-                    <请求内容>:{instruct}
-                    <请求提示>:{prompt}
-                    <返回内容>:{response}
-                    <返回行为>:{self.action_result}
+            <发起ACTION请求>
+            <请求内容>:{instruct}
+            <请求提示>:{prompt}
+            <返回内容>:{response}
+            <返回行为>:{self.action_result}
                     """)
         return self.action_result
 
@@ -349,9 +334,8 @@ class NPC:
                 "role": "user",
                 "content": prompt}
         ]
-        response = openai.ChatCompletion.create(model=self.model, messages=llm_prompt_list)
-        words = response["choices"][0]["message"]["content"].strip()
-        return words
+        answer = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=llm_prompt_list)
+        return answer
 
     def save_memory(self):
         """
@@ -391,3 +375,4 @@ class NPC:
         with open(NPC_CONFIG_PATH, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
         logger.debug(f"已保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
+

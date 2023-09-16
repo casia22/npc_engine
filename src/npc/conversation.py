@@ -10,12 +10,9 @@ import copy
 import datetime
 import os
 import logging
-import openai
-#import zhipuai
 from npc_engine.src.config.config import (OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER)
+from npc_engine.src.utils.model_api import get_model_answer
 
-openai.api_key = OPENAI_KEY
-openai.api_base = OPENAI_BASE
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
 
@@ -123,10 +120,7 @@ class Conversation:
         :return content:
         """
         # 调用官方API获取字典形式的返回值
-        response = openai.ChatCompletion.create(model=self.model, messages=messages)
-        # 按照固定形式从LLM返回的字典中提取出回复文本并做空格符清理
-        content = response["choices"][0]["message"]["content"].strip()
-
+        content = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=messages)
         return content
 
     def parser(

@@ -153,9 +153,9 @@ class NPCEngine:
                         func_name = json_data["func"]
                         if hasattr(self, func_name):
                             func = getattr(self, func_name)
+                            # TODO 多个func函数并没有异步函数
                             asyncio.run(func(json_data))
                         # test
-                        # TODO 打印了两遍包内容，是否应该删掉
                         if "init" in json_data["func"]:
                             logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
                         if "create_conversation" in json_data["func"]:
