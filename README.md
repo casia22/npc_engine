@@ -66,7 +66,6 @@ unity(或其他需要群体AI的应用程序)发送UDP包到引擎8199端口。
         - action\(场景中允许的动作配置文件)
         - npc\(npc描述配置文件)
         - knowledge\(知识、场景配置文件)
-          - game_world.json(基础场景入口配置文件)
           - scenes\(子场景配置文件)
             - xxxx.json(具体场景配置文件)
  
@@ -76,9 +75,9 @@ npc-engine\src\config 存储着NPC人物、场景、动作的配置文件。
 #### 引擎配置
 项目通过“配置文件”+“UDP”包的方式进行交互操作。
 
-init包发送的时候，会读取game_world.json和scene_name.json，然后初始化场景。
-game_world.json中包含了所有场景的入口，scene_name.json中包含了具体场景的配置信息。
-如果init包中指定了npc，那么会在game_world.json+scene_name.json的基础上添加npc。
+init包发送的时候，会读取scene_name.json，然后初始化场景。
+scene_name.json中包含了具体场景的配置信息。
+如果init包中指定了npc，那么会在scene_name.json的基础上添加npc。
 
 注意每个场景都要求action.json和npc.json，如果不存在指定npc就会报错。
 
@@ -98,7 +97,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
 {
     "func":"init",
     # 必填字段，代表在什么场景初始化
-    "scene":"default_village",
+    "scene_name":"雁栖村",
     "language":"E" or "C",
     # 下面是🉑️选
     "npc":[
@@ -131,7 +130,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
                        },
         "mood":"焦急",
         "memory":[ ]
-        }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
+        }], # 可以留空，默认按照gscene.json初始化场景NPC。非空则在之前基础上添加。
 }
 # 引擎关闭的包
 {
@@ -150,9 +149,10 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func":"wake_up",
     "npc_name": "王大妈",
-
+  
+    "scenario_name": "李大爷家", 
     "npc_state": {
-      "position": "李大爷家",
+      "position": "李大爷家卧室",
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -170,9 +170,10 @@ engine接收到action_done包之后会继续返回action行为包。
     "npc_name":"王大妈",
     "status": "success",
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-
+  
+    "scenario_name": "李大爷家", 
     "npc_state": {
-      "position": "李大爷家",
+      "position": "李大爷家卧室",
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -209,7 +210,9 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func": "create_conversation",
     "npc": ["王大妈","李大爷"],
-    "location": "李大爷家",
+
+    "scenario_name": "李大爷家",        
+    "location": "李大爷家卧室",
     "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
     "npc_states": [
                 {

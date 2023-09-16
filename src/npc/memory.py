@@ -82,7 +82,7 @@ class NPCMemory:
         # npc_memory设置
         self.npc_name = npc_name
         self.latest_k = queue.Queue(maxsize=k)
-        self.base_path = r"npc_engine/src/npc/database"
+        self.base_path = os.path.join(PROJECT_ROOT_PATH, "src", "data")
         self.vdb_path = os.path.join(self.base_path, f"{self.npc_name}.pkl")
         """embedding model设置"""
         # ‼️huggingface local embedding model config. AlreadyDone in config.py
@@ -94,7 +94,8 @@ class NPCMemory:
 
         """vector database设置"""
         self.vector_database = VectorDatabase(dim=NPC_MEMORY_CONFIG["hf_dim"], vdb_file_path=self.vdb_path)
-
+        if not os.path.exists(self.vdb_path):
+            self.vector_database.save()
         logger.debug(f"{self.npc_name} memory init done, k={k}, model_name=sbert-base-chinese-nli")
 
         """数据库设置"""
@@ -325,7 +326,6 @@ async def main():
     await npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     await npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     print(await npcM.search_memory("AK有多少发子弹？", "2021-08-01 12:00:00", k=3))
-    npcM.clear_memory()
 
 
 if __name__ == "__main__":
