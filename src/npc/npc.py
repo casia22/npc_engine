@@ -48,10 +48,10 @@ class State:
 
         def to_dict(self):
             return {
-                    "people": self.people,
-                    "items": self.items,
-                    "locations": self.locations
-                }
+                "people": self.people,
+                "items": self.items,
+                "locations": self.locations
+            }
 
 
     def __str__(self):
@@ -89,7 +89,6 @@ class NPC:
             knowledge: Dict[str, Any],
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
-            embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
             memory: List[str] = [],
             memory_k: int = 3,
@@ -97,7 +96,6 @@ class NPC:
         ) -> None:
         # model
         self.model: str = model
-        self.embedding_model = embedding_model
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
@@ -122,18 +120,17 @@ class NPC:
         self.mood: str = mood
         self.purpose: str = ""
         # NPC的记忆
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k, embedding_model=self.embedding_model)
-        self.memory.touch_memory()
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
 
         ####################### 先清空现有VB #######################
         self.memory.clear_memory()
+        self.initial_memory = memory
         ################# 等到记忆添加实现闭环时删除 #################
 
-        # 将初始化的记忆内容加入到memory中
-        if len(memory) > 0:
-            for piece in memory:
-                self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
-                logger.debug(f"add memory {piece} into npc {self.name} done.")
+    async def async_init(self):
+        for piece in self.initial_memory:
+            await self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
+            logger.debug(f"add memory {piece} into npc {self.name} done.")
 
     def set_state(self, state: Dict[str, Any]) -> None:
         self.state = State(
@@ -232,7 +229,6 @@ class NPC:
             """
         # 发起请求
         purpose_response: str = self.call_llm(instruct=role_play_instruct, prompt=prompt)
-        print(purpose_response)
         # 解析返回
         try:
             purpose: str = purpose_response.split("]<")[1].replace(">", "")
