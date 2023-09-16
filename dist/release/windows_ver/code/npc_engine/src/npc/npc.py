@@ -50,7 +50,6 @@ class NPC:
         self.purpose: str = ""
         # NPC的记忆
         self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k)
-        self.memory.touch_memory()
         # 将初始化的记忆内容加入到memory中
         if len(memory) > 0:
             for piece in memory:
@@ -99,7 +98,7 @@ class NPC:
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict:Dict[str, Any] = self.memory.search_memory(query_text=self.purpose,query_game_time=time, k=k)
+            memory_dict:Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose,query_game_time=time, k=k)
             memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
             memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
 

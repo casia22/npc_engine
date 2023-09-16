@@ -35,6 +35,8 @@ CONSOLE_HANDLER.setLevel(CONSOLE_LOG_LEVEL)
 CONSOLE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
 # 文件处理器
+if not os.path.exists(LOG_FILE_PATH):
+    os.makedirs(LOG_FILE_PATH)
 FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
 FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
 FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
