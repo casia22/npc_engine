@@ -195,7 +195,7 @@ class NPCEngine:
         memories_items = {}
         loop = asyncio.get_event_loop()
         for npc in npcs:
-            new_task = loop.create_task(await npc.memory.search_memory(query_text=query,
+            new_task = loop.create_task(npc.memory.search_memory(query_text=query,
                                                                        query_game_time="Time",
                                                                        k=memory_k))
             tasks[npc.name] = new_task
@@ -262,7 +262,7 @@ class NPCEngine:
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-        memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+        memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
         for name in names:
             items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
