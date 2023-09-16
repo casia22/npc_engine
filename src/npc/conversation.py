@@ -60,6 +60,7 @@ class Conversation:
         self,
         names: List[str],
         location: str,
+        scenario_name: str,
         topic: str,
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
@@ -72,6 +73,7 @@ class Conversation:
         # 对话创建关键信息：角色名称、地点、系统提示词、查询提示词、中/英、大模型类型
         self.names: List[str] = names
         self.location: str = location
+        self.scenario_name: str = scenario_name
         self.topic: str = topic
         self.language: str = language
         self.model: str = model

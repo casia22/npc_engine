@@ -8,6 +8,7 @@ import openai
 import re, os, datetime
 
 from npc_engine.src.npc.memory import NPCMemory
+from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
@@ -24,7 +25,10 @@ logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
 # npc的宽泛知识
-class Knowledge:
+class PersonalKnowledge:
+    """
+    本质只是存储当前的个体的认知记忆，和public区分开
+    """
     def __init__(self, actions: List[str], places: List[str], people: List[str], moods: List[str]):
         self.actions = actions
         self.places = places
@@ -90,7 +94,8 @@ class NPC:
             self,
             name: str,
             desc: str,
-            knowledge: Dict[str, Any],
+            public_knowledge: PublicKnowledge,
+            scenario_name: str,
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
             embedding_model: BaseEmbeddingModel,
@@ -106,12 +111,8 @@ class NPC:
         self.name: str = name
         self.desc: str = desc
         # NPC的常识
-        self.knowledge = Knowledge(
-            actions=knowledge['actions'],
-            places=knowledge['places'],
-            people=knowledge['people'],
-            moods=knowledge['moods']
-        )
+        self.public_knowledge = public_knowledge
+        self.scene_knowledge: SceneConfig = public_knowledge.get_scene(scene_name=scenario_name)
         # NPC的状态
         self.state = State(
             position=state['position'],
@@ -120,6 +121,7 @@ class NPC:
             ob_items=state['ob_items'],
             ob_locations=state['ob_locations']
         )
+        self.scenario = scenario_name
         # 为了和engine的action_dict保持一致，把输出的action结果改成了action_result
         self.action_dict = action_dict
         self.action_result = {}
@@ -159,13 +161,23 @@ class NPC:
         )
 
     def set_known_actions(self, actions: List[str]) -> None:
-        self.knowledge.actions = actions
+        self.scene_knowledge.actions = actions
 
     def set_action_dict(self, action_dict):
         self.action_dict = action_dict
 
     def set_location(self, location: str) -> None:
         self.state.position = location
+
+    def set_scenario(self, scenario: str) -> None:
+        """
+        更新场景属性，更新场景knowledge
+        :param scenario:
+        :return:
+        """
+        self.scenario = scenario
+        self.scene_knowledge = self.public_knowledge.get_scene(scene_name=scenario)
+        logger.debug(f"NPC:{self.name} 已经切换到了 {self.scenario} 场景")
 
     def set_mood(self, mood: str) -> None:
         self.mood = mood
@@ -183,20 +195,20 @@ class NPC:
             # 如果没有目的，那就参照最近记忆
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
-            可有的心情是{self.knowledge.moods}，
+            可有的心情是{self.scene_knowledge.all_moods}，
             当前心情是{self.mood}，正在{self.state.position}，现在时间是{time},
             最近记忆:{[item.text for item in list(self.memory.latest_k.queue)]},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
             {self.name}现在身上的物品:{self.state.backpack}，
-            {self.name}可去的地方:{self.knowledge.places}，
+            {self.name}可去的地方:{self.scene_knowledge.all_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.knowledge.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
-            例2：[{self.knowledge.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.knowledge.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
+            例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
+            例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
+            例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
             要求：
             1.按照[情绪]<目的>的方式来返回内容
             2.尽量使用第三人称来描述
@@ -212,21 +224,21 @@ class NPC:
             # 结合最近记忆和相关记忆来生成目的
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
-            可有的心情是{self.knowledge.moods}，
+            可有的心情是{self.scene_knowledge.all_moods}，
             心情是{self.mood}，正在{self.state.position}，现在时间是{time},
             {self.name}的最近记忆:{memory_latest_text}，
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}可去的地方:{self.knowledge.places}，
+            {self.name}可去的地方:{self.scene_knowledge.all_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.knowledge.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXXXXXX。>
-            例2：[{self.knowledge.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.knowledge.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
+            例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXXXXXX。>
+            例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
+            例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
             要求：
             1.按照[情绪]<目的>的方式来返回内容
             2.尽量使用第三人称来描述
@@ -295,7 +307,7 @@ class NPC:
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
             你现在身上的物品:{self.state.backpack}，
-            你可去的地方:{self.knowledge.places}，
+            你可去的地方:{self.scene_knowledge.all_places}，
             你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
