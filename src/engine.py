@@ -14,6 +14,7 @@ import threading
 import traceback
 import uuid
 from typing import List, Dict, Any, Tuple
+
 nest_asyncio.apply()
 
 import colorama
@@ -23,6 +24,7 @@ import zhipuai
 # 这部分代码保证项目能被python解释器搜索到
 from pathlib import Path
 import sys
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from npc_engine.src.npc.action import ActionItem
@@ -33,9 +35,9 @@ from npc_engine.src.npc.conversation import Conversation
 
 colorama.init()
 from colorama import Fore, Style
-from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
-                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
-from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding,BaseEmbeddingModel
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY, CONFIG_PATH,
+                                          CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, NPC_MEMORY_CONFIG)
+from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
 # key配置
 zhipuai.api_key = ZHIPU_KEY
@@ -49,11 +51,13 @@ logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
+
 class NPCEngine:
     """
     项目的核心入口类，扮演着一个Router的角色，负责接受相应的包并出发对应函数返回结果给游戏。
     engine的实现是基于socket UDP的，并发处理主要靠coroutine实现。
     """
+
     def __init__(
         self,
         engine_url="::1",
@@ -120,7 +124,10 @@ class NPCEngine:
         else:
             logger.info("using local embedding model")
             self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+        # 上面👆的embedding_model
         self.public_knowledge = PublicKnowledge()
+
+        logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
     def listen(self, buffer_size=40000):
@@ -180,21 +187,21 @@ class NPCEngine:
                     logger.error(traceback.format_exc())
                     pass
 
-    def batch_search_memory(self, 
-            npcs: List[str],
-            query: str,
-            memory_k: int):
+    async def batch_search_memory(self,
+                                  npcs: List[str],
+                                  query: str,
+                                  memory_k: int):
         tasks = {}
         memories_items = {}
         loop = asyncio.get_event_loop()
         for npc in npcs:
-            new_task = loop.create_task(npc.memory.search_memory(query_text = query, 
-                                        query_game_time = "Time", 
-                                        k = memory_k))
+            new_task = loop.create_task(await npc.memory.search_memory(query_text=query,
+                                                                       query_game_time="Time",
+                                                                       k=memory_k))
             tasks[npc.name] = new_task
 
         for _, task in tasks.items():
-                loop.run_until_complete(task)
+            loop.run_until_complete(task)
 
         for name, task in tasks.items():
             memories_items[name] = task.result()
@@ -212,8 +219,8 @@ class NPCEngine:
             "location": "李大爷家卧室",      # 对话地点
             "scenario_name": "李大爷家",
             "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 对话主题，可以留空，会自动生成topic
-            "npc_states": {
-                    "王大妈": {
+            "npc_states": [
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["李大爷", "村长", "隐形李飞飞"],
@@ -221,8 +228,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
-                            },
-                    "李大爷": {
+                    },
+                    {
                         "position": "李大爷家",
                         "observation": {
                                 "people": ["王大妈", "村长", "隐形李飞飞"],
@@ -230,8 +237,8 @@ class NPCEngine:
                                 "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                         },
                         "backpack":["黄瓜", "1000元", "老报纸"]
-                            },
-                        },
+                    },
+                    ],
             "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
@@ -243,7 +250,7 @@ class NPCEngine:
         """
         # get language setup and obtain corresponding system_prompt for Conversation
         names: List[str] = json_data["npc"]
-        states: Dict[str, Dict[str, Any]] = json_data["npc_states"]
+        states: List[Dict[str, Any]] = json_data["npc_states"]
         npc_refs = [self.npc_dict[name] for name in names]
         location: str = json_data["location"]
         scenario_name: str = json_data["scenario_name"]
@@ -282,7 +289,7 @@ class NPCEngine:
             descs=descs,
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
-            states = states,
+            states=states,
             starting=starting,
             length=length
         )
@@ -372,6 +379,16 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
+            system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names=names,
+                                                                                    location=location,
+                                                                                    topic=topic,
+                                                                                    character=character,
+                                                                                    mood=mood,
+                                                                                    descs=descs,
+                                                                                    memories=memories,
+                                                                                    interruption=interruption,
+                                                                                    length=length,
+                                                                                    history=history)
             script = convo.re_generate_script(character, system_prompt, query_prompt)
             self.send_script(script)
 
@@ -492,8 +509,8 @@ class NPCEngine:
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
                 model=self.model,
-                embedding_model=self.embedding_model
             )
+            await npc.async_init()
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
         # 按照GAME回传的init包中的npc字段，添加新的NPC
@@ -517,8 +534,8 @@ class NPCEngine:
                     mood=npc_data["mood"],
                     memory=npc_data["memory"],
                     model=self.model,
-                    embedding_model=self.embedding_model
                 )
+                await npc.async_init()
                 self.npc_dict[npc.name] = npc
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
         # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
@@ -549,9 +566,9 @@ class NPCEngine:
             convo = self.conversation_dict[conversation_id]
             memory_add, mood_change = convo.add_temp_memory(index)
             if len(memory_add.keys()) != 0:
-                self.npc_information_update(memory_add, mood_change)
+                await self.npc_information_update(memory_add, mood_change)
 
-    def npc_information_update(self, memory_add, mood_change):
+    async def npc_information_update(self, memory_add, mood_change):
         """
         将对话的内容添加到对应NPC的记忆list中，以第三人称的方式
         例如：
@@ -563,12 +580,12 @@ class NPCEngine:
         # 得到对话类中的人名列表
         for name in memory_add.keys():
             npc = self.npc_dict[name]
-            npc.memory.add_memory_text(text = "\n".join(memory_add[name]), game_time = "Time")
+            await npc.memory.add_memory_text(text="\n".join(memory_add[name]), game_time="Time")
             logger.debug(f"npc {name} add conversation pieces into memory done")
             npc.mood = mood_change[name]
             logger.debug(f"npc {name} update mood done")
 
-    async def action_done(self, json_data:Dict[str, Any]):
+    async def action_done(self, json_data: Dict[str, Any]):
         """
         如果游戏成功执行了动作，那么就将动作和参数存入记忆中 更新purpose 生成新的action然后传给GAME
         如果执行失败，那就结合失败原因存入记忆
@@ -610,9 +627,11 @@ class NPCEngine:
         scenario_name:str = json_data["scenario_name"]
         npc:NPC = self.npc_dict[npc_name]
         if status == "success":
-            action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
+            action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
+                                                  reason=json_data["reason"])
         else:
-            action_log:str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"], reason=json_data["reason"])
+            action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
+                                                  reason=json_data["reason"])
         # 更新NPC允许的动作
         npc.set_known_actions(list(self.action_dict.keys()))
         npc.set_action_dict(self.action_dict)
@@ -621,11 +640,11 @@ class NPCEngine:
         # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
         npc.set_scenario(scenario_name)
         # 添加NPC记忆
-        npc.memory.add_memory_text(action_log, game_time=json_data["time"])
+        await npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
         npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
-        new_action:Dict[str, Any] = await npc.get_action(time=json_data["time"], k=3)
+        new_action: Dict[str, Any] = await npc.get_action(time=json_data["time"], k=3)
         action_packet = new_action
         action_packet["name"] = "action"
         # 发送新的action到环境
@@ -722,7 +741,7 @@ class NPCEngine:
         data = json.dumps(data).encode("utf-8")
         # 计算数据包总数
         packets = [
-            data[i : i + max_packet_size] for i in range(0, len(data), max_packet_size)
+            data[i: i + max_packet_size] for i in range(0, len(data), max_packet_size)
         ]
         total_packets = len(packets)
         print(total_packets)
@@ -773,6 +792,7 @@ class NPCEngine:
         logger.info("Engine closing")
         # 退出程序
         sys.exit(0)
+
 
 if __name__ == "__main__":
     engine = NPCEngine()

@@ -34,7 +34,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        observations: str = "",
+        observations: str = "", # I am here
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:

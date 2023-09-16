@@ -48,7 +48,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -73,6 +73,7 @@ class EnginePrompt:
 
         The script consists of multiple lines of characters' interactions and conversation states.
         The template of character's interaction is - Character Name(Mood|Action Type|Action Argument): Spoken Content
+        All the punctuation marks in the character's interaction template are half-width.
         Where,
         Character Name: Tony, Austin
         Mood: calm, happy, sad, anxious
@@ -80,7 +81,8 @@ class EnginePrompt:
         Action Argument: can be Place Name, Character Name, or None.
         Place Name: Austin's home, Tony's home, park
         Spoken Content: can be any proper content related to topic, or None.
-        The templates of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
+        The template of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
+        All the punctuation marks in the conversation state template are half-width.
         At the beginning of the script, nobody exits and all charachters remain in the conversation.
         Afterwards, when a character exits the conversation, he/she no longer appear in the following script, the other remaining characters continue to interact.
         When all characters exit and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol.
@@ -136,9 +138,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}'s characteristic descriptions are : {descs[i]}
                                 In {name}'s memory : {" ".join(memories[i])}
                                 {name}'s current mood is : {moods[i]}. 
-                                {name}'s current observation of people are: {", ".join(states[name]["observation"]["people"])}.
-                                {name}'s current observation of items are: {", ".join(states[name]["observation"]["items"])}.
-                                {name}'s current observation of locations are: {", ".join(states[name]["observation"]["locations"])}."""
+                                {name}'s current observation of people are: {", ".join(states[i]["observation"]["people"])}.
+                                {name}'s current observation of items are: {", ".join(states[i]["observation"]["items"])}.
+                                {name}'s current observation of locations are: {", ".join(states[i]["observation"]["locations"])}."""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -148,6 +150,7 @@ class EnginePrompt:
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
         constraint_statement = rf"""The script consists of multiple lines of characters' interactions and conversation states.
                                     The template of character's interaction is - Character Name(Mood|Action Type|Action Argument): Spoken Content
+                                    All the punctuation marks in the character's interaction template are half-width.
                                     Where,
                                     Character Name: {", ".join(names)}
                                     Mood: {", ".join(self.all_moods)}
@@ -155,11 +158,12 @@ class EnginePrompt:
                                     Action Argument: can be Place Name, Character Name, or None.
                                     Place Name: {", ".join(self.all_places)}
                                     Spoken Content: can be any proper content related to topic, or None.
-                                    The templates of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
+                                    The template of conversation state are - <Nobody / Character Name Exits. Remaining Characters: Character Names / Nobody> and <EOS>.
+                                    All the punctuation marks in the conversation state template are half-width.
                                     At the beginning of the script, nobody exits and all charachters remain in the conversation.
                                     Afterwards, when a character exits the conversation, he/she no longer appear in the following script, the other remaining characters continue to interact.
                                     When all characters exit and no character remained in the conversation, which means the end of the script, you should use <EOC> as the ending symbol. """
-        constraint_statement = constraint_statement.replace("    ","",108)
+        constraint_statement = constraint_statement.replace("    ","",126)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if starting == "":
@@ -240,7 +244,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: Dict[str, Dict[str, Any]] = None,
+        states: List[Dict[str, Any]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -265,6 +269,7 @@ class EnginePrompt:
 
         这个剧本由许多行角色交互和会话状态组成。
         角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
+        该角色交互模板中的所有标点符号都是全角的。
         其中，
         角色姓名：小白, 小黑
         情绪状态：稳定, 开心, 伤心, 着急
@@ -273,6 +278,7 @@ class EnginePrompt:
         场所名：小白的家, 小黑的家, 公园
         说话内容：可以是任务与主题有关的合规的内容，也可以是空。
         会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+        该会话状态模板中的所有标点符号都是全角的。
         当剧本刚开始的时候，无人退出且所有角色都参与交流。
         后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
         当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
@@ -328,9 +334,9 @@ class EnginePrompt:
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
                                 {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[name]["observation"]["people"])}。
-                                {name}当前观测到的物体有：{"，".join(states[name]["observation"]["items"])}。
-                                {name}当前观测到的地点有：{"，".join(states[name]["observation"]["locations"])}。"""
+                                {name}当前观测到的人有：{"，".join(states[i]["observation"]["people"])}。
+                                {name}当前观测到的物体有：{"，".join(states[i]["observation"]["items"])}。
+                                {name}当前观测到的地点有：{"，".join(states[i]["observation"]["locations"])}。"""
             supplementary_new = supplementary_new.replace("    ","",40)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
@@ -340,6 +346,7 @@ class EnginePrompt:
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
         constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
                                     角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
+                                    该角色交互模板中的所有标点符号都是全角的。
                                     其中，
                                     角色姓名：{", ".join(names)}
                                     情绪状态：{", ".join(self.all_moods)}
@@ -348,10 +355,11 @@ class EnginePrompt:
                                     场所名：{", ".join(self.all_places)}
                                     说话内容：可以是任务与主题有关的合规的内容，也可以是空。
                                     会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                    该会话状态模板中的所有标点符号都是全角的。
                                     当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                     后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
                                     当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
-        constraint_statement = constraint_statement.replace("    ","",108)
+        constraint_statement = constraint_statement.replace("    ","",126)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if starting == "":
@@ -428,7 +436,7 @@ class EnginePrompt:
     def prompt_for_topic(
         names: List[str],
         location: str,
-        states: Dict[str, Dict[str, Any]],
+        states: List[Dict[str, Any]],
         language: str
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
         """
@@ -461,7 +469,7 @@ class EnginePrompt:
         obs_people = []
         obs_items = []
         obs_locations = []
-        for _, state in states.items:
+        for state in states:
             obs_people.extend(state["observation"]["people"])
             obs_items.extend(state["observation"]["items"])
             obs_locations.extend(state["observation"]["locations"])
@@ -518,6 +526,7 @@ class EnginePrompt:
 
         这个剧本由许多行角色交互和会话状态组成。
         角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
+        该角色交互模板中的所有标点符号都是全角的。
         其中，
         角色姓名：小白, 小黑, 小灰
         情绪状态：稳定, 开心, 伤心, 着急
@@ -526,6 +535,7 @@ class EnginePrompt:
         场所名：小白的家, 小黑的家, 公园
         说话内容：可以是任务与主题有关的合规的内容，也可以是空。
         会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+        该会话状态模板中的所有标点符号都是全角的。
         当剧本刚开始的时候，无人退出且所有角色都参与交流。
         后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
         当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
@@ -622,6 +632,7 @@ class EnginePrompt:
         if interruption == "":
             constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
                                         角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
+                                        该角色交互模板中的所有标点符号都是全角的。
                                         其中，
                                         角色姓名：{", ".join(names + [character])}
                                         情绪状态：{", ".join(self.all_moods)}
@@ -630,12 +641,14 @@ class EnginePrompt:
                                         场所名：{", ".join(self.all_places)}
                                         说话内容：可以是任务与主题有关的合规的内容，也可以是空。
                                         会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                        该会话状态模板中的所有标点符号都是全角的。
                                         当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                         后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
                                         当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
         else:
             constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
                                         角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
+                                        该角色交互模板中的所有标点符号都是全角的。
                                         其中，
                                         角色姓名：{", ".join(names)}
                                         情绪状态：{", ".join(self.all_moods)}
@@ -644,10 +657,11 @@ class EnginePrompt:
                                         场所名：{", ".join(self.all_places)}
                                         说话内容：可以是任务与主题有关的合规的内容，也可以是空。
                                         会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                        该会话状态模板中的所有标点符号都是全角的。
                                         当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                         后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
                                         当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
-        constraint_statement = constraint_statement.replace("    ","",120)
+        constraint_statement = constraint_statement.replace("    ","",140)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if interruption == "":
