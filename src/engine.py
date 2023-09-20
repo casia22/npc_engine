@@ -29,6 +29,7 @@ from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.npc.npc import NPC
 from npc_engine.src.config.template import EnginePrompt
 from npc_engine.src.npc.conversation import Conversation
+from npc_engine.src.send_utils import send_data
 
 colorama.init()
 from colorama import Fore, Style
@@ -234,6 +235,7 @@ class NPCEngine:
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
             "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+            "stream": True  # 是否需要采用流式数据包格式
         }
 
         :param json_data:
@@ -246,6 +248,7 @@ class NPCEngine:
         location: str = json_data["location"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
+        stream: bool = json_data["stream"]
         memory_k = json_data["memory_k"]
 
         # 初始化群体描述、心情和记忆
@@ -287,7 +290,6 @@ class NPCEngine:
             length=length
         )
 
-        # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(
             names=names,
             location=location,
@@ -296,13 +298,14 @@ class NPCEngine:
             query_prompt=query_prompt,
             language=self.language,
             model=self.model,
+            stream = stream,
+            sock = self.sock,
+            game_url = self.game_url,
+            game_port = self.game_port,
         )  # todo: 这里engine会等待OPENAI并无法处理新的接收
 
         self.conversation_dict[convo.convo_id] = convo
         # script = convo.generate_script()
-
-        # 发送整个剧本
-        self.send_script(convo.script)
 
     async def re_create_conversation(self, json_data):
         """
@@ -694,23 +697,6 @@ class NPCEngine:
                         purpose: {npc.purpose} 
                         action: {action_packet} 
                         to game""")
-
-    def send_script(self, script):
-        """
-        将script发送给游戏
-        :param script:
-        :return:
-        """
-        # print item with appropriate color
-        print(
-            "[NPC-ENGINE]sending script:",
-            Fore.GREEN,
-            json.dumps(script).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
-        self.send_data(script)
 
     def send_data(self, data, max_packet_size=6000):
         """
