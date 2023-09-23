@@ -13,7 +13,7 @@ rm -r ./release/windows_ver/code/*
 ## copy数据文件到code
 rsync -av --ignore-existing  --exclude-from='release_ignore.conf' ../../npc_engine code/
 ## mv加密包到解释器
-cp -r code/npc_engine/pyarmor_runtime_004197  release/windows_ver/python_lib/python-3.9.6-embed-amd64/lib/site-packages/
+cp -r code/npc_engine/pyarmor_runtime_*  release/windows_ver/python_lib/python-3.9.6-embed-amd64/lib/site-packages/
 
 ## code 移动到release
 cp -r code/npc_engine release/windows_ver/code
