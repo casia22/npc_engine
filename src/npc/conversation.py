@@ -15,7 +15,7 @@ import openai
 #import zhipuai
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER)
-from npc_engine.src.send_utils import send_data
+from npc_engine.src.utils.send_utils import send_data
 
 openai.api_key = OPENAI_KEY
 openai.api_base = OPENAI_BASE

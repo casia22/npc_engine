@@ -29,7 +29,7 @@ from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.npc.npc import NPC
 from npc_engine.src.config.template import EnginePrompt
 from npc_engine.src.npc.conversation import Conversation
-from npc_engine.src.send_utils import send_data
+from npc_engine.src.utils.send_utils import send_data
 
 colorama.init()
 from colorama import Fore, Style

@@ -9,7 +9,7 @@ import uuid
 def send_data(sock, target_url, target_port, data, max_packet_size=6000):
     """
     把DICT数据发送给游戏端口
-    :param data:dict
+    :param data:
     :param max_packet_size:
     :return:
     """
