@@ -7,7 +7,7 @@
     "observation": {
       "people": ["警长"],
       "items": ["铁栏杆", "囚犯服", "拘押室门", "破旧的床铺"],
-      "positions": ["拘押室窗前"]
+      "locations": ["拘押室窗前"]
     },
     "backpack": ["手铐", "50元现金"]
   },
