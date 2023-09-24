@@ -211,6 +211,7 @@ class NPC:
             2.尽量使用第三人称来描述
             3.如果目的达成了一部分，那就去除完成的部分并继续规划
             4.目的要在20字以内。
+            5.目的要从最近记忆中出发。
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
@@ -227,7 +228,7 @@ class NPC:
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}可去的地方:{self.knowledge.places}，
+            {self.name}可去的地方:{self.scene_knowledge.all_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
@@ -242,6 +243,7 @@ class NPC:
             3.如果目的达成了一部分，那就去除完成的部分并继续规划
             4.如果目的不改变，可以返回: [情绪]<S>
             5.目的要在20字以内。
+            6.目的要从最近记忆中出发。
             """
         # 发起请求
         purpose_response: str = self.call_llm(instruct=role_play_instruct, prompt=prompt)
@@ -340,6 +342,94 @@ class NPC:
             <返回内容>:{response}
             <返回行为>:{self.action_result}
                     """)
+        return self.action_result
+
+    # 生成单人2NPC对话
+    async def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
+                               player_state_desc:str,
+                               time: str, k: int = 3) -> Dict[str, Any]:
+        """
+        接受玩家的状态，根据NPC的记忆和目的返回NPC的动作
+            1.按照NPC的目的和观察检索记忆
+            2.将两者的记忆结合目的，构造prompt，返回新的action
+
+        :param player_name:
+        :param player_speech:
+        :param items_visible:
+        :param player_state_desc:
+        :param time:
+        :param k:
+        :return:
+        """
+        """        
+            1.按照NPC目的和NPC观察检索记忆                        
+        """
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
+            self.state.observation.people) + ",".join(
+            self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
+        memory_related_text = [each.text for each in memory_dict["related_memories"]]
+        memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
+        # 按照玩家的问句检索记忆
+        query_text_player: str = player_speech
+        memory_dict_player: Dict[str, Any] = await self.memory.search_memory(query_text=query_text_player, query_game_time=time, k=k)
+        memory_related_text_player = [each.text for each in memory_dict_player["related_memories"]]
+        """
+            2.将两者的记忆结合，构造prompt，返回新的action
+        """
+        # 根据允许动作的预定义模版设置prompt
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
+                         self.action_dict.items()]
+        # 构造prompt请求
+        instruct = f"""
+                    请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
+                    你之前的目的是:{self.purpose},
+                    你的最近记忆:{memory_latest_text},
+                    你脑海中相关记忆:{memory_related_text+memory_related_text_player}，
+                    你现在看到的人:{self.state.observation.people}，
+                    你现在看到的物品:{self.state.observation.items}，
+                    你现在身上的物品:{self.state.backpack}，
+                    你可去的地方:{self.scene_knowledge.all_places}，
+                    你现在看到的地点:{self.state.observation.locations}，
+                    
+                    一个叫{player_name}的人在跟你对话，
+                    其描述为: {player_state_desc},
+                    其身上有{items_visible},
+                    {player_name}说: “{player_speech}”，
+                """
+        prompt = f"""
+                请你根据[行为定义]以及你现在看到的事物生成一个完整的行为，并且按照<动作|对象|参数>的结构返回：
+                行为定义：
+                    {action_prompt}
+                要求:
+                    1.请务必按照以下形式返回动作、对象、参数的三元组以及行为描述："<动作|对象|参数>, 行为的目的描述"
+                    2.动作和参数要在20字以内。
+                    3.动作的对象必须要属于看到的范围！
+                    4.三元组两侧必须要有尖括号<>
+                """
+        # 发起请求
+        response: str = self.call_llm(instruct=instruct, prompt=prompt)
+        # 抽取动作和参数
+        self.action_result: Dict[str, Any] = ActionItem.str2json(response)
+        # 检查action合法性，如不合法那就返回默认动作
+        action_name = self.action_result["action"]
+        if action_name not in self.action_dict.keys():
+            illegal_action = self.action_result
+            self.action_result = {"name": "stand", "object": "", "parameters": []}
+            logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+        # 按照配置文件决定是否分割参数
+        if not self.action_dict[action_name].multi_param:
+            # 如果非多参数，比如对话，那就把参数合并成一个字符串
+            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
+        # 添加npc_name
+        self.action_result["npc_name"] = self.name
+        logger.debug(f"""
+                    <发起2PLAYER_ACTION请求>
+                    <请求内容>:{instruct}
+                    <请求提示>:{prompt}
+                    <返回内容>:{response}
+                    <返回行为>:{self.action_result}
+                            """)
         return self.action_result
 
     def call_llm(self, instruct: str, prompt: str) -> str:
