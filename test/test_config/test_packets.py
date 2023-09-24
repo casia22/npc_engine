@@ -171,7 +171,7 @@ player2npc_packet = {
     "npc_state": {
       "position": "雁栖村入口",
       "observation": {
-              "people": ["囚犯阿呆","警员2"],
+              "people": ["囚犯阿呆","警员2","旅行者小王"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
               "locations": ['牢房', '雁栖村入口']
                     },

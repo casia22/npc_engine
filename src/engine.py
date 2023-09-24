@@ -715,6 +715,82 @@ class NPCEngine:
                         action: {action_packet} 
                         to game""")
 
+    async def talk2npc(self, json_data):
+        """
+        玩家跟NPC进行交流,
+            函数会先将当前player语句放入记忆，然后更新目的，再生成一个action，然后将action发送给游戏端
+            (记忆和purpose 是对动作影响的关键)
+            (action发给game后，自动进入action_done的loop)
+
+        GAME发送过来的数据例子:
+        {
+            "func":"talk2npc",
+            "npc_name":"警员1",
+            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+
+            # NPC的状态
+            "scenario_name": "警察局",
+            "npc_state": {
+              "position": "雁栖村入口",
+              "observation": {
+                      "people": ["囚犯阿呆","警员1","警员2"],
+                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                      "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                            },
+              "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+            },
+            # player的信息
+            "player_name":"旅行者小王",
+            "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",
+            "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],
+            "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",
+        }
+
+        本函数返回给GAME的数据例子:
+        {
+            "name":"action",
+            "npc_name":"王大妈",
+            "action":"chat",
+            "object":"李大爷",
+            "parameters":["你吃饭了没？"],
+        }
+        :param json_data:
+        :return:
+        """
+        # 获得玩家信息
+        player_name = json_data["player_name"]
+        speech_content = json_data["speech_content"]
+        items_visible = json_data["items_visible"]
+        player_state = json_data["state"]
+
+        # 获得NPC的引用
+        npc_name = json_data["npc_name"]
+        npc = self.npc_dict[npc_name]
+        # 更新NPC允许的动作
+        npc.set_known_actions(list(self.action_dict.keys()))
+        # 更新NPC的状态
+        npc.set_state(json_data['npc_state'])
+        npc.set_scenario(scenario=json_data["scenario_name"])
+
+        # 对当前情景进行描述，并存入记忆
+        memory_desc: str = f"{player_name}对{npc.name}说:{speech_content}"
+        await npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
+        # 更新NPC的purpose
+        # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
+        # 生成新的action
+        new_action = await npc.get_npc_response(player_name=player_name, player_speech=speech_content,
+                                                items_visible=items_visible, player_state_desc=player_state,
+                                                time=json_data["time"], k=3)
+        action_packet = new_action
+        action_packet["name"] = "action"
+        # 发送新的action到环境
+        self.send_script(action_packet)
+        logger.debug(f"""[NPC-ENGINE]<talk2npc> 
+                        npc_name: {npc.name}, 
+                        purpose: {npc.purpose} 
+                        action: {action_packet} 
+                        to game""")
+
     def send_script(self, script):
         """
         将script发送给游戏
