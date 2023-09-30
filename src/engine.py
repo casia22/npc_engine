@@ -376,9 +376,7 @@ class NPCEngine:
                                                                                     length = length,
                                                                                     history = history)
             convo.set_stream(stream)
-
-            script = convo.re_generate_script(character, system_prompt, query_prompt)
-            self.send_script(script)
+            convo.re_generate_script(character, system_prompt, query_prompt)
 
     async def get_random_topic(
         self, names: List[str], location: str, states: Dict[str, Dict[str, Any]], language: str
