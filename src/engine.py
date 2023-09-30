@@ -319,6 +319,7 @@ class NPCEngine:
         "player_desc": "是一名老师", # 玩家的个性描述
         "memory_k": 3,
         "length": "X",
+        "stream": True,
         }
 
         location: str = "",
@@ -337,6 +338,7 @@ class NPCEngine:
         player_desc = json_data["player_desc"]
         memory_k = json_data["memory_k"]
         length = json_data["length"]
+        stream = json_data["stream"]
 
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
@@ -373,6 +375,8 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
+            convo.set_stream(stream)
+
             script = convo.re_generate_script(character, system_prompt, query_prompt)
             self.send_script(script)
 

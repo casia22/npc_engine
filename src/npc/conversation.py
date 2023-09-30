@@ -580,6 +580,10 @@ class Conversation:
         )
         send_data(sock = self.engine_sock, target_url = self.game_url, 
                   target_port = self.game_port, data = line)
+    
+    # 重新设置对话的剧本生成模式，流式还是非流式
+    def set_stream(self, stream):
+        self.stream = stream
 
 if __name__ == '__main__':
     con = Conversation(1,2,3,{},{},"","")

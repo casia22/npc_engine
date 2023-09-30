@@ -284,6 +284,7 @@ engine接收到action_done包之后会继续返回action行为包。
     "interruption": "大家好呀，你们刚刚在说什么",  # 玩家插入的说话内容
     "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
     "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+    "stream": True  # 可以选择是否采用流式传输，默认True
 }
 
 ```
