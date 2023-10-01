@@ -32,17 +32,32 @@ poetry install
 pip install -r requirements.txt
 ```
 
-## 📅 项目时间表
+# 🚀 项目进度
 
-以下是我们的项目开发时间表：
+以下是本项目的开发进度：
 
-1. 工程化代码[✅]
-2. 完成测试用例[WIP]
-3. NPC决策[✅]
-4. 添加单人对话[❌]
-5. 完善文档[WIP]
+- [x] 🔨 工程化代码
+- [ ] 🧪 完成测试用例 (进行中)
+- [x] 🤖 NPC决策
+- [ ] 💬 添加单人对话
+- [ ] 📝 完善文档 (进行中)
+- [x] 🗃️ 本地向量数据库
+- [x] 🧠 本地embedding模型
+- [ ] 💡 添加基于embedding搜索的action决策
+- [ ] 🔄 场景切换的大模型功能
 
-请继续关注我们的项目，以获取最新的进展和更新！
+## 🎉 项目里程碑
+
+- 🗓️ 2023年6月: 项目开始，实现对话房间功能
+- 🗓️ 2023年7/8月: 实现NPC action功能
+- 🎈 2023年9月16日: DEMO小镇运行成功，代码初步可用
+
+## 🏆 获得荣誉
+
+- 🥈 2023年8月: 获得国科大创新创业大赛二等奖
+- 🎖️ 2023年9月: 获得面壁智能hackson挑战赛优胜奖
+
+🔔 请持续关注我们的项目，以获取最新的进展和更新！
 
 ## 文档
 
@@ -66,7 +81,6 @@ unity(或其他需要群体AI的应用程序)发送UDP包到引擎8199端口。
         - action\(场景中允许的动作配置文件)
         - npc\(npc描述配置文件)
         - knowledge\(知识、场景配置文件)
-          - game_world.json(基础场景入口配置文件)
           - scenes\(子场景配置文件)
             - xxxx.json(具体场景配置文件)
  
@@ -76,9 +90,9 @@ npc-engine\src\config 存储着NPC人物、场景、动作的配置文件。
 #### 引擎配置
 项目通过“配置文件”+“UDP”包的方式进行交互操作。
 
-init包发送的时候，会读取game_world.json和scene_name.json，然后初始化场景。
-game_world.json中包含了所有场景的入口，scene_name.json中包含了具体场景的配置信息。
-如果init包中指定了npc，那么会在game_world.json+scene_name.json的基础上添加npc。
+init包发送的时候，会读取scene_name.json，然后初始化场景。
+scene_name.json中包含了具体场景的配置信息。
+如果init包中指定了npc，那么会在scene_name.json的基础上添加npc。
 
 注意每个场景都要求action.json和npc.json，如果不存在指定npc就会报错。
 
@@ -98,7 +112,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
 {
     "func":"init",
     # 必填字段，代表在什么场景初始化
-    "scene":"default_village",
+    "scene_name":"雁栖村",
     "language":"E" or "C",
     # 下面是🉑️选
     "npc":[
@@ -131,7 +145,7 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
                        },
         "mood":"焦急",
         "memory":[ ]
-        }], # 可以留空，默认按照game_world.json+scene.json初始化场景NPC。非空则在之前基础上添加。
+        }], # 可以留空，默认按照gscene.json初始化场景NPC。非空则在之前基础上添加。
 }
 # 引擎关闭的包
 {
@@ -150,9 +164,10 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func":"wake_up",
     "npc_name": "王大妈",
-
+  
+    "scenario_name": "李大爷家", 
     "npc_state": {
-      "position": "李大爷家",
+      "position": "李大爷家卧室",
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -170,9 +185,10 @@ engine接收到action_done包之后会继续返回action行为包。
     "npc_name":"王大妈",
     "status": "success",
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
-
+  
+    "scenario_name": "李大爷家", 
     "npc_state": {
-      "position": "李大爷家",
+      "position": "李大爷家卧室",
       "observation": {
               "people": ["李大爷", "村长", "李飞飞"],
               "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
@@ -209,7 +225,9 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func": "create_conversation",
     "npc": ["王大妈","李大爷"],
-    "location": "李大爷家",
+
+    "scenario_name": "李大爷家",        
+    "location": "李大爷家卧室",
     "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
     "npc_states": [
                 {

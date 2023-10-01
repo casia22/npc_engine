@@ -15,7 +15,7 @@ import time,os
 
 from npc_engine.src.engine import NPCEngine
 from npc_engine.src.config.config import FILE_HANDLER, CONSOLE_HANDLER, PROJECT_ROOT_PATH
-from test_config.test_packets import init_packet, wakeup_packet_1, wakeup_packet_2, wakeup_packet_3, \
+from npc_engine.test.test_config.test_packets import init_packet, wakeup_packet_1, wakeup_packet_2, wakeup_packet_3, \
                                      action_done_packet_1,action_done_packet_2
 
 
@@ -101,7 +101,6 @@ def test_action_done():
     send_data(action_done_packet_2)
     print(action_done_packet_2)
     print("all done")
-
 
 def test_wake_up():
     """

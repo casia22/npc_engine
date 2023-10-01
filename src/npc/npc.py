@@ -3,18 +3,15 @@ import logging
 import socket
 from typing import List, Dict, Any, Tuple
 import pickle
-import openai
-# import zhipuai
 import re, os, datetime
 
 from npc_engine.src.npc.memory import NPCMemory
+from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.npc.action import ActionItem
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
+from npc_engine.src.utils.model_api import get_model_answer
 
-# zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
-openai.api_key = OPENAI_KEY
-openai.api_base = OPENAI_BASE
 
 # LOGGER配置
 logger = logging.getLogger("NPC")
@@ -24,7 +21,10 @@ logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
 
 # npc的宽泛知识
-class Knowledge:
+class PersonalKnowledge:
+    """
+    本质只是存储当前的个体的认知记忆，和public区分开
+    """
     def __init__(self, actions: List[str], places: List[str], people: List[str], moods: List[str]):
         self.actions = actions
         self.places = places
@@ -56,6 +56,7 @@ class State:
                     "items": self.items,
                     "locations": self.locations
                 }
+
 
 
     def __str__(self):
@@ -90,7 +91,8 @@ class NPC:
             self,
             name: str,
             desc: str,
-            knowledge: Dict[str, Any],
+            public_knowledge: PublicKnowledge,
+            scenario_name: str,
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
             embedding_model: BaseEmbeddingModel,
@@ -98,20 +100,16 @@ class NPC:
             memory: List[str] = [],
             memory_k: int = 3,
             model: str = OPENAI_MODEL,
-        ) -> None:
+    ) -> None:
+
         # model
         self.model: str = model
-        self.embedding_model = embedding_model
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
         # NPC的常识
-        self.knowledge = Knowledge(
-            actions=knowledge['actions'],
-            places=knowledge['places'],
-            people=knowledge['people'],
-            moods=knowledge['moods']
-        )
+        self.public_knowledge = public_knowledge
+        self.scene_knowledge: SceneConfig = public_knowledge.get_scene(scene_name=scenario_name)
         # NPC的状态
         self.state = State(
             position=state['position'],
@@ -120,24 +118,25 @@ class NPC:
             ob_items=state['ob_items'],
             ob_locations=state['ob_locations']
         )
+        self.scenario = scenario_name
         # 为了和engine的action_dict保持一致，把输出的action结果改成了action_result
         self.action_dict = action_dict
         self.action_result = {}
         self.mood: str = mood
         self.purpose: str = ""
         # NPC的记忆
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k, embedding_model=self.embedding_model)
-        self.memory.touch_memory()
+        self.embedding_model = embedding_model
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k,EmbeddingModel=self.embedding_model)
 
         ####################### 先清空现有VB #######################
         self.memory.clear_memory()
+        self.initial_memory = memory
         ################# 等到记忆添加实现闭环时删除 #################
 
-        # 将初始化的记忆内容加入到memory中
-        if len(memory) > 0:
-            for piece in memory:
-                self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
-                logger.debug(f"add memory {piece} into npc {self.name} done.")
+    async def async_init(self):
+        for piece in self.initial_memory:
+            await self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
+            logger.debug(f"add memory {piece} into npc {self.name} done.")
 
     def set_state(self, state: Dict[str, Any]) -> None:
         self.state = State(
@@ -159,13 +158,23 @@ class NPC:
         )
 
     def set_known_actions(self, actions: List[str]) -> None:
-        self.knowledge.actions = actions
+        self.scene_knowledge.actions = actions
 
     def set_action_dict(self, action_dict):
         self.action_dict = action_dict
 
     def set_location(self, location: str) -> None:
         self.state.position = location
+
+    def set_scenario(self, scenario: str) -> None:
+        """
+        更新场景属性，更新场景knowledge
+        :param scenario:
+        :return:
+        """
+        self.scenario = scenario
+        self.scene_knowledge = self.public_knowledge.get_scene(scene_name=scenario)
+        logger.debug(f"NPC:{self.name} 已经切换到了 {self.scenario} 场景")
 
     def set_mood(self, mood: str) -> None:
         self.mood = mood
@@ -183,20 +192,20 @@ class NPC:
             # 如果没有目的，那就参照最近记忆
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
-            可有的心情是{self.knowledge.moods}，
+            可有的心情是{self.scene_knowledge.all_moods}，
             当前心情是{self.mood}，正在{self.state.position}，现在时间是{time},
             最近记忆:{[item.text for item in list(self.memory.latest_k.queue)]},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
             {self.name}现在身上的物品:{self.state.backpack}，
-            {self.name}可去的地方:{self.knowledge.places}，
+            {self.name}可去的地方:{self.scene_knowledge.all_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.knowledge.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
-            例2：[{self.knowledge.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.knowledge.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
+            例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
+            例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
+            例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
             要求：
             1.按照[情绪]<目的>的方式来返回内容
             2.尽量使用第三人称来描述
@@ -206,13 +215,13 @@ class NPC:
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
             memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
-            memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
-            memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
+            memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
+            memory_related_text = [each.text for each in memory_dict["related_memories"]]
 
             # 结合最近记忆和相关记忆来生成目的
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
-            可有的心情是{self.knowledge.moods}，
+            可有的心情是{self.scene_knowledge.all_moods}，
             心情是{self.mood}，正在{self.state.position}，现在时间是{time},
             {self.name}的最近记忆:{memory_latest_text}，
             {self.name}脑海中相关记忆:{memory_related_text}，
@@ -224,9 +233,9 @@ class NPC:
             """
             prompt = f"""
             请你为{self.name}生成一个目的，以下是例子：
-            例1：[{self.knowledge.moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXXXXXX。>
-            例2：[{self.knowledge.moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-            例3：[{self.knowledge.moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
+            例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXXXXXX。>
+            例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
+            例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
             要求：
             1.按照[情绪]<目的>的方式来返回内容
             2.尽量使用第三人称来描述
@@ -279,23 +288,22 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        # todo [bug]似乎是pinecone数据库中存储的李大爷的记忆有问题
         query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.locations) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
-        memory_related_text = "\n".join([each.text for each in memory_dict["related_memories"]])
-        memory_latest_text = "\n".join([each.text for each in memory_dict["latest_memories"]])
+        memory_related_text = [each.text for each in memory_dict["related_memories"]]
+        memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
 
         # 根据允许动作的预定义模版设置prompt
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict.items()]
         # 构造prompt请求
         instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
-            你的最近记忆:{memory_latest_text}，
+            你的最近记忆:{memory_latest_text}
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
             你现在身上的物品:{self.state.backpack}，
-            你可去的地方:{self.knowledge.places}，
+            你可去的地方:{self.scene_knowledge.all_places}，
             你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
@@ -326,11 +334,11 @@ class NPC:
         # 添加npc_name
         self.action_result["npc_name"] = self.name
         logger.debug(f"""
-                    <发起ACTION请求>
-                    <请求内容>:{instruct}
-                    <请求提示>:{prompt}
-                    <返回内容>:{response}
-                    <返回行为>:{self.action_result}
+            <发起ACTION请求>
+            <请求内容>:{instruct}
+            <请求提示>:{prompt}
+            <返回内容>:{response}
+            <返回行为>:{self.action_result}
                     """)
         return self.action_result
 
@@ -342,9 +350,8 @@ class NPC:
                 "role": "user",
                 "content": prompt}
         ]
-        response = openai.ChatCompletion.create(model=self.model, messages=llm_prompt_list)
-        words = response["choices"][0]["message"]["content"].strip()
-        return words
+        answer = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=llm_prompt_list)
+        return answer
 
     def save_memory(self):
         """

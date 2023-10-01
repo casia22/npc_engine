@@ -15,10 +15,9 @@ import openai
 #import zhipuai
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER)
+from npc_engine.src.utils.model_api import get_model_answer
 from npc_engine.src.utils.send_utils import send_data
 
-openai.api_key = OPENAI_KEY
-openai.api_base = OPENAI_BASE
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
 
@@ -55,14 +54,16 @@ class Conversation:
     (1) generate_script() 在Conversation对象刚开始创建的时候会调用的生成初始剧本的方法，
     (2) re_generate_script() 在有新Agent加入或者玩家插话的时候调用的方法，续写剧本
     (3) set_topic() 重新设定新的主题，根据新主题续写剧本
-    (4) set_location() 重新设定新的地点，对剧本内容改动不是很大
-    (5) release() 强制让Conversation释放对某角色的占用权限
-    (6) close() 清空对象的所有数据
+    (4) set_requirements() 重新设定剧本生成的约束或者要求
+    (5) set_location() 重新设定新的地点，对剧本内容改动不是很大
+    (6) release() 强制让Conversation释放对某角色的占用权限
+    (7) close() 清空对象的所有数据
     """
     def __init__(
         self,
         names: List[str],
         location: str,
+        scenario_name: str,
         topic: str,
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
@@ -79,6 +80,7 @@ class Conversation:
         # 对话创建关键信息：角色名称、地点、系统提示词、查询提示词、中/英、大模型类型
         self.names: List[str] = names
         self.location: str = location
+        self.scenario_name: str = scenario_name
         self.topic: str = topic
         self.language: str = language
         self.model: str = model
