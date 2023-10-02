@@ -73,7 +73,7 @@ pip install -r requirements.txt
 · 引擎启动后，游戏端按照相应功能的数据包格式组织数据并从8084端口发送“请求包”到8199端口。
 · 引擎端在接收游戏端的功能请求后，会进行相应信息处理与打包，并从8199端口发送“回复包”到8084端口。
 · 游戏端收、发包代码示例（以Unity为例）：
-```C#
+```bash
 private void SendData(object data)
 {
     string json = JsonUtility.ToJson(data);
