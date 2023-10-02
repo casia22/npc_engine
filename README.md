@@ -61,7 +61,7 @@ pip install -r requirements.txt
 
 ## 使用说明
 
-### 引擎的启动、交互、结束
+### 引擎的启动、交互、关闭
 
 #### 引擎启动
 引擎可以使用对应平台的**运行脚本**(windows下是.bat)或者手动使用**python src/engine.py**运行。
@@ -77,19 +77,18 @@ pip install -r requirements.txt
 ```bash
 private void SendData(object data)
 {
-    string json = JsonUtility.ToJson(data);
-    UnityEngine.Debug.Log($"Packet sent: {json}");
-    json = $"@1@1@{json}";
-    byte[] bytes = Encoding.UTF8.GetBytes(json);
-    this.sock.Send(bytes, bytes.Length, this.targetUrl, this.targetPort);
+    string json = JsonUtility.ToJson(data);  // 提取数据data中的字符串信息
+    UnityEngine.Debug.Log($"Packet sent: {json}");  // 生成日志记录
+    json = $"@1@1@{json}";  // 左添加头信息
+    byte[] bytes = Encoding.UTF8.GetBytes(json);  // 对字符串数据编码
+    this.sock.Send(bytes, bytes.Length, this.targetUrl, this.targetPort);  // 通过socket向目标端口发送数据包
 }
 ```
 
-#### 引擎结束
+#### 引擎关闭
+游戏端通过发送“close”功能数据包给引擎端来请求关闭引擎（详见下文）。
 
-
-
-#### 项目结构与引擎配置
+### 项目结构与引擎配置
 #### 项目结构
 - python_lib(依赖库)
 - code
