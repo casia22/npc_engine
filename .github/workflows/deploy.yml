@@ -23,11 +23,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install mkdocs
 
+    - name: Set up Git LFS
+      run: |
+        git lfs install
+
     - name: Build docs
       run: |
         cd doc/
         mkdocs build --clean
-        
+
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@4.1.5
       with:
