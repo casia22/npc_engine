@@ -68,8 +68,8 @@ pip install -r requirements.txt
 
 #### 引擎交互
 
--在引擎端运行前，游戏端可以在默认文件夹中撰写有关“动作”、“角色”以及“场景”的配置文件来为引擎端提供初始化数据（详情请见《配置文档》）。
--在引擎端运行期间，游戏端可以用UDP数据包传送和接收的方式进行信息请求：
+-在引擎端运行前，游戏端可以在默认文件夹中撰写有关“动作”、“角色”以及“场景”的配置文件来为引擎端提供初始化数据（详情请见《配置文档》），配置文件会在引擎端运行期间自主更新。
+-在引擎端运行期间，游戏端可以通过UDP数据包传送和接收的方式进行信息交互：
  - 引擎端默认在8199端口监听游戏端并发送数据包；游戏端默认在8084端口监听引擎端并发送数据包
  - 引擎启动后，游戏端按照相应功能的数据包格式组织数据并从8084端口发送“请求包”到8199端口。
  - 引擎端在接收游戏端的功能请求后，会进行相应信息处理与打包，并从8199端口发送“回复包”到8084端口。
@@ -93,7 +93,7 @@ private void SendData(object data)
 
 #### 配置文件结构
 - python_lib(依赖库)
-- code
+- code(项目代码)
   - npc-engine\
     - logs\(运行日志)
     - src\(源代码)
@@ -109,9 +109,20 @@ private void SendData(object data)
             - lake.json(自定义第一个具体场景的配置文件)
             - ...
 
-release中code存储项目代码，python_lib存储python依赖库。
-npc-engine\logs 存储着每次运行的日志文件
-npc-engine\src\config 存储着NPC人物、场景、动作的配置文件。
+#### 配置示例
+-\action\chat.json
+'''bash
+{
+  "name": "chat",
+  "definition": "<chat|person|content>，以扮演的角色身份对[person]说话，内容是[content]",
+  "multi_param": false,
+  "example": "<chat|人名A|早上好！>或<chat|人名B|好久不见，最近你去哪里了>等",
+  "log_template":{
+    "success": "{npc_name}对{object}说：{parameters}",
+    "fail": "{npc_name}试图与{object}对话，但是失败了. 原因是{reason}"
+  }
+}
+'''
 #### 引擎配置
 项目通过“配置文件”+“UDP”包的方式进行交互操作。
 
