@@ -32,6 +32,11 @@ jobs:
       run: |
         git lfs uninstall
         
+    - name: Set Git Identity
+      run: |
+        git config user.email "370025263@qq.com"
+        git config user.name "370025263"
+        
     - name: Commit untracked files
       run: |
         git add --all
