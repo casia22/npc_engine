@@ -6,7 +6,10 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 ![Pylint Badge](./material/badges/pylint.svg)
 ![Pytest Badge](./material/badges/pytest.svg)
 
-## 📦 安装
+## 📦 用户安装
+本项目免安装，直接在发行版中运行start_engine.bat脚本就可以
+
+## 📦 开发者安装
 本项目可以通过两种方式安装依赖，使用 Poetry 或者使用 pip。
 
 ### 使用 Poetry
