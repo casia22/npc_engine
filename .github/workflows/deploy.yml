@@ -24,7 +24,9 @@ jobs:
         pip install mkdocs
 
     - name: Build docs
-      run: mkdocs build --clean
+      run: |
+        cd doc/
+        mkdocs build --clean
 
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@4.1.5
