@@ -23,13 +23,15 @@ jobs:
           pip install mkdocs
 
       - name: Build site
-        run: mkdocs build --verbose --clean --strict
-
+        run: | 
+          cd doc/
+          mkdocs build --verbose --clean --strict
+          
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+          publish_dir: ./doc/site
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           publish_branch: gh-pages
