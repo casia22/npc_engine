@@ -194,7 +194,7 @@ NPC_MEMORY_CONFIG = {
     "hf_dim": HF_EMBEDDING_SBERT_CHINESE["dim"],
     "hf_api_url": HF_EMBEDDING_SBERT_CHINESE["hf_url"],
     "hf_headers": {"Authorization": f"Bearer {HF_TOKEN}"},
-    "hf_embedding_online": True,  # 默认离线推理模型
+    "hf_embedding_online": False,  # 默认离线推理模型
     # db
     "db_dir": "./npc_memory.db",
 }

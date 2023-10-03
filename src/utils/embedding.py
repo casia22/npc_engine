@@ -4,7 +4,7 @@
 import os
 import logging
 import requests
-#from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 from typing import Any, Dict, List
 
 from npc_engine.src.config.config import MODEL_BASE_PATH,CONSOLE_HANDLER,FILE_HANDLER,NPC_MEMORY_CONFIG

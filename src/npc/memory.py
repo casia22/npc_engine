@@ -10,7 +10,7 @@ import asyncio
 from typing import Any, Dict, List
 
 import numpy as np
-import pinecone
+#import pinecone
 import requests
 import logging
 

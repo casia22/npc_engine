@@ -19,7 +19,7 @@ nest_asyncio.apply()
 
 import colorama
 import openai
-import zhipuai
+#import zhipuai
 
 # 这部分代码保证项目能被python解释器搜索到
 from pathlib import Path
@@ -38,11 +38,10 @@ colorama.init()
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
                                           CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
-#from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
-from npc_engine.src.utils.embedding import HuggingFaceEmbedding
+from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
 # key配置
-zhipuai.api_key = ZHIPU_KEY
+#zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
 openai.api_base = OPENAI_BASE
 
@@ -125,14 +124,14 @@ class NPCEngine:
             self.embedding_model = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         else:
             logger.info("using local embedding model")
-            #self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+            self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         # 上面👆的embedding_model
         self.public_knowledge = PublicKnowledge()
 
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
-    def listen(self, buffer_size=40000):
+    def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:

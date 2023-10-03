@@ -225,7 +225,6 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func": "create_conversation",
     "npc": ["王大妈","李大爷"],
-
     "scenario_name": "李大爷家",        
     "location": "李大爷家卧室",
     "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
