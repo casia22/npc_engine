@@ -9,7 +9,8 @@ build/
 npc_memory/*
 
 # material
-material/models/embedding/*
+# 以LFS的方式存储bin参数文件
+# material/models/embedding/*
 
 yzj*
 dist/code/*
