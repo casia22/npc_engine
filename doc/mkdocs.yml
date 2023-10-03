@@ -1,1 +1,15 @@
-site_name: CodeMatrix
+site_name: CogniMatrix NPC Engine
+repo_url: https://github.com/casia22/npc_engine.github.io/
+repo_name: casia22/npc_engine.github.io
+nav:
+  - Home: index.md
+  - Tutorial:
+    - Quickstart: tutorials/quickstart.md
+    - 1 - NPC Configuration: tutorials/npc.md
+    - 2 - Scenario Configuration: tutorials/scenario.md
+    - 3 - Action Configuration: tutorials/action.md
+    - 4 - Debugging: tutorials/debug.md
+  - Modules:
+     - Conversation Module: modules/conversation.md
+     - Action Module: modules/action.md
+  - Feedback: feedback.md
