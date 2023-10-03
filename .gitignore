@@ -38,7 +38,6 @@ src/data/*.db
 .pyarmor
 .idea
 
-.github
 
 test/.pytest_cache/
 
