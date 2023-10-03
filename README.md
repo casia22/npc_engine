@@ -73,19 +73,61 @@ pip install -r requirements.txt
  - 引擎端默认在8199端口监听游戏端并发送数据包；游戏端默认在8084端口监听引擎端并发送数据包
  - 引擎启动后，游戏端按照相应功能的数据包格式组织数据并从8084端口发送“请求包”到8199端口（详情请见《UDP数据包》）。
  - 引擎端在接收游戏端的功能请求后，会进行相应信息处理与打包，并从8199端口发送“回复包”到8084端口。
- - 游戏端收、发包代码示例（以Unity为例）：
-
-```bash
+ - 游戏端发送包代码示例（以Unity为例）：
+```C#
 private void SendData(object data)
 {
     string json = JsonUtility.ToJson(data);  // 提取数据data中的字符串信息
-    UnityEngine.Debug.Log($"Packet sent: {json}");  // 生成日志记录
     json = $"@1@1@{json}";  // 左添加头信息
     byte[] bytes = Encoding.UTF8.GetBytes(json);  // 对字符串数据编码
     this.sock.Send(bytes, bytes.Length, this.targetUrl, this.targetPort);  // 通过socket向目标端口发送数据包
 }
 ```
+ - 游戏端接收数据包并组装的代码示例（以Unity为例）：
+```C#
+this.listenThread = new Thread(Listen);
+this.listenThread.Start();
+this.thread_stop = false;
 
+//接收包
+public void Listen()
+{
+    IPEndPoint localEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, this.listenPort);
+    this.sock.Client.Bind(localEndPoint);
+
+    string receivedData = "";  # 初始化receivedData用于整合接收到的字符串
+    while (!this.thread_stop)   // 持续监听引擎端发送的数据包
+    {
+        byte[] data = this.sock.Receive(ref localEndPoint);   // 接收到数据包
+        string packet = Encoding.UTF8.GetString(data); // 将接收到的数据包转化为字符串
+        string[] parts = packet.Split('@');  // 将字符串按照@字符进行分段并得到片段序列
+        string lastPart = parts[parts.Length - 1];  // 片段序列中的最后一段对应引擎端要传送的具体内容
+        receivedData+=lastPart;  // 将内容拼接到ReceivedData后面
+        if (receivedData.EndsWith("}")) //多包机制下，此为收到最后一个包
+        {
+            //接下来对整合好的ReceivedData做下列分支判断和后处理
+            if (receivedData.Contains("\"inited")) // 如果有inited字段
+            {
+                num_initialized += 1;
+                UnityEngine.Debug.Log($"Successful initialization. {num_initialized}");
+
+            }else if (receivedData.Contains("\"conversation")) // 如果有conversation字段
+            {
+                ReceiveConvFormat json_data = JsonUtility.FromJson<ReceiveConvFormat>(receivedData);
+                UnityEngine.Debug.Log($"Get Conversation.{JsonUtility.ToJson(json_data)}");
+                receivedConvs.Add(json_data); flag_ConvReceived = true;
+
+            }else if (receivedData.Contains("\"action"))  // 如果有action字段
+            {
+                FullActionFormat json_data = JsonUtility.FromJson<FullActionFormat>(receivedData);
+                UnityEngine.Debug.Log($"Get Action. {JsonUtility.ToJson(json_data)}");
+                receivedActions.Add(json_data); flag_ActReceived = true;
+            }
+            receivedData = ""; //收到最后一个包，重置收到的内容
+        }
+    }
+}
+```
 #### 引擎关闭
 游戏端通过发送“close”功能数据包给引擎端来请求关闭引擎（详见下文）。
 
@@ -111,7 +153,7 @@ private void SendData(object data)
 
 #### 配置示例（python）
 -\action\chat.json
-```bash
+```python
 {
   "name": "chat",   # 动作名称
   "definition": "<chat|person|content>，以扮演的角色身份对[person]说话，内容是[content]",  # 动作格式化模板
@@ -124,7 +166,7 @@ private void SendData(object data)
 }
 ```
 -\npc\村长.json
-```bash
+```python
 {
     "name": "村长",  # 角色姓名
     "desc": "村长有着浓密的白色胡须，出生于1940年，喜欢抽中华烟，他白天会在瓜田工作，晚上会在广场上遛弯，如果遇到矛盾他会主持调节，太晚了的时候就会回家睡觉。村长最喜欢吃西瓜。",  # 角色描述，一般包含外貌、出生日期、兴趣爱好、生活习惯等
@@ -171,7 +213,7 @@ private void SendData(object data)
 }
 ```
 -\knowledge\scenes\警察局.json
-```bash
+```python
 {
  "all_actions": ["mov", "get", "put", "use"],   # 场景中可支持的动作类型
  "all_places": ["牢房", "雁栖村入口"],   # 场景中的子地点
