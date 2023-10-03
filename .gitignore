@@ -12,6 +12,9 @@ npc_memory/*
 # 以LFS的方式存储bin参数文件
 # material/models/embedding/*
 
+# documentation
+doc/site
+
 yzj*
 dist/code/*
 dist/release/windows_ver/code/*
