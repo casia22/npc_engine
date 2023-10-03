@@ -99,30 +99,87 @@ private void SendData(object data)
     - src\(源代码)
       - config\(配置文件)
         - action\(场景中允许的动作配置文件)
-          - move.json\(自定义第一个动作的配置文件)
+          - chat.json\(自定义第一个动作的配置文件)
           - ...
         - npc\(npc描述配置文件)
-          - Tony.json\(自定义第一个角色的配置文件)
+          - 村长.json\(自定义第一个角色的配置文件)
           - ...
         - knowledge\(知识、场景配置文件)
           - scenes\(子场景配置文件)
-            - lake.json(自定义第一个具体场景的配置文件)
+            - 警察局.json(自定义第一个具体场景的配置文件)
             - ...
 
-#### 配置示例
+#### 配置示例（python）
 -\action\chat.json
-'''bash
+```bash
 {
-  "name": "chat",
-  "definition": "<chat|person|content>，以扮演的角色身份对[person]说话，内容是[content]",
-  "multi_param": false,
-  "example": "<chat|人名A|早上好！>或<chat|人名B|好久不见，最近你去哪里了>等",
-  "log_template":{
-    "success": "{npc_name}对{object}说：{parameters}",
-    "fail": "{npc_name}试图与{object}对话，但是失败了. 原因是{reason}"
+  "name": "chat",   # 动作名称
+  "definition": "<chat|person|content>，以扮演的角色身份对[person]说话，内容是[content]",  # 动作格式化模板
+  "multi_param": false,  # 是否需要多个输入参数
+  "example": "<chat|人名A|早上好！>或<chat|人名B|好久不见，最近你去哪里了>等",  # 根据动作格式化模板写的例子
+  "log_template":{ 
+    "success": "{npc_name}对{object}说：{parameters}",  # 如果动作执行成功则生成该描述信息
+    "fail": "{npc_name}试图与{object}对话，但是失败了. 原因是{reason}"  # 如果动作执行失败则生成该描述信息
   }
 }
-'''
+```
+-\npc\村长.json
+```bash
+{
+    "name": "村长",  # 角色姓名
+    "desc": "村长有着浓密的白色胡须，出生于1940年，喜欢抽中华烟，他白天会在瓜田工作，晚上会在广场上遛弯，如果遇到矛盾他会主持调节，太晚了的时候就会回家睡觉。村长最喜欢吃西瓜。",  # 角色描述，一般包含外貌、出生日期、兴趣爱好、生活习惯等
+    "mood": "开心",   # 当前的角色情绪
+    "npc_state": {   # 角色当前状态
+        "position": "李大爷家",   # 角色所在位置
+        "observation": {   # 角色观测到的信息
+            "people": [   # 角色观测到的人
+                "王大妈",
+                "村长",
+                "隐形李飞飞"
+            ],
+            "items": [   # 角色观测到的物体
+                "椅子#1",
+                "椅子#2",
+                "椅子#3[李大爷占用]",
+                "床[包括:被子、枕头、床单、床垫、私房钱]"
+            ],
+            "locations": [   # 角色观测到的地点
+                "李大爷家大门",
+                "李大爷家后门",
+                "李大爷家院子"
+            ]
+        },
+        "backpack": [   # 角色随身携带的物体
+            "中华烟[剩余4根]",
+            "1000元",
+            "吃了一半的西瓜"
+        ]
+    },
+    "memory": [   # 角色的记忆，一般按照时间顺序列举
+        "11年前由于对村子做出巨大贡献被村民们推举为新一任村长。",
+        "9年前调节某村民婚礼期间发生的纠纷。",
+        "7年前管理的村子被评为十佳美丽乡村。"
+    ],
+    "purpose": "村长想去广场散步，因为他喜欢晚上在广场上遛弯，享受清新的空气和宁静的夜晚。",   # 角色当前的意图，一般指短期意图
+    "action": {   # 角色当前执行的动作
+        "action": "mov",
+        "object": "广场",
+        "parameters": "",
+        "npc_name": "村长",
+        "name": "action"
+    }
+}
+```
+-\knowledge\scenes\警察局.json
+```bash
+{
+ "all_actions": ["mov", "get", "put", "use"],
+ "all_places": ["牢房", "雁栖村入口"],
+ "all_moods": ["正常", "焦急", "严肃", "开心", "伤心"],
+ "all_people": ["囚犯阿呆","警员1","警员2"]
+ }
+
+```
 #### 引擎配置
 项目通过“配置文件”+“UDP”包的方式进行交互操作。
 
