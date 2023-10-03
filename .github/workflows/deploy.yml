@@ -31,7 +31,11 @@ jobs:
     - name: Disable Git LFS
       run: |
         git lfs uninstall
-
+        
+    - name: Clean untracked files
+      run: |
+        git clean -f -d
+        
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@4.1.5
       with:
