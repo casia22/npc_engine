@@ -5,6 +5,8 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 ![Author Badge](https://img.shields.io/badge/author-CogniMatrix-blue)
 ![Pylint Badge](./material/badges/pylint.svg)
 ![Pytest Badge](./material/badges/pytest.svg)
+[![Documentation](https://img.shields.io/badge/Documentation-Available-blue)](https://docs.cognimatrix.games/npc_engine_doc/)
+[![Discord Chat](https://img.shields.io/badge/Discord-Chat-blue)](https://discord.com/channels/1159008679308308480/1159008679308308483)
 
 ## 📦 用户安装
 本项目免安装，直接在发行版中运行start_engine.bat脚本就可以
@@ -58,7 +60,7 @@ pip install -r requirements.txt
 ### 🏆 获得荣誉
 
 - 🥈 2023年8月: 获得国科大创新创业大赛二等奖
-- 🎖️ 2023年9月: 获得面壁智能hackson挑战赛优胜奖
+- 🎖️ 2023年9月: 获得面壁智能hackthon挑战赛优胜奖
 
 🔔 请持续关注我们的项目，以获取最新的进展和更新！
 
