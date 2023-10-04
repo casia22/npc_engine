@@ -131,7 +131,7 @@ class NPCEngine:
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
-    def listen(self, buffer_size=400000):
+    def listen(self, buffer_size=4000000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
@@ -511,6 +511,7 @@ class NPCEngine:
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
         # 按照GAME回传的init包中的npc字段，添加新的NPC
+        additional_npc = []  # 由init数据包设置的新NPC
         if "npc" in json_data:
             for npc_data in json_data["npc"]:
                 # 如果已经存在NPC在内存中，则依然从UDP参数覆盖(UDP参数我们认为有更高的优先级)
@@ -535,11 +536,12 @@ class NPCEngine:
                 )
                 await npc.async_init()
                 self.npc_dict[npc.name] = npc
+                additional_npc.append(npc.name)
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
         # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
-        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + [npc.name for npc in self.npc_dict.values()])))
-        logger.debug(f"knowledge update done，people:{self.public_knowledge.get_people(scenario_name=scene_name)}，"
-                     f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in self.public_knowledge.get_people(scenario_name=scene_name)]}")
+        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
+        logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
+                     f"appended npc:{[npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]}")
 
         # language
         self.language = json_data["language"]

@@ -37,43 +37,15 @@ def test_engine_init_memory():
     """
     测试引擎初始化
     向引擎发送初始化包，检查引擎是否正确初始化
-    初始化包例：
-         {"func":"init",
-                # 必填字段，代表在什么场景初始化
-                "scene":"default_village",
-                "language":"E" or "C"
-                # 下面是🉑️选
-                "npc":[
-                    {"name":"李大爷",
-                    "desc":"是个好人",
-                    "mood":"正常",
-                    "position":"李大爷家",
-                    "memory":[ ]},
-
-                    {"name":"王大妈",
-                    "desc":"是个好人",
-                    "mood":"焦急",
-                    "position":"王大妈家",
-                    "memory":[ ]}
-                      ], # 可以留空，默认按照game_world.json+scene初始化场景NPC。非空则在之前基础上添加。
-        }
-    :return:
     """
 
     # 初始化包
     pack1 = {"func":"init",
                 # 必填字段，代表在什么场景初始化
-                "scene_name": "李大爷家",
+                "scene_name": "酒吧",
                 "language": "C",
                 # 下面是🉑️选
-                "npc": []
-                    #{"name":"超级史莱姆",
-                    #"desc":"喜欢吃人",
-                    #"mood":"愤怒",
-                    #"location": "村口",
-                    #"memory":["20年前吃了两只小狗","15年前吃了三只小猫","9年前吃了三个小孩","6年前吃了两个老人","1年前吃了一家五口人"]}
-                    #  ]
-        }
+                "npc": []}
     # 发送初始化包到引擎
     print("sending for init")
     send_data(pack1)
