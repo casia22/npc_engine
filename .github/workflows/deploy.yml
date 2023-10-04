@@ -1,35 +1,37 @@
-name: Deploy Docs
+name: Deploy MkDocs
 
 on:
   push:
     branches:
-      - main
+      - main  # 或者你的默认分支
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install mkdocs
-
-    - name: Build docs
-      run: mkdocs build --clean
-
-    - name: Deploy to GitHub Pages
-      uses: JamesIves/github-pages-deploy-action@4.1.5
-      with:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        BRANCH: gh-pages # The branch the action should deploy to.
-        FOLDER: docs/site # The folder the action should deploy.
-        REPOSITORY: casia22/npc_engine.github.io # The repository the action should deploy to.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs
+      - name: Build site
+        run: | 
+          cd doc/
+          mkdocs build --verbose --clean
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          publish_dir: ./doc/site
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          publish_branch: gh-pages
+          external_repository: casia22/npc_engine_doc
