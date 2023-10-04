@@ -1,18 +1,35 @@
-## 使用说明
 
-### 引擎的启动、交互、关闭
+## 📜引擎使用说明
 
-#### 引擎启动
+### npc_engine的开发流程
+
+- 撰写配置文件(NPC, Action, Scenario)
+- 启动引擎
+- 游戏端发送UDP请求包并处理返回结果
+- 关闭引擎
+
+### 引擎的配置、启动、交互、关闭
+
+#### 引擎配置
+在使用之前，开发者需要更新维护引擎的配置文件，配置文件位于**npc_engine/Config**文件夹中，包括：
+
+- OpenAI API的配置文件: src/config/openai_config.json 
+- 动作配置文件: src/config/action/your_action_XXX.json
+- NPC配置文件: src/config/npc/your_npc_nameXXX.json
+- 场景配置文件: src/config/knowledge/scenes/your_scenario_nameXXX.json
+
+## 引擎启动
 引擎可以使用对应平台的**运行脚本**(windows下是.bat)或者手动使用**python src/engine.py**运行。
 
-#### 引擎交互
+## 引擎交互
+引擎端和游戏端通过UDP数据包按照[UDP数据包格式](#配置示例)进行交互，引擎端默认在8199端口监听游戏端数据包，游戏端默认在8084端口监听引擎端数据包。
 
--在引擎端运行前，游戏端可以在默认文件夹中撰写有关“动作”、“角色”以及“场景”的配置文件来为引擎端提供初始化数据（详情请见《配置文档》），配置文件会在引擎端运行期间自主更新。
--在引擎端运行期间，游戏端可以通过UDP数据包传送和接收的方式进行信息交互（）：
- - 引擎端默认在8199端口监听游戏端并发送数据包；游戏端默认在8084端口监听引擎端并发送数据包
- - 引擎启动后，游戏端按照相应功能的数据包格式组织数据并从8084端口发送“请求包”到8199端口（详情请见《UDP数据包》）。
- - 引擎端在接收游戏端的功能请求后，会进行相应信息处理与打包，并从8199端口发送“回复包”到8084端口。
- - 游戏端发送包代码示例（以Unity为例）：
+- 在引擎端运行前，开发者可以在配置文件夹(Config)中撰写有关“动作(Action)”、“角色(NPC)”以及“场景(Scenario)”的配置文件来为引擎端提供初始化数据（详情请见[《配置文档》](#配置文档)），配置文件会在引擎端收到关闭指令后自主更新。
+- 在引擎端运行期间，游戏端可以通过UDP数据包传送和接收的方式进行信息交互：
+    - **引擎端默认在8199端口**监听游戏端数据包，并默认**游戏端在8084端口**监听引擎端数据包
+    - 引擎启动后，游戏端按照**特定数据包格式**发送“请求包”到引擎端(8199端口)（详情请见《UDP数据包》）。
+    - 引擎端在接到UDP请求后，会根据NPC状态返回“回复包”到游戏端(8084端口)。
+    - 游戏端发送包代码示例（以Unity为例）：
 ```C#
 private void SendData(object data)
 {
@@ -67,12 +84,12 @@ public void Listen()
     }
 }
 ```
-#### 引擎关闭
+## 引擎关闭
 游戏端通过发送“close”功能数据包给引擎端来请求关闭引擎（详见下文）。
 
-### 配置文档
+# 配置文档
 
-#### 配置文件结构
+## 配置文件结构
 - python_lib(依赖库)
 - code(项目代码)
   - npc-engine\
@@ -90,7 +107,7 @@ public void Listen()
             - 警察局.json(自定义第一个具体场景的配置文件)
             - ...
 
-#### 配置示例（python）
+## 配置示例
 -\action\chat.json
 ```python
 {
@@ -162,15 +179,13 @@ public void Listen()
 
 ```
 
-### UDP数据包
+## UDP数据包
 
-#### 数据包格式记录
-https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
+#### 场景初始化数据包：
+在引擎初始化或者加载一个新场景的时候，游戏端需要先发送init数据包给引擎端。引擎端才会加载指定场景的NPC。
 
-#### 引擎初始化和关闭：
-在引擎初始化或者加载一个新场景的时候发送init数据包给引擎端，需要指定加载的场景json
 ```python
-# 引擎初始化的包
+# 场景初始化的包
 {
     "func":"init",   # 表示该传送的数据包是用于加载场景
     # 必填字段
@@ -209,16 +224,21 @@ https://aimakers.atlassian.net/wiki/spaces/npcengine/pages/3735735/NPC
         "memory":[ ]
         }], # 可以留空，默认按照gscene.json初始化场景NPC。非空则在之前基础上添加。
 }
+```
+
+#### 引擎关闭数据包
+在游戏结束的时候，engine需要一个close数据包，用于更新所有NPC的状态到json文件中。
+```python
 # 引擎关闭的包
 {
     "func":"close" # 关闭引擎,并保存所有NPC到json
 }
 ```
 
-#### NPC自主行为:
+#### NPC的动作数据包:
 NPC不会开始自主行动，除非你发送了wakeup包给它。
-npc-engine接到wakeup包之后，会返回action行为。
-游戏这边需要执行对应action，执行最终状态以action_done的形式返回给npc-engine
+npc-engine接到wakeup包之后，会返回action行为数据包。
+游戏端需要执行对应action，执行最终状态以action_done的形式返回给npc-engine
 engine接收到action_done包之后会继续返回action行为包。
 
 ```python
@@ -365,33 +385,6 @@ engine接收到action_done包之后会继续返回action行为包。
  - 长时间没有自主行为的npc需要游戏端自行检测，发送wakeup包到引擎进行再次唤醒
  - 引擎端接收wakeup包后会生成npc的动作并返回action包给游戏端
  - 游戏端执行对应的action包之后，需要发送action_done包到引擎，这样引擎才会继续生成npc下一步行为。
-
-## 测试方式
-
-### 测试数据
-测试数据统一放在test/test_packets.py中，可以自己添加测试数据。
-
-### NPC_ACTION测试参考代码:
-1.test_npc_action.py
-运行这个脚本然后查看logs/下的日志
-2.test_npc_action.ipynb
-运行CELL然后查看logs/下的日志，可以自定义自己的包。
-上面的代码仅供参考，可以自己写一个脚本来测试。
-在npc_engine父目录中import npc_engine 然后 engine = NPCEngine() 就可以启动。
-
-
-## 版本发布
-
-### 打包方式
-
-项目使用pyarmor加密，然后在windows中使用嵌入式的python执行engine.py。
-
-打包脚本为npc_engine/dist/release_windows.sh
-
-打包后可运行的windows项目在npc_engine/dist/release/windows_ver，其中脚本start_engine.bat用来启动engine
-
-
-
 
 
 
