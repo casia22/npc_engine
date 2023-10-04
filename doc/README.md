@@ -15,3 +15,5 @@ mkdocs.yml：此为配置文件，文档的结构、主题都可以在此设置�
 docs文件夹：撰写的 Markdown 文档都放在这个文件夹内。
 
 index.md：默认首页。
+
+可以访问 https://docs.cognimatrix.games/npc_engine_doc/ 查看文档。
