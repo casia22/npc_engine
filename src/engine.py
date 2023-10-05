@@ -211,6 +211,7 @@ class NPCEngine:
         return memories_items
 
     async def create_conversation(self, json_data):
+        # TODO 考虑数据包是否需要传送state参数，不需要则可以直接删除
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
         直到对话都被确认，Conversation才会被销毁.
@@ -317,6 +318,7 @@ class NPCEngine:
         # script = convo.generate_script()
 
     async def re_create_conversation(self, json_data):
+        # TODO 对话的再创建的提示词中缺乏对原对话房间角色的信息描述，且没有任何观测描述，需要和create统一一下
         """
         根据游戏发送的Conversation打断包中id，找到原来的Conversation对象，重新生成剧本并返回；
         打断包例:
@@ -539,9 +541,10 @@ class NPCEngine:
                 additional_npc.append(npc.name)
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
         # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
+        appended_npc = [npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]
         self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
         logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
-                     f"appended npc:{[npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]}")
+                     f"appended npc:{appended_npc}")
 
         # language
         self.language = json_data["language"]

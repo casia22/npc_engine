@@ -147,5 +147,5 @@ def test_conversation_re_creation():
     print("sending for conversation re-creation")
     send_data(pack1)
 
-test_conversation_re_creation()
-time.sleep(10)
+#test_conversation_re_creation()
+#time.sleep(10)
