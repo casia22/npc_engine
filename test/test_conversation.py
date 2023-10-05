@@ -43,7 +43,7 @@ def test_engine_init_memory():
     # 初始化包
     pack1 = {"func":"init",
                 # 必填字段，代表在什么场景初始化
-                "scene_name": "李大爷家",
+                "scene_name": "酒吧",
                 "language": "C",
                 # 下面是🉑️选
                 "npc": []}
@@ -52,7 +52,7 @@ def test_engine_init_memory():
     send_data(pack1)
     #time.sleep(180)
 
-#test_engine_init_memory()
+test_engine_init_memory()
 #time.sleep(10)
 
 def test_conversation():
