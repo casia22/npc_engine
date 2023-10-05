@@ -131,7 +131,7 @@ class NPCEngine:
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
-    def listen(self, buffer_size=4000000):
+    def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
@@ -365,8 +365,8 @@ class NPCEngine:
                 descs += [player_desc]
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
-
+            memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+            
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]

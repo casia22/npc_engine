@@ -23,6 +23,7 @@ def send_data(data, max_packet_size=6000):
         data = json.dumps(data).encode('utf-8')
         # 计算数据包总数
         packets = [data[i: i + max_packet_size] for i in range(0, len(data), max_packet_size)]
+
         total_packets = len(packets)
         for i, packet in enumerate(packets):
             # 构造UDP数据包头部
@@ -42,7 +43,7 @@ def test_engine_init_memory():
     # 初始化包
     pack1 = {"func":"init",
                 # 必填字段，代表在什么场景初始化
-                "scene_name": "酒吧",
+                "scene_name": "李大爷家",
                 "language": "C",
                 # 下面是🉑️选
                 "npc": []}
@@ -51,7 +52,8 @@ def test_engine_init_memory():
     send_data(pack1)
     #time.sleep(180)
 
-test_engine_init_memory()
+#test_engine_init_memory()
+#time.sleep(10)
 
 def test_conversation():
 
@@ -117,35 +119,33 @@ def test_conversation():
     #print("all done")
 
 #test_conversation()
+#time.sleep(20)
 
 def send_pack_create():
     pack1 = {        
             "func":"confirm_conversation_line",
-            "conversation_id":"1234567890",
-            "index":24
+            "conversation_id":"76ee76f0-7d13-499b-a8ad-c4744cf44aea",
+            "index":18
             }
     print("sending pack1")
     send_data(pack1)
 
+#send_pack_create()
+#time.sleep(5)
+
 def test_conversation_re_creation():
     pack1 = {
         "func":"re_create_conversation",
-        "id":"1234567890",
+        "id":"76ee76f0-7d13-499b-a8ad-c4744cf44aea",
         "character":"警长",
         "interruption": "", # 玩家插入发言,可以留空
         "player_desc": "", # 玩家的个性描述
         "memory_k": 3,
-        "length": "M"}
+        "length": "M",
+        "stream": True}
     
     print("sending for conversation re-creation")
     send_data(pack1)
 
-def sent_pack_re_create():
-    pack = {        
-            "func":"confirm_conversation_line",
-            "conversation_id":"1234567890",
-            "index":24
-            }
-
-    print("sending pack")
-    send_data(pack)
+test_conversation_re_creation()
+time.sleep(10)
