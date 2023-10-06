@@ -353,7 +353,6 @@ engine接收到action_done包之后会继续返回action行为包。
 {
     "func": "create_conversation",
     "npc": ["王大妈","李大爷"],   # npc列表
-
     "scenario_name": "李大爷家",        
     "location": "李大爷家卧室",
     "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
@@ -381,15 +380,26 @@ engine接收到action_done包之后会继续返回action行为包。
     "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
     "memory_k": 3,  # npc的记忆检索条数，必须填写
     "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+    "stream": True  # 是否采用流式响应
 }
 
-# 引擎端创造并生成剧本后传给游戏端的数据包
+# 引擎端一次性创造并生成剧本后传给游戏端的数据包
 {
     "name": "conversation",
+    "mode": "script",  # 对话传输剧本模式的数据包
     "id": "123456789",  # conversation对象的索引号
-    "length": "M",  # 可以选择的剧本长度，S M L X 可选。 
     "location": "李大爷家",  # 对话发生所在的地点
     "lines": [line1, line2, line3, line4, ...]  # 剧本信息，由若干行对话组成的序列
+}
+
+# 引擎端生成一行剧本后传给游戏端的数据包
+{
+    "name": "conversation",
+    "mode": "line",   # 对话传输剧本行模式的数据包
+    "id": "123456789",  # conversation对象的索引号
+    "location": "李大爷家",  # 对话发生所在的地点
+    "index": 2,  # 剧本行所在的索引号
+    "one_line": line  # 一行剧本的信息
 }
 
 # 引擎端生成剧本的每一行的格式
@@ -419,6 +429,7 @@ engine接收到action_done包之后会继续返回action行为包。
     "interruption": "大家好呀，你们刚刚在说什么",  # 玩家插入的说话内容
     "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
     "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+    "stream": True  # 可以选择是否采用流式传输，默认True
 }
 
 ```

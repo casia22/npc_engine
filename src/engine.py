@@ -19,7 +19,7 @@ nest_asyncio.apply()
 
 import colorama
 import openai
-import zhipuai
+#import zhipuai
 
 # 这部分代码保证项目能被python解释器搜索到
 from pathlib import Path
@@ -32,15 +32,16 @@ from npc_engine.src.npc.npc import NPC
 from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.config.template import EnginePrompt
 from npc_engine.src.npc.conversation import Conversation
+from npc_engine.src.utils.send_utils import send_data
 
 colorama.init()
 from colorama import Fore, Style
-from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY, CONFIG_PATH,
-                                          CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, NPC_MEMORY_CONFIG)
+from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
+                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
 from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
 # key配置
-zhipuai.api_key = ZHIPU_KEY
+#zhipuai.api_key = ZHIPU_KEY
 openai.api_key = OPENAI_KEY
 openai.api_base = OPENAI_BASE
 
@@ -50,7 +51,6 @@ CONSOLE_HANDLER.setLevel(logging.DEBUG)
 logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)
-
 
 class NPCEngine:
     """
@@ -131,7 +131,7 @@ class NPCEngine:
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
-    def listen(self, buffer_size=40000):
+    def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
@@ -211,6 +211,7 @@ class NPCEngine:
         return memories_items
 
     async def create_conversation(self, json_data):
+        # TODO 考虑数据包是否需要传送state参数，不需要则可以直接删除
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
         直到对话都被确认，Conversation才会被销毁.
@@ -245,6 +246,7 @@ class NPCEngine:
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
             "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+            "stream": True  # 是否需要采用流式数据包格式
         }
 
         :param json_data:
@@ -258,6 +260,7 @@ class NPCEngine:
         scenario_name: str = json_data["scenario_name"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
+        stream: bool = json_data["stream"]
         memory_k = json_data["memory_k"]
 
         # 初始化群体描述、心情和记忆
@@ -296,7 +299,6 @@ class NPCEngine:
             length=length
         )
 
-        # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(
             names=names,
             location=location,
@@ -306,15 +308,17 @@ class NPCEngine:
             query_prompt=query_prompt,
             language=self.language,
             model=self.model,
+            stream = stream,
+            sock = self.sock,
+            game_url = self.game_url,
+            game_port = self.game_port,
         )  # todo: 这里engine会等待OPENAI并无法处理新的接收
 
         self.conversation_dict[convo.convo_id] = convo
         # script = convo.generate_script()
 
-        # 发送整个剧本
-        self.send_script(convo.script)
-
     async def re_create_conversation(self, json_data):
+        # TODO 对话的再创建的提示词中缺乏对原对话房间角色的信息描述，且没有任何观测描述，需要和create统一一下
         """
         根据游戏发送的Conversation打断包中id，找到原来的Conversation对象，重新生成剧本并返回；
         打断包例:
@@ -326,6 +330,7 @@ class NPCEngine:
         "player_desc": "是一名老师", # 玩家的个性描述
         "memory_k": 3,
         "length": "X",
+        "stream": True,
         }
 
         location: str = "",
@@ -344,6 +349,7 @@ class NPCEngine:
         player_desc = json_data["player_desc"]
         memory_k = json_data["memory_k"]
         length = json_data["length"]
+        stream = json_data["stream"]
 
         if conversation_id in self.conversation_dict:
             convo = self.conversation_dict[conversation_id]
@@ -361,8 +367,8 @@ class NPCEngine:
                 descs += [player_desc]
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
-
+            memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+            
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
@@ -381,18 +387,8 @@ class NPCEngine:
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
-            system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names=names,
-                                                                                    location=location,
-                                                                                    topic=topic,
-                                                                                    character=character,
-                                                                                    mood=mood,
-                                                                                    descs=descs,
-                                                                                    memories=memories,
-                                                                                    interruption=interruption,
-                                                                                    length=length,
-                                                                                    history=history)
-            script = convo.re_generate_script(character, system_prompt, query_prompt)
-            self.send_script(script)
+            convo.set_stream(stream)
+            convo.re_generate_script(character, system_prompt, query_prompt)
 
     async def get_random_topic(
         self, names: List[str], location: str, scenario_name:str, states: Dict[str, Dict[str, Any]], language: str
@@ -517,6 +513,7 @@ class NPCEngine:
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
         # 按照GAME回传的init包中的npc字段，添加新的NPC
+        additional_npc = []  # 由init数据包设置的新NPC
         if "npc" in json_data:
             for npc_data in json_data["npc"]:
                 # 如果已经存在NPC在内存中，则依然从UDP参数覆盖(UDP参数我们认为有更高的优先级)
@@ -541,11 +538,13 @@ class NPCEngine:
                 )
                 await npc.async_init()
                 self.npc_dict[npc.name] = npc
+                additional_npc.append(npc.name)
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
         # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
-        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + [npc.name for npc in self.npc_dict.values()])))
-        logger.debug(f"knowledge update done，people:{self.public_knowledge.get_people(scenario_name=scene_name)}，"
-                     f"appended npc:{[npc.name for npc in self.npc_dict.values() if npc.name not in self.public_knowledge.get_people(scenario_name=scene_name)]}")
+        appended_npc = [npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]
+        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
+        logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
+                     f"appended npc:{appended_npc}")
 
         # language
         self.language = json_data["language"]
@@ -714,23 +713,6 @@ class NPCEngine:
                         purpose: {npc.purpose} 
                         action: {action_packet} 
                         to game""")
-
-    def send_script(self, script):
-        """
-        将script发送给游戏
-        :param script:
-        :return:
-        """
-        # print item with appropriate color
-        print(
-            "[NPC-ENGINE]sending script:",
-            Fore.GREEN,
-            json.dumps(script).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
-        self.send_data(script)
 
     def send_data(self, data, max_packet_size=6000):
         """

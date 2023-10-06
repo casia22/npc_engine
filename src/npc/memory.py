@@ -10,7 +10,7 @@ import asyncio
 from typing import Any, Dict, List
 
 import numpy as np
-import pinecone
+#import pinecone
 import requests
 import logging
 
@@ -28,7 +28,6 @@ logger = logging.getLogger("NPC_MEMORY")
 logger.addHandler(CONSOLE_HANDLER)
 logger.addHandler(FILE_HANDLER)
 logger.setLevel(logging.DEBUG)  # 设为 DEBUG 级别以显示所有日志
-
 
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):

@@ -7,11 +7,16 @@ Contact : yzj_cs_ilstar@163.com
 from typing import List, Dict, Any
 from uuid import uuid4
 import copy
+import json
 import datetime
 import os
 import logging
+import openai
+#import zhipuai
+from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER)
 from npc_engine.src.utils.model_api import get_model_answer
+from npc_engine.src.utils.send_utils import send_data
 
 os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"
 os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"
@@ -49,9 +54,10 @@ class Conversation:
     (1) generate_script() 在Conversation对象刚开始创建的时候会调用的生成初始剧本的方法，
     (2) re_generate_script() 在有新Agent加入或者玩家插话的时候调用的方法，续写剧本
     (3) set_topic() 重新设定新的主题，根据新主题续写剧本
-    (4) set_location() 重新设定新的地点，对剧本内容改动不是很大
-    (5) release() 强制让Conversation释放对某角色的占用权限
-    (6) close() 清空对象的所有数据
+    (4) set_requirements() 重新设定剧本生成的约束或者要求
+    (5) set_location() 重新设定新的地点，对剧本内容改动不是很大
+    (6) release() 强制让Conversation释放对某角色的占用权限
+    (7) close() 清空对象的所有数据
     """
     def __init__(
         self,
@@ -63,6 +69,10 @@ class Conversation:
         query_prompt: Dict[str, str],
         language: str = "C",
         model: str = OPENAI_MODEL,
+        stream: bool = True,
+        sock = None,
+        game_url: str = "",
+        game_port: str = "",
     ) -> None:
         # 系统时间戳
         self.start_time = datetime.datetime.now()
@@ -74,6 +84,11 @@ class Conversation:
         self.topic: str = topic
         self.language: str = language
         self.model: str = model
+        self.stream = stream
+        # 端口相关信息
+        self.engine_sock = sock
+        self.game_url = game_url
+        self.game_port = game_port
         # 存储每一个角色参与对话的记忆起始索引值
         self.start_memory: Dict[str, int] = {}
         for name in self.names:
@@ -94,7 +109,7 @@ class Conversation:
         self.sentences: List[str] = []
         self.lines: List[Dict[str, Any]] = []
         # 调用剧本生成函数生成剧本
-        self.script = self.generate_script(system_prompt, query_prompt)
+        self.generate_script(system_prompt, query_prompt)
 
     def call_llm(
         self,
@@ -119,11 +134,17 @@ class Conversation:
         ]
 
         :params messages:
+        :params stream:
         :return content:
         """
-        # 调用官方API获取字典形式的返回值
-        content = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=messages)
-        return content
+        # 如果是流式的则返回一个迭代器，如果是非流式则返回字典
+        response = openai.ChatCompletion.create(model=self.model, messages=messages, stream=self.stream)
+        #if self.stream:
+        #    response = openai.ChatCompletion.create(model=self.model, messages=messages, stream=True)
+        #else:
+        #    response = openai.ChatCompletion.create(model=self.model, messages=messages)
+
+        return response
 
     def parser(
         self,
@@ -183,63 +204,66 @@ class Conversation:
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
             logger.debug(f"get a new sentence of script : {sent}")
-            if len(sent) == 0:
-                continue
-            # 归为结束状态和会话状态两类
-            if sent[0] == "<" and sent[-1] == ">":
-                line = {
-                    "type": "State",
-                    "state": sent[1:-1],
-                    "name": "",
-                    "mood": "",
-                    "words": "",
-                    "action": None}
+            line = self.parse_one_sent(sent=sent)
+            if line is not None:
+                self.lines.append(line)
 
-            elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
-                # 根据左括号是全角还是半角来解析name和mood信息
-                if "(" in sent:
-                    name = sent.split("(")[0].strip()
-                    mood = (sent.split("(")[1]).split("|")[0].strip()
-                elif "（" in sent:
-                    name = sent.split("（")[0].strip()
-                    mood = (sent.split("（")[1]).split("|")[0].strip()
+    def parse_one_sent(self, sent):
+        if len(sent) == 0:
+            return None
+        # 归为结束状态和会话状态两类
+        if sent[0] == "<" and sent[-1] == ">":
+            line = {
+                "type": "State",
+                "state": sent[1:-1],
+                "name": "",
+                "mood": "",
+                "words": "",
+                "action": None}
+        elif ("(" in sent or "（" in sent) and (":" in sent or "：" in sent):
+            # 根据左括号是全角还是半角来解析name和mood信息
+            if "(" in sent:
+                name = sent.split("(")[0].strip()
+                mood = (sent.split("(")[1]).split("|")[0].strip()
+            elif "（" in sent:
+                name = sent.split("（")[0].strip()
+                mood = (sent.split("（")[1]).split("|")[0].strip()
                 
-                # 根据冒号是全角还是半角来解析words信息
-                if ":" in sent:
-                    words = sent.split(":")[1].strip()
-                elif "：" in sent:
-                    words = sent.split("：")[1].strip()
-                
-                # 根据右括号是全角还是半角来解析action信息
-                if ")" in sent:
-                    action_type = ((sent.split(")")[0]).split("|")[1]).strip()
-                    action_args = ((sent.split(")")[0]).split("|")[2]).strip()
-                elif "）" in sent:
-                    action_type = ((sent.split("）")[0]).split("|")[1]).strip()
-                    action_args = ((sent.split("）")[0]).split("|")[2]).strip()
-
-                # 将信息整合成最终的一行格式化剧本
-                line = {
-                    "type": "Interaction",
-                    "state": "",
-                    "name": name,
-                    "mood": mood,
-                    "words": words,
-                    "action": {"type": action_type, "args": action_args}}
+            # 根据冒号是全角还是半角来解析words信息
+            if ":" in sent:
+                words = sent.split(":")[1].strip()
+            elif "：" in sent:
+                words = sent.split("：")[1].strip()
                     
-            # 归为错误内容一类
-            else:
-                line = {
-                    "type": "Error",
-                    "state": sent,
-                    "name": "",
-                    "mood": "",
-                    "words": "",
-                    "action": None}
-                continue
-            logger.debug(f"parser out a new line of script : {line}")
-            self.lines.append(line)
+            # 根据右括号是全角还是半角来解析action信息
+            if ")" in sent:
+                action_type = ((sent.split(")")[0]).split("|")[1]).strip()
+                action_args = ((sent.split(")")[0]).split("|")[2]).strip()
+            elif "）" in sent:
+                action_type = ((sent.split("）")[0]).split("|")[1]).strip()
+                action_args = ((sent.split("）")[0]).split("|")[2]).strip()
 
+            # 将信息整合成最终的一行格式化剧本
+            line = {
+                "type": "Interaction",
+                "state": "",
+                "name": name,
+                "mood": mood,
+                "words": words,
+                "action": {"type": action_type, "args": action_args}}
+                    
+        # 归为错误内容一类
+        else:
+            line = {
+                "type": "Error",
+                "state": sent,
+                "name": "",
+                "mood": "",
+                "words": "",
+                "action": None}
+        logger.debug(f"parser out a new line of script : {line}")
+        return line
+        
     def generate_script(
         self,
         system_prompt: Dict[str, str],
@@ -250,8 +274,8 @@ class Conversation:
         函数中涉及到字典格式的剧本信息，该格式配置案例如下：
         {
         "name": "conversation",
+        "mood": "script"
         "id": "123456789",
-        "length": "S",
         "location": "Park",
         "lines": [
             {
@@ -291,21 +315,69 @@ class Conversation:
         # 首先将系统提示词和查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中生成文本剧本
-        conv = self.call_llm(messages = messages)
-        print(conv)
-        # 使用解析器将文本剧本映射成字典格式
-        self.parser(conv)
-        # 将剧本信息按照配置标准整理并返回
-        script = {
-            "name": "conversation",
-            "id": self.convo_id,
-            "length": len(self.lines),
-            "location": self.location,
-            "lines": self.lines,
-        }
-        logger.debug(f"First script of conversation {self.convo_id} is generated.")
-        return script
+        response = self.call_llm(messages = messages)
 
+        if self.stream:
+            one_sent = ""
+            for chunk in response:
+                chunk_message = chunk['choices'][0]['delta']
+                # 如果content键在chunk_message里面，则表示这条流信息中有内容可以提取
+                if 'content' in chunk_message:
+                    chunk_content = chunk_message['content']
+                # 如果不在则表示没有内容可以提取了
+                else:
+                    logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.sentences.append(one_sent)
+                    one_line = self.parse_one_sent(one_sent)
+                    self.lines.append(one_line)
+                    one_sent = ""
+                    line_pack = {
+                        "name": "conversation",
+                        "mode": "line",
+                        "id": self.convo_id,
+                        "location": self.location,
+                        "index": len(self.lines),
+                        "one_line": one_line}
+                    self.send_line(line_pack)
+                    break
+                # 如果内容中有回车符，则按照回车做截取
+                if "\n" in chunk_content:
+                    one_sent += chunk_content.split('\n')[0]
+                    logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.sentences.append(one_sent)
+                    one_line = self.parse_one_sent(one_sent)
+                    self.lines.append(one_line)
+                    one_sent = chunk_content.split('\n')[1]
+                    line_pack = {
+                        "name": "conversation",
+                        "mode": "line",
+                        "id": self.convo_id,
+                        "location": self.location,
+                        "index": len(self.lines),
+                        "one_line": one_line}
+                    self.send_line(line_pack)
+                # 如果没有回车符，则直接将内容右添加到one_sent中
+                else:
+                    one_sent += chunk_content
+            logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
+
+        else:
+            conv = response["choices"][0]["message"]["content"].strip()
+            print(conv)
+            # 使用解析器将文本剧本映射成字典格式
+            self.parser(conv)
+            # 将剧本信息按照配置标准整理并返回
+            script = {
+                "name": "conversation",
+                "mode": "script",
+                "id": self.convo_id,
+                "location": self.location,
+                "lines": self.lines,
+            }
+            logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated.")
+            # 发送整个剧本
+            self.send_script(script)
+    
     def re_generate_script(
         self,
         new_name: str,
@@ -333,20 +405,73 @@ class Conversation:
         # 首先将系统提示词、输入的助理提示词和输入的查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
-        conv = self.call_llm(messages = messages)
-        print(conv)
-        # 使用解析器将文本剧本映射成字典格式
-        self.parser(conv)
-        # 将剧本信息按照配置标准整理并返回
-        script = {
-            "name": "conversation",
-            "id": self.convo_id,
-            "length": len(self.lines),
-            "location": self.location,
-            "lines": self.lines,
-        }
-        logger.debug(f"New script of conversation {self.convo_id} is generated.")
-        return script
+        response = self.call_llm(messages = messages)
+
+        if self.stream:
+            # 将动态维护剧本的变量进行清空
+            self.index = -1
+            self.lines.clear()
+            self.sentences.clear()
+
+            one_sent = ""
+            for chunk in response:
+                chunk_message = chunk['choices'][0]['delta']
+                # 如果content键在chunk_message里面，则表示这条流信息中有内容可以提取
+                if 'content' in chunk_message:
+                    chunk_content = chunk_message['content']
+                # 如果不在则表示没有内容可以提取了
+                else:
+                    logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.sentences.append(one_sent)
+                    one_line = self.parse_one_sent(one_sent)
+                    self.lines.append(one_line)
+                    one_sent = ""
+                    line_pack = {
+                        "name": "conversation",
+                        "mode": "line",
+                        "id": self.convo_id,
+                        "location": self.location,
+                        "index": len(self.lines),
+                        "one_line": one_line}
+                    self.send_line(line_pack)
+                    break
+                # 如果内容中有回车符，则按照回车做截取
+                if "\n" in chunk_content:
+                    one_sent += chunk_content.split('\n')[0]
+                    logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.sentences.append(one_sent)
+                    one_line = self.parse_one_sent(one_sent)
+                    self.lines.append(one_line)
+                    one_sent = chunk_content.split('\n')[1]
+                    line_pack = {
+                        "name": "conversation",
+                        "mode": "line",
+                        "id": self.convo_id,
+                        "location": self.location,
+                        "index": len(self.lines),
+                        "one_line": one_line}
+                    self.send_line(line_pack)
+                # 如果没有回车符，则直接将内容右添加到one_sent中
+                else:
+                    one_sent += chunk_content
+            logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
+
+        else:
+            conv = response["choices"][0]["message"]["content"].strip()
+            print(conv)
+            # 使用解析器将文本剧本映射成字典格式
+            self.parser(conv)
+            # 将剧本信息按照配置标准整理并返回
+            script = {
+                "name": "conversation",
+                "mode": "script",
+                "id": self.convo_id,
+                "location": self.location,
+                "lines": self.lines,
+            }
+            logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
+            # 发送整个剧本
+            self.send_script(script)
 
     def add_temp_memory(
         self,
@@ -421,6 +546,46 @@ class Conversation:
                     continue
             self.index = index
         return memory_add, mood_change
+
+    def send_script(self, script):
+        """
+        将script发送给游戏
+        :param script:
+        :return:
+        """
+        # print item with appropriate color
+        print(
+            "[Conversation] sending script:",
+            Fore.GREEN,
+            json.dumps(script).encode(),
+            Style.RESET_ALL,
+            "to",
+            (self.game_url, self.game_port),
+        )
+        send_data(sock = self.engine_sock, target_url = self.game_url, 
+                  target_port = self.game_port, data = script)
+
+    def send_line(self, line):
+        """
+        将script发送给游戏
+        :param script:
+        :return:
+        """
+        # print item with appropriate color
+        print(
+            "[Conversation] sending one line of script:",
+            Fore.GREEN,
+            json.dumps(line).encode(),
+            Style.RESET_ALL,
+            "to",
+            (self.game_url, self.game_port),
+        )
+        send_data(sock = self.engine_sock, target_url = self.game_url, 
+                  target_port = self.game_port, data = line)
+    
+    # 重新设置对话的剧本生成模式，流式还是非流式
+    def set_stream(self, stream):
+        self.stream = stream
 
 if __name__ == '__main__':
     con = Conversation(1,2,3,{},{},"","")
