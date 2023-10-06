@@ -9,7 +9,11 @@ build/
 npc_memory/*
 
 # material
-material/models/embedding/*
+# 以LFS的方式存储bin参数文件
+# material/models/embedding/*
+
+# documentation
+doc/site
 
 yzj*
 dist/code/*
@@ -34,7 +38,6 @@ src/data/*.db
 .pyarmor
 .idea
 
-.github
 
 test/.pytest_cache/
 
