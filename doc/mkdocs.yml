@@ -5,6 +5,7 @@ nav:
   - Home: index.md
   - Tutorial:
     - Quickstart: tutorials/quickstart.md
+    - 0 - Engine Configuration: tutorials/engine.md
     - 1 - NPC Configuration: tutorials/npc.md
     - 2 - Scenario Configuration: tutorials/scenario.md
     - 3 - Action Configuration: tutorials/action.md
