@@ -8,11 +8,11 @@ NPC-Engine 是一个由 CogniMatrix™️ 提供的游戏AI引擎，它赋予游
 
 
 ## **引擎简介**
-CogniMatrix™️ NPC-Engine 是一个解耦地通过UDP数据包传输来为游戏NPC提供对话、动作决策功能的组件。
+CogniMatrix™️ [NPC-Engine](https://github.com/casia22/npc-engine) 是一个解耦地通过[UDP数据包](./tutorials/engine.md#udp)传输来为游戏NPC提供[对话](./modules/conversation.md)、[动作决策功能](./modules/action.md)的组件。
 
 产品的设计理念是：**"低成本，本地化“**。
 
-我们希望通过最小的成本，最简单的配置，最快的部署，来实现一个可以用于单机游戏、社会模拟、数字员工等多种场景的NPC引擎。
+我们希望通过最小的成本，[最简单的配置](./tutorials/engine.md#11-引擎配置)，最快的部署，来实现一个可以用于单机游戏、社会模拟、数字员工等多种场景的NPC引擎。
 
 ## **项目阶段**
 ##### 方案1⃣️: 线上API模式(已实现)
