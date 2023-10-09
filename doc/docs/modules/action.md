@@ -1,11 +1,12 @@
 ## NPC Action模块简述
 ![Action](../img/action_module.png)
 NPC不会开始自主行动，除非你发送了wakeup包给它。
-npc-engine接到wakeup包之后，会返回action行为数据包。
-游戏端需要执行对应action，执行最终状态以action_done的形式返回给npc-engine,
-engine接收到action_done包之后会继续返回action行为包。
+npc-engine接到[wakeup包](./action.md/#wakeup包例)之后，会返回[action行为数据包](./action.md/#action模块响应数据包例)。
+游戏端需要执行对应action，执行最终状态以[action_done包](./action.md#actiondone包例)的形式返回给npc-engine,
+engine接收到[action_done包](./action.md#actiondone包例)之后会继续返回action行为包。
 
 ## Action模块UDP请求例
+### wakeup包例：
 ```python
 # wakeup包例：
 {
@@ -25,7 +26,9 @@ engine接收到action_done包之后会继续返回action行为包。
 
     "time": "2021-01-01 12:00:00", # 游戏世界的时间戳 
 }
-
+```
+### action_done包例：
+```python
 # action_done包例
 {
     "func":"action_done",
@@ -50,7 +53,8 @@ engine接收到action_done包之后会继续返回action行为包。
     "reason": "", # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
 ```
-### Action模块响应数据包例：
+
+### Action模块响应数据包例
 ```python
 # action_done、wakeup发给游戏包后返回的ACTION包
 {

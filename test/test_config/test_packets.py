@@ -178,10 +178,10 @@ player2npc_packet = {
       "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
     },
     # player的信息
-    "player_name":"旅行者小王",
-    "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",
-    "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],
-    "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",
+    "player_name":"旅行者小王",  # player的名字
+    "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",  # player说的话
+    "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],  # player身上的物品
+    "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",  # player状态的自然语言描述，开发者可以随意添加
 }
 
 
