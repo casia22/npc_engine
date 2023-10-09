@@ -718,8 +718,9 @@ class NPCEngine:
     async def talk2npc(self, json_data):
         """
         玩家跟NPC进行交流,
-            函数会先将当前player语句放入记忆，然后更新目的，再生成一个action，然后将action发送给游戏端
-            (记忆和purpose 是对动作影响的关键)
+            函数会先根据玩家对话检索相关记忆，产生回答、action和目的。
+            玩家的问句和NPC的回答会被组合，放入记忆。
+            (记忆条件下，同时产生purpose、action、回答，这样保证了高一致性)
             (action发给game后，自动进入action_done的loop)
 
         GAME发送过来的数据例子:
@@ -748,12 +749,17 @@ class NPCEngine:
 
         本函数返回给GAME的数据例子:
         {
-            "name":"action",
+            "name":"talk_result",
             "npc_name":"王大妈",
-            "action":"chat",
-            "object":"李大爷",
-            "parameters":["你吃饭了没？"],
-        }
+            "answer":"你吃饭了没？"
+            "actions": [{
+                "name":"action",
+                "npc_name":"王大妈",
+                "action":"mov",
+                "object":"雁栖村入口",
+                "parameters":[],
+                        }]
+            }
         :param json_data:
         :return:
         """
@@ -777,18 +783,19 @@ class NPCEngine:
         await npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
         # 更新NPC的purpose
         # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
-        # 生成新的action
-        new_action = await npc.get_npc_response(player_name=player_name, player_speech=speech_content,
+        # 生成新的response
+        response = await npc.get_npc_response(player_name=player_name, player_speech=speech_content,
                                                 items_visible=items_visible, player_state_desc=player_state,
                                                 time=json_data["time"], k=3)
-        action_packet = new_action
-        action_packet["name"] = "action"
+
+        response["name"] = "talk_result"
         # 发送新的action到环境
-        self.send_script(action_packet)
+        self.send_script(response)
         logger.debug(f"""[NPC-ENGINE]<talk2npc> 
                         npc_name: {npc.name}, 
-                        purpose: {npc.purpose} 
-                        action: {action_packet} 
+                        purpose: {npc.purpose},
+                        answer: {response["answer"]}
+                        action: {response["actions"]} 
                         to game""")
 
     def send_script(self, script):

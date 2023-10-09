@@ -9,6 +9,7 @@ build/
 npc_memory/*
 
 # material
+# model 参数以gitLFS方式存储在仓库
 material/models/embedding/*
 
 yzj*
