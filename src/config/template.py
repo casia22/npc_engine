@@ -38,8 +38,6 @@ class EnginePrompt:
         self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
         self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
 
-
-
     def prompt_for_conversation_e(
         self,
         names: List[str] = None,
