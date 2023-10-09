@@ -299,6 +299,7 @@ class NPCEngine:
             length=length
         )
 
+        # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(
             names=names,
             location=location,
@@ -368,7 +369,7 @@ class NPCEngine:
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
             memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
-            
+
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
@@ -713,6 +714,106 @@ class NPCEngine:
                         purpose: {npc.purpose} 
                         action: {action_packet} 
                         to game""")
+
+    async def talk2npc(self, json_data):
+        """
+        玩家跟NPC进行交流,
+            函数会先根据玩家对话检索相关记忆，产生回答、action和目的。
+            玩家的问句和NPC的回答会被组合，放入记忆。
+            (记忆条件下，同时产生purpose、action、回答，这样保证了高一致性)
+            (action发给game后，自动进入action_done的loop)
+
+        GAME发送过来的数据例子:
+        {
+            "func":"talk2npc",
+            "npc_name":"警员1",
+            "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+
+            # NPC的状态
+            "scenario_name": "警察局",
+            "npc_state": {
+              "position": "雁栖村入口",
+              "observation": {
+                      "people": ["囚犯阿呆","警员1","警员2"],
+                      "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                      "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                            },
+              "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+            },
+            # player的信息
+            "player_name":"旅行者小王",
+            "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",
+            "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],
+            "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",
+        }
+
+        本函数返回给GAME的数据例子:
+        {
+            "name":"talk_result",
+            "npc_name":"王大妈",
+            "answer":"你吃饭了没？"
+            "actions": [{
+                "name":"action",
+                "npc_name":"王大妈",
+                "action":"mov",
+                "object":"雁栖村入口",
+                "parameters":[],
+                        }]
+            }
+        :param json_data:
+        :return:
+        """
+        # 获得玩家信息
+        player_name = json_data["player_name"]
+        speech_content = json_data["speech_content"]
+        items_visible = json_data["items_visible"]
+        player_state = json_data["state"]
+
+        # 获得NPC的引用
+        npc_name = json_data["npc_name"]
+        npc = self.npc_dict[npc_name]
+        # 更新NPC允许的动作
+        npc.set_known_actions(list(self.action_dict.keys()))
+        # 更新NPC的状态
+        npc.set_state(json_data['npc_state'])
+        npc.set_scenario(scenario=json_data["scenario_name"])
+
+        # 对当前情景进行描述，并存入记忆
+        memory_desc: str = f"{player_name}对{npc.name}说:{speech_content}"
+        await npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
+        # 更新NPC的purpose
+        # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
+        # 生成新的response
+        response = await npc.get_npc_response(player_name=player_name, player_speech=speech_content,
+                                                items_visible=items_visible, player_state_desc=player_state,
+                                                time=json_data["time"], k=3)
+
+        response["name"] = "talk_result"
+        # 发送新的action到环境
+        self.send_script(response)
+        logger.debug(f"""[NPC-ENGINE]<talk2npc> 
+                        npc_name: {npc.name}, 
+                        purpose: {npc.purpose},
+                        answer: {response["answer"]}
+                        action: {response["actions"]} 
+                        to game""")
+
+    def send_script(self, script):
+        """
+        将script发送给游戏
+        :param script:
+        :return:
+        """
+        # print item with appropriate color
+        print(
+            "[NPC-ENGINE]sending script:",
+            Fore.GREEN,
+            json.dumps(script).encode(),
+            Style.RESET_ALL,
+            "to",
+            (self.game_url, self.game_port),
+        )
+        self.send_data(script)
 
     def send_data(self, data, max_packet_size=6000):
         """

@@ -339,6 +339,30 @@ engine接收到action_done包之后会继续返回action行为包。
     "object":"李大爷家",
     "parameters":[],
 }
+
+# player2npc的对话包
+{
+    "func":"talk2npc",
+    "npc_name":"警员1",
+    "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+    
+    # NPC的状态
+    "scenario_name": "警察局", 
+    "npc_state": {
+      "position": "雁栖村入口",
+      "observation": {
+              "people": ["囚犯阿呆","警员1","警员2"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+    # player的信息
+    "player_name":"旅行者小王",
+    "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",
+    "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],
+    "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",
+}
 ```
 
 #### 对话相关行为：

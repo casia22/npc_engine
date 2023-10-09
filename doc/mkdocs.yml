@@ -13,4 +13,5 @@ nav:
   - Modules:
      - Conversation Module: modules/conversation.md
      - Action Module: modules/action.md
+     - Talk Module: modules/talk.md
   - Feedback: feedback.md
