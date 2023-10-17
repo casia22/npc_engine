@@ -329,10 +329,3 @@ engine接收到action_done包之后会继续返回action行为包。
 打包脚本为npc_engine/dist/release_windows.sh
 
 打包后可运行的windows项目在npc_engine/dist/release/windows_ver，其中脚本start_engine.bat用来启动engine
-
-
-
-
-
-
-
