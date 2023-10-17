@@ -211,7 +211,6 @@ class NPCEngine:
         return memories_items
 
     async def create_conversation(self, json_data):
-        # TODO 考虑数据包是否需要传送state参数，不需要则可以直接删除
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
         直到对话都被确认，Conversation才会被销毁.
