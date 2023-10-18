@@ -314,7 +314,7 @@ class NPCEngine:
             descs=descs,
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
-            observations=share_observations,
+            share_observations=share_observations,
             starting=starting,
             length=length
         )

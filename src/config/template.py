@@ -243,7 +243,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: List[Dict[str, Any]] = None,
+        share_observations: Dict[str, List[str]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -255,15 +255,13 @@ class EnginePrompt:
         小白的个性描述是：他是一位老师。
         在小白的记忆中：他刚刚做完作业。 他10年前是个歌手。
         小白此刻的心情是：稳定。
-        小白当前观测到的人有：小黑，小蓝。
-        小白当前观测到的物体有：大树，月季花。
-        小白当前观测到的地点有：教堂，学校。
         小黑的个性描述是：他是一个医生。
         在小黑的记忆中：他刚刚上完课。 他曾经是一个舞蹈演员。
         小黑此刻的心情是：稳定。
-        小黑当前观测到的人有：小白，小蓝。
-        小黑当前观测到的物体有：大树，月季花。
-        小黑当前观测到的地点有：教堂，学校。
+        这些角色除了看到了彼此以外，他们还观测到了其他的人和物。
+        他们观测到的远处的人有：隐形李飞飞，。
+        他们观测到的周围的物体有：{"，".join(share_observations["items"])}。
+        他们观测到的{location}中的地点有：{"，".join(share_observations["locations"])}。
         基于上述信息，请发挥你的想象力，生成一个剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
 
         这个剧本由许多行角色交互和会话状态组成。
@@ -313,7 +311,7 @@ class EnginePrompt:
         :param descs:
         :param moods:
         :param memories:
-        :param states:
+        :param share_observations:
         :param starting:
         :param length:
         :return system_prompt, query_prompt:
@@ -332,33 +330,57 @@ class EnginePrompt:
         for i, name in enumerate(names):
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
-                                {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[i]["observation"]["people"])}。
-                                {name}当前观测到的物体有：{"，".join(states[i]["observation"]["items"])}。
-                                {name}当前观测到的地点有：{"，".join(states[i]["observation"]["locations"])}。"""
-            supplementary_new = supplementary_new.replace("    ","",40)
+                                {name}此刻的心情是：{moods[i]}。"""
+            supplementary_new = supplementary_new.replace("    ","",16)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
+
+        observation_statement = rf"""这些角色除了看到了彼此以外，他们还观测到了其他的人和物。
+                                他们观测到的远处的人有：{"，".join(share_observations["people"])}。
+                                他们观测到的周围的物体有：{"，".join(share_observations["items"])}。
+                                他们观测到的{location}中的地点有：{"，".join(share_observations["locations"])}。"""
+        observation_statement = observation_statement.replace("    ","",24)
+        
         # 蒋对话介绍、角色信息、观测信息和任务信息按顺序整合成预陈述
-        pre_statement = "\n".join([introduction, supplementary, task])
+        pre_statement = "\n".join([introduction, supplementary, observation_statement, task])
 
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
-        constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
-                                    角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
-                                    该角色交互模板中的所有标点符号都是全角的。
-                                    其中，
+        if starting == "":
+            constraint_statement = rf"""这个剧本由若干行角色交互和会话状态组成。
+                                    角色交互的模板有两个，一个是角色对话模板，一个是角色前往模板
+                                    角色对话模板 - 角色姓名（情绪状态|对话|对话对象）：说话内容
+                                    角色前往模板 - 角色姓名（情绪状态|前往|前往对象）：空
                                     角色姓名：{", ".join(names)}
                                     情绪状态：{", ".join(self.all_moods)}
-                                    动作类型：{", ".join(self.all_actions)}
-                                    动作参数：可以是场所名，角色姓名，或者空。
-                                    场所名：{", ".join(self.all_places)}
-                                    说话内容：可以是任务与主题有关的合规的内容，也可以是空。
+                                    对话对象：可以是一个角色也可以是一群角色（用&连接的角色名称）
+                                    说话内容：可以是任务与主题有关的合规的内容。
+                                    前往对象：可以是场所名也可以是角色姓名；前往的对象既可以是观测到的，也可以是没有观测到的
+                                    观测到的场所名：{", ".join(self.all_places)}
+                                    被观测到的人由于距离这些角色太远，所以全程不参与交流。
                                     会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
-                                    该会话状态模板中的所有标点符号都是全角的。
                                     当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                     后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
-                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
-        constraint_statement = constraint_statement.replace("    ","",126)
+                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
+                                    以上模板中的所有标点符号都是全角的。"""
+            constraint_statement = constraint_statement.replace("    ","",135)
+        else:
+            constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
+                                    角色交互的模板有两个，一个是角色对话模板，一个是角色前往模板
+                                    角色对话模板 - 角色姓名（情绪状态|对话|对话对象）：说话内容
+                                    角色前往模板 - 角色姓名（情绪状态|前往|前往对象）：空
+                                    角色姓名：{", ".join(names)}
+                                    情绪状态：{", ".join(self.all_moods)}
+                                    对话对象：可以是一个人（一个角色名称或者“我”），也可以是一群人（用&连接的名称，可以包括“我”）
+                                    说话内容：可以是任务与主题有关的合规的内容。
+                                    前往对象：可以是场所名也可以是角色姓名；前往的对象既可以是观测到的，也可以是没有观测到的
+                                    观测到的场所名：{", ".join(self.all_places)}
+                                    被观测到的人由于距离这些角色太远，所以全程不参与交流。
+                                    会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                    当剧本刚开始的时候，无人退出且所有角色都参与交流。
+                                    后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
+                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
+                                    以上模板中的所有标点符号都是全角的。"""
+            constraint_statement = constraint_statement.replace("    ","",135)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if starting == "":
