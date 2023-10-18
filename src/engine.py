@@ -262,6 +262,26 @@ class NPCEngine:
         stream: bool = json_data["stream"]
         memory_k = json_data["memory_k"]
 
+        # 提取并整合所有人的观测信息
+        share_obs_people_set = []
+        share_obs_items_set = []
+        share_obs_locations_set = []
+        for npc_state in states:
+            share_obs_people_set += npc_state["observation"]["people"]
+            share_obs_items_set += npc_state["observation"]["items"]
+            share_obs_locations_set += npc_state["observation"]["locations"]
+        share_obs_people_set = list(set(share_obs_people_set))
+        share_obs_items_set = list(set(share_obs_items_set))
+        share_obs_locations_set = list(set(share_obs_locations_set))
+        for name in names:
+            if name in share_obs_people_set:
+                share_obs_people_set.remove(name)
+        share_observations = {
+            "people" : share_obs_people_set,
+            "items" : share_obs_items_set,
+            "locations" : share_obs_locations_set
+        }
+
         # 初始化群体描述、心情和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
@@ -293,7 +313,7 @@ class NPCEngine:
             descs=descs,
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
-            states=states,
+            observations=share_observations,
             starting=starting,
             length=length
         )
