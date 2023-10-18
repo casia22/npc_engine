@@ -1,6 +1,6 @@
 {
   "name": "mov",
-  "definition": "<mov|location|>，向[location]移动，[location]必须是之前出现的位置",
+  "definition": "<mov|location|>，向[location]移动，[location]必须出现在'可去的地方'中",
   "multi_param": false,
   "example": "<mov|卧室|>",
   "log_template":{

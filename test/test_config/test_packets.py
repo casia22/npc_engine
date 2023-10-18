@@ -55,6 +55,14 @@ init_packet = {
     ],  # 可以留空，默认按照scene.json初始化场景NPC。非空则在之前基础上添加。
 }
 
+init_packet_police = {
+    "func": "init",
+    # 必填字段，代表在什么场景初始化
+    "scene_name": "警察局",
+    "language": "C",
+    "npc": []
+}
+
 wakeup_packet_1 = {
     "func": "wake_up",
     "npc_name": "王大妈",
@@ -151,6 +159,31 @@ action_done_packet_2 = {
     "parameters": [],  # 之前传过来的参数
     "reason": "李大爷在去往‘警察局’的路上被王大妈打断",  # "王大妈在去往‘警察局’的路上被李大爷打断"
 }
+
+# player2npc的对话包
+player2npc_packet = {
+    "func":"talk2npc",
+    "npc_name":"警员1",
+    "time": "2021-01-01 12:00:00", # 游戏世界的时间戳
+
+    # NPC的状态
+    "scenario_name": "警察局",
+    "npc_state": {
+      "position": "雁栖村入口",
+      "observation": {
+              "people": ["囚犯阿呆","警员2","旅行者小王"],
+              "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+              "locations": ['牢房', '雁栖村入口']
+                    },
+      "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
+    },
+    # player的信息
+    "player_name":"旅行者小王",  # player的名字
+    "speech_content":"你好，我是旅行者小王, 我要报警, 在林区中好像有人偷砍树",  # player说的话
+    "items_visible": ["金丝眼镜", "旅行签证", "望远镜"],  # player身上的物品
+    "state": "旅行者小王正在严肃地站着，衣冠规整，手扶着金丝眼镜",  # player状态的自然语言描述，开发者可以随意添加
+}
+
 
 close_packet = {
     "func": "close"

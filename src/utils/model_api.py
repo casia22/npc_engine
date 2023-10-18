@@ -2,6 +2,8 @@
 import openai
 import json
 import boto3
+import requests
+
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 # import zhipuai
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
@@ -19,7 +21,61 @@ def get_model_answer(model_name, inputs_list):
     elif model_name == 'cpm-bee':
         model = CPM_BEE()
         answer = model.get_response(inputs_list=inputs_list)
+    elif model_name == 'baidu-wxyy':
+        model = BAIDU_API()
+        answer = model.get_response(inputs_list=inputs_list)
     return answer
+
+class BAIDU_API:
+    # DOC: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/4lilb2lpf
+    # 充值: https://console.bce.baidu.com/billing/#/account/index
+    # 开通新模型: https://console.bce.baidu.com/qianfan/chargemanage/list
+
+    def __init__(self):
+        API_KEY = "qq7WLVgNX88unRoUVLtNz8fQ" # qq7WLVgNX88unRoUVLtNz8fQ
+        SECRET_KEY = "gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo" # gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo
+        self.access_token = None
+        self.api_key = API_KEY
+        self.secret_key = SECRET_KEY
+        self.api_base = "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant?access_token="
+        self.get_access_token()
+
+    def convert_openai_to_baidu(self, inputs_list):
+        """
+        将 OpenAI 的输入转换为百度的输入
+        检测是否为偶数，如果为偶数，那就把system拼接到user上面
+
+        :param inputs_list: OpenAI 的输入
+        :return: 百度的输入
+        """
+        combined_content = '\n\n'.join(item['content'].strip() for item in inputs_list)
+        baidu_inputs_list = [{"role": "user", "content": combined_content}]
+        return baidu_inputs_list
+
+    def get_response(self, inputs_list):
+        self.url = self.api_base + self.access_token
+        payload = json.dumps({
+            "messages": self.convert_openai_to_baidu(inputs_list),
+            "temperture": "0"
+        })
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        response = requests.request("POST", self.url, headers=headers, data=payload)
+        # load json data
+        data = json.loads(response.text)
+        response = data["result"]
+        return response
+
+    def get_access_token(self):
+        """
+        使用 AK，SK 生成鉴权签名（Access Token）
+        :return: access_token，或是None(如果错误)
+        """
+        url = "https://aip.baidubce.com/oauth/2.0/token"
+        params = {"grant_type": "client_credentials", "client_id": self.api_key, "client_secret": self.secret_key}
+        self.access_token = str(requests.post(url, params=params).json().get("access_token"))
+        return self.access_token
 
 
 class CPM_BEE:
@@ -84,7 +140,7 @@ class OPENAI:
 
 
 if __name__ == '__main__':
-    inputs_list1 = [
+    inputs_list_cpm = [
         {
             "input": """
             <用户>请你扮演李大爷，特性是：李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜，心情是开心，正在李大爷家，现在时间是2021-01-01 12:00:00,
@@ -118,7 +174,7 @@ if __name__ == '__main__':
         }
     ]
 
-    inputs_list2 = [{
+    inputs_list_openai = [{
         "role": "system",
         "content": """
             请你扮演李大爷，特性是：李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜，心情是开心，正在李大爷家，现在时间是2021-01-01 12:00:00,
@@ -143,10 +199,11 @@ if __name__ == '__main__':
                 2.动作和参数要在20字以内。
                 3.动作的对象必须要属于看到的范围！
                 4.三元组两侧必须要有尖括号<>
+                5.以一行的方式，返回单个结果
             """},
     ]
 
-    inputs_list3 = [
+    inputs_list_cpm = [
         {"role": "system",
         "content": """
             请你扮演李大爷，特性是：李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜，心情是开心，正在李大爷家，现在时间是2021-01-01 12:00:00,
@@ -181,6 +238,6 @@ if __name__ == '__main__':
         """.replace("<", "<<").replace(">", ">>"),
         }]
 
-    print(get_model_answer(model_name='cpm-bee', inputs_list=inputs_list1))
+    print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list_openai))
     # print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list3))
 

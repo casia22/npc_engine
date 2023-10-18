@@ -211,6 +211,7 @@ class NPC:
             2.尽量使用第三人称来描述
             3.如果目的达成了一部分，那就去除完成的部分并继续规划
             4.目的要在20字以内。
+            5.目的要从最近记忆中出发。
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
@@ -227,7 +228,7 @@ class NPC:
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}可去的地方:{self.knowledge.places}，
+            {self.name}可去的地方:{self.scene_knowledge.all_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
@@ -242,6 +243,7 @@ class NPC:
             3.如果目的达成了一部分，那就去除完成的部分并继续规划
             4.如果目的不改变，可以返回: [情绪]<S>
             5.目的要在20字以内。
+            6.目的要从最近记忆中出发。
             """
         # 发起请求
         purpose_response: str = self.call_llm(instruct=role_play_instruct, prompt=prompt)
@@ -341,6 +343,189 @@ class NPC:
             <返回行为>:{self.action_result}
                     """)
         return self.action_result
+
+    # 生成单人2NPC对话
+    async def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
+                               player_state_desc:str,
+                               time: str, k: int = 3) -> Dict[str, Any]:
+        """
+        接受玩家的状态，根据NPC的记忆和目的返回NPC的动作，回答，更新目的
+            1.按照玩家问题、当前NPC目的，检索NPC的记忆
+            2.按照记忆、之前的目的、当前状态、观察等，生成"目的(包含情绪)，动作，回答"
+                例子： "%[开心]<找到西瓜汁>%<mov|大门|>%再见啦李大爷我有事先走啦%
+            3.更新目的和情绪，返回动作和回答组成的数据包
+            4.将本次交互组装为记忆，放入记忆库
+
+        返回对象:
+            {
+            "name":"talk_result",
+            "npc_name":"王大妈",
+            "answer":"你吃饭了没？"
+            "actions": [{
+                "name":"action",
+                "npc_name":"王大妈",
+                "action":"mov",
+                "object":"雁栖村入口",
+                "parameters":[],
+                        }]
+            }
+
+        :param player_name:
+        :param player_speech:
+        :param items_visible:
+        :param player_state_desc:
+        :param time:
+        :param k:
+        :return:
+        """
+        """        
+            1.按照玩家问题、当前NPC目的，检索NPC的记忆                        
+        """
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
+            self.state.observation.people) + ",".join(
+            self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
+        memory_related_text_purpose = [each.text for each in memory_dict["related_memories"]]
+        memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
+        # 按照玩家的问句检索记忆
+        query_text_player: str = player_speech
+        memory_dict_player: Dict[str, Any] = await self.memory.search_memory(query_text=query_text_player, query_game_time=time, k=k)
+        memory_related_text_player = [each.text for each in memory_dict_player["related_memories"]]
+        """
+            2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
+        """
+        # 根据允许动作的预定义模版设置prompt
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
+                         self.action_dict.items()]
+        # 构造prompt请求
+        instruct = f"""
+                    请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在的地方是{self.state.position}，现在时间是{time},
+                    你之前的目的是:{self.purpose},
+                    你的最近记忆:{memory_latest_text},
+                    你脑海中相关记忆:{memory_related_text_purpose+memory_related_text_player}，
+                    你现在看到的人:{self.state.observation.people}，
+                    你现在看到的物品:{self.state.observation.items}，
+                    你现在身上的物品:{self.state.backpack}，
+                    你可去的地方:{self.scene_knowledge.all_places}，
+                    你现在看到的地点:{self.state.observation.locations}，
+                    
+                    一个叫{player_name}的人在跟你对话，
+                    其描述为: {player_state_desc},
+                    其身上有{items_visible},
+                    {player_name}说: “{player_speech}”，
+                """
+        # 目的(包含情绪)，动作，回答
+        prompt = f"""
+                请你扮演上面角色，
+                严格遵循标点符号的格式要求， 
+                以 
+                    @[情绪]<角色目的>@<动作|对象|参数>@角色对{player_name}的语言回答@
+                的方式返回结果.
+                
+                (1) [情绪]<角色目的> 部分要求:
+                请你为{self.name}生成一个目的，以下是例子：
+                    例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
+                    例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
+                    例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
+                    要求：
+                    1.按照[情绪]<目的>的方式来返回内容
+                    2.尽量使用第三人称来描述
+                    3.目的要在20字以内。
+                    4.目的要从最近记忆中出发。
+                    
+                (2) <动作|对象|参数> 部分要求:
+                    按照[行为定义]生成动作
+                    [行为定义]：
+                        {action_prompt}
+                    要求:
+                        1.请务必按照以下形式返回动作、对象、参数的三元组："<动作|对象|参数>"
+                        2.动作和参数要在20字以内。
+                        3.动作的对象必须要属于看到的范围！
+                        4.三元组两侧必须要有尖括号<>
+                        
+                (3) 角色对{player_name}的语言回答 部分要求:
+                     1.要符合{self.name}当前的情绪、目的、状态、记忆等
+                     2.回复要符合口语习惯
+                     3.要以{self.name}第一人称回复
+                
+                整体要求:
+                    (1)(2)(3)部分生成的内容要以%包裹，以下是多个例子:
+                        @[开心]<XXX想要购买一个西瓜，因为他喜欢吃>@<动作|对象|参数>@你的这个瓜多少钱一斤呀？@
+                        @[紧张]<ZZZ需要预订一张飞机票，因为他要去出差>@<动作|对象|>@我需要预订一张明天飞往纽约的经济舱机票，你能帮我处理吗？@
+                        @[好奇]<YYY想要了解一下天文学，因为他对宇宙很感兴趣>@<动作|对象|>@你能告诉我关于黑洞的一些基本知识吗？@
+
+                """
+        # 发起请求
+        response: str = self.call_llm(instruct=instruct, prompt=prompt)
+        """
+            3.更新目的和情绪，返回动作和回答组成的数据包
+        """
+        # 抽取 "目的情绪"、"动作"、"回答" 三个部分
+        try:
+            [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
+        except ValueError:
+            logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
+        except Exception as e:
+            mood_purpose = "[正常]<>"
+            action_prompt = "<||>"
+            answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
+            logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_prompt:{action_prompt} answer_prompt:{answer_prompt}")
+
+        # 检查抽取到的动作
+        self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
+        # 检查action合法性，如不合法那就返回默认动作
+        action_name = self.action_result["action"]
+        if action_name not in self.action_dict.keys():
+            illegal_action = self.action_result
+            self.action_result = {"name": "stand", "object": "", "parameters": []}
+            logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+        # 按照配置文件决定是否分割参数
+        if not self.action_dict[action_name].multi_param:
+            # 如果非多参数，比如对话，那就把参数合并成一个字符串
+            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
+        self.action_result["npc_name"] = self.name
+        # 更新NPC的情绪和purpose
+        try:
+            purpose: str = mood_purpose.split("]<")[1].replace(">", "")
+            mood: str = mood_purpose.split("]<")[0].replace("[", "")
+        except IndexError:
+            logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
+            purpose = "" # NULL
+            mood = self.mood
+        self.purpose = purpose
+        self.mood = mood
+
+        """
+            4.添加本次交互的记忆元素
+        """
+        memory_text = f"""
+            {self.name}在{self.state.position}和{player_name}相遇，
+            {self.name}的目的是{purpose}，
+            {player_name} 的状态是{player_state_desc}，
+            {player_name} 说: {player_speech}
+            {self.name} 回答{player_name}: {answer_prompt}
+            然后 采取了动作: {action_prompt}
+            时间在：{time}
+        """
+        await self.memory.add_memory_text(text=memory_text, game_time=time)
+
+        response_package = {
+            "name": "talk_result",
+            "npc_name": self.name,
+            "answer": answer_prompt,
+            "actions": [self.action_result]
+        }
+
+        logger.debug(f"""
+                    <TALK2NPC请求>
+                    <请求内容>:{instruct}
+                    <请求提示>:{prompt}
+                    <返回内容>:{response}
+                    <返回行为>:{self.action_result}
+                    <返回回答>:{answer_prompt}
+                    <心情和目的>:{self.mood} {self.purpose}
+                            """)
+        return response_package
 
     def call_llm(self, instruct: str, prompt: str) -> str:
         llm_prompt_list = [{
