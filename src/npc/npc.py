@@ -109,6 +109,7 @@ class NPC:
         self.desc: str = desc
         # NPC的常识
         self.public_knowledge = public_knowledge
+        ## note:场景常识由scenario_name初始化决定；如果更新，使用set_scenario更新
         self.scene_knowledge: SceneConfig = public_knowledge.get_scene(scene_name=scenario_name)
         # NPC的状态
         self.state = State(
@@ -158,7 +159,7 @@ class NPC:
         )
 
     def set_known_actions(self, actions: List[str]) -> None:
-        self.scene_knowledge.actions = actions
+        self.scene_knowledge.all_actions = actions
 
     def set_action_dict(self, action_dict):
         self.action_dict = action_dict
@@ -296,7 +297,10 @@ class NPC:
         memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
 
         # 根据允许动作的预定义模版设置prompt
-        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in self.action_dict.items()]
+        # WARN: 动作空间应当从场景知识中获得，而非引擎属性。
+        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
+        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in allowed_actions_dict.items()]
         # 构造prompt请求
         instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
@@ -395,8 +399,10 @@ class NPC:
             2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
         """
         # 根据允许动作的预定义模版设置prompt
+        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
-                         self.action_dict.items()]
+                         allowed_actions_dict.items()]
         # 构造prompt请求
         instruct = f"""
                     请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在的地方是{self.state.position}，现在时间是{time},
