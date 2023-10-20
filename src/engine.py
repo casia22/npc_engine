@@ -260,7 +260,10 @@ class NPCEngine:
         scenario_name: str = json_data["scenario_name"]
         topic: str = json_data["topic"]
         length: str = json_data["length"]
-        stream: bool = json_data["stream"]
+        try:
+            stream: bool = json_data["stream"]
+        except:
+            stream: bool = False
         memory_k = json_data["memory_k"]
 
         # 提取并整合所有人的观测信息
@@ -656,9 +659,6 @@ class NPCEngine:
         else:
             action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
                                                   reason=json_data["reason"])
-        # 更新NPC允许的动作
-        npc.set_known_actions(list(self.action_dict.keys()))
-        npc.set_action_dict(self.action_dict)
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
         # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
@@ -716,8 +716,6 @@ class NPCEngine:
         # 获得NPC的引用
         npc_name = json_data["npc_name"]
         npc = self.npc_dict[npc_name]
-        # 更新NPC允许的动作
-        npc.set_known_actions(list(self.action_dict.keys()))
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
         npc.set_scenario(scenario=json_data["scenario_name"])
@@ -792,8 +790,6 @@ class NPCEngine:
         # 获得NPC的引用
         npc_name = json_data["npc_name"]
         npc = self.npc_dict[npc_name]
-        # 更新NPC允许的动作
-        npc.set_known_actions(list(self.action_dict.keys()))
         # 更新NPC的状态
         npc.set_state(json_data['npc_state'])
         npc.set_scenario(scenario=json_data["scenario_name"])
