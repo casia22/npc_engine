@@ -110,16 +110,15 @@ def test_conversation():
             "player_desc": "",
             "memory_k": 3,
             "length": "S",
-            "stream": False
+            "stream": True
         }
 
     # 发送初始化包到引擎
     print("sending for conversation")
     send_data(pack1)
-    #print("all done")
 
 test_conversation()
-time.sleep(20)
+time.sleep(6)
 
 def send_pack_create():
     pack1 = {        
@@ -136,7 +135,7 @@ def send_pack_create():
 def test_conversation_re_creation():
     pack1 = {
         "func":"re_create_conversation",
-        "id":"76ee76f0-7d13-499b-a8ad-c4744cf44aea",
+        "id":"1234567890",
         "character":"警长",
         "interruption": "", # 玩家插入发言,可以留空
         "player_desc": "", # 玩家的个性描述
@@ -147,5 +146,16 @@ def test_conversation_re_creation():
     print("sending for conversation re-creation")
     send_data(pack1)
 
-#test_conversation_re_creation()
-#time.sleep(10)
+test_conversation_re_creation()
+time.sleep(10)
+
+def close_engine():
+    pack1 = {
+        "func":"close"
+    }
+    
+    print("send package to close engine")
+    send_data(pack1)
+
+#close_engine()
+#time.sleep(5)

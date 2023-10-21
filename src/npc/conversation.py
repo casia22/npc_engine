@@ -101,8 +101,8 @@ class Conversation:
         ##for name in self.names:
         #    self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
-        self.convo_id: str = str(uuid4())
-        # self.convo_id = "1234567890"
+        #self.convo_id: str = str(uuid4())
+        self.convo_id = "1234567890"
         # 将展示结束的剧本行作为记忆存起来
         self.temp_memory: List[str] = []
         self.script_perform: List[str] = []
@@ -375,6 +375,7 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
+                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
@@ -475,6 +476,7 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
+                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
