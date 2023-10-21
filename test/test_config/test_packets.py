@@ -23,6 +23,7 @@ init_packet = {
                 },
                 "backpack": ["鱼饵", "渔具维修工具"]
             },
+            "action_space": ["mov", "chat"],
             "memory": [
                 "从小就跟随父亲学习捕鱼技巧。",
                 "曾多次出海捕鱼，积累丰富的经验。",
@@ -44,6 +45,7 @@ init_packet = {
                 },
                 "backpack": ["干粮", "水壶", "急救包"]
             },
+            "action_space": ["mov", "chat"],
             "memory": [
                 "从小生活在山区，接受父亲的猎人训练。",
                 "熟悉各种野生动物的习性和行踪。",
