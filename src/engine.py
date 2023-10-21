@@ -510,6 +510,7 @@ class NPCEngine:
                 action_dict=self.action_dict,
                 mood=npc_json["mood"],
                 memory=npc_json["memory"],
+                action_space=npc_json["action_space"],
                 model=self.model,
                 embedding_model=self.embedding_model
             )
@@ -536,6 +537,7 @@ class NPCEngine:
                     },
                     action_dict=self.action_dict,
                     mood=npc_data["mood"],
+                    action_space=npc_data["action_space"],
                     memory=npc_data["memory"],
                     model=self.model,
                     embedding_model=self.embedding_model

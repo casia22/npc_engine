@@ -72,6 +72,7 @@
                   "backpack":["黄瓜", "1000元", "老报纸"]
                        },
             "mood":"正常",
+            "action_space": ["mov", "chat"],  # 人物的动作空间(在实际执行的时候，场景的all_actions和人物action_space取交集) 
             "memory":[ ]
         },
         {
@@ -87,8 +88,9 @@
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                        },
         "mood":"焦急",
+        "action_space": ["mov", "chat"],  # 人物的动作空间(在实际执行的时候，场景的all_actions和人物action_space取交集)
         "memory":[ ]
-        }], # 可以留空，默认按照gscene.json初始化场景NPC。非空则在之前基础上添加。
+        }], # 可以留空，默认按照scene.json初始化场景NPC。非空则在之前基础上添加。
 }
 ```
 
