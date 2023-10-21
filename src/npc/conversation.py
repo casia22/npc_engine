@@ -11,6 +11,7 @@ import json
 import datetime
 import os
 import logging
+import hashlib
 import openai
 #import zhipuai
 from colorama import Fore, Style
@@ -40,7 +41,7 @@ class Conversation:
     [2] Conversation 对象自行决定Agent的退出，但无法决定Agent的加入
     [3] Conversation 决定某个Agent退出对话后，会在退出Agent中更新数据并自动释放占用权限
     [4] Conversation 对象默认执行所有角色的move动作和chat动作，除非在Agent相关属性中特殊声明角色的动作列表
-    
+
     Conversation 对象关闭：
     [1] 当剧本展演完后对象会自动检测Agent实体列表，当没有任何Agent实体剩余的时候，会向Engine端返回关闭信号。
         收到关闭信号后Engine会调用close()方法清空该对象的所有数据并删除该对象。
@@ -89,6 +90,8 @@ class Conversation:
         self.engine_sock = sock
         self.game_url = game_url
         self.game_port = game_port
+        # 用于阻塞控制stream对话生成
+        self.active_session = ""
         # 存储每一个角色参与对话的记忆起始索引值
         self.start_memory: Dict[str, int] = {}
         for name in self.names:
@@ -110,6 +113,16 @@ class Conversation:
         self.lines: List[Dict[str, Any]] = []
         # 调用剧本生成函数生成剧本
         self.generate_script(system_prompt, query_prompt)
+
+    def reset_session(
+        self, 
+        new_session: str):
+        """
+        将new_session赋值给全局session
+
+        :params new_session:
+        """
+        self.active_session = new_session
 
     def call_llm(
         self,
@@ -312,6 +325,9 @@ class Conversation:
         :params query_prompt:
         :return script:
         """
+        # 创建一个新的局部session并覆盖式的重置全局session
+        local_session = hashlib.md5(str(datetime.datetime.now()).encode()).hexdigest()
+        self.reset_session(local_session)
         # 首先将系统提示词和查询提示词打包
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中生成文本剧本
@@ -359,6 +375,8 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
+                if self.active_session != local_session:
+                    break
             logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
 
         else:
@@ -393,6 +411,9 @@ class Conversation:
         :params query_prompt:
         :return script:
         """
+        # 创建一个新的局部session并覆盖式的重置全局session
+        local_session = hashlib.md5(str(datetime.datetime.now()).encode()).hexdigest()
+        self.reset_session(local_session)
         # 如果添加的新角色已经在角色列表中，则报错并返回空
         if new_name in self.names:
             logger.debug(f"{new_name} is already in this conversation. Re-creation fails.")
@@ -454,6 +475,8 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
+                if self.active_session != local_session:
+                    break
             logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
 
         else:

@@ -342,7 +342,7 @@ class EnginePrompt:
         #                        他们观测到的周围的物体有：{"，".join(share_observations["items"])}。
         #                        他们观测到的{location}中的地点有：{"，".join(share_observations["locations"])}。"""
         #observation_statement = observation_statement.replace("    ","",24)
-        
+
         # 蒋对话介绍、角色信息、观测信息和任务信息按顺序整合成预陈述
         #pre_statement = "\n".join([introduction, supplementary, observation_statement, task])
         pre_statement = "\n".join([introduction, supplementary, task])
@@ -389,7 +389,30 @@ class EnginePrompt:
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if starting == "":
-            example_statement = """例子：
+            if length == "P":
+                example_statement = """例子：
+                                输入：
+                                生成一个精简的剧本，展现这些角色是如何围绕主题进行交互的，只交流主题相关的关键信息，省去主题无关的交流。
+                                输出：
+                                <无人退出。剩下的角色：小明，小李，小张>
+                                小明（稳定|对话|小李&小张）：“你好呀，你们最近过得如何？”
+                                小李（稳定|对话|小明）：“我很好，我们现在正在讨论数学。”
+                                小张（稳定|对话|小明）：“是的，我们忙于做数学作业。”
+                                小明（稳定|对话|小李&小张）：“好吧，下次再见。”
+                                小李（稳定|对话|小明）：“好的，再见。”
+                                小张（稳定|对话|小明）：“再见小明。”
+                                小张（稳定|前往|家）：空
+                                <小明退出。剩下的角色：小李，小张>
+                                小李（着急|对话|小张）：“哦！我妈妈让我回家，我得走了。”
+                                小张（稳定|对话|小李）：“好的，再见，我想去公园看看。”
+                                小李（着急|前往|家）：空
+                                <小李退出。剩下的角色：小张>
+                                小张（稳定|前往|公园）：空
+                                <小张退出。剩下的角色：无人>
+                                <结束>"""
+                example_statement = example_statement.replace("    ","",152)
+            else:
+                example_statement = """例子：
                                 输入：
                                 生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互的。
                                 输出：
@@ -409,9 +432,30 @@ class EnginePrompt:
                                 小张（稳定|前往|公园）：空
                                 <小张退出。剩下的角色：无人>
                                 <结束>"""
-            example_statement = example_statement.replace("    ","",152)
+                example_statement = example_statement.replace("    ","",152)
         else:
-            example_statement = """例子：
+            if length == "P":
+                example_statement = """例子：
+                                输入：
+                                生成一个精简的剧本，展现这些角色是如何围绕主题进行交互或者回复我的，省去与主题无关的交流。只交流主题相关的关键信息，省去主题无关的交流。
+                                我：“你好，最近怎么样？”
+                                输出：
+                                <无人退出。剩下的角色：小李，小张>
+                                小李（稳定|对话|我）：“我很好，我们在讨论花朵。”
+                                小张（开心|对话|我）：“对的，这些花很漂亮。”
+                                小李（稳定|对话|小张）：“我母亲很喜欢花朵。”
+                                小张（稳定|对话|小李）：“喔喔，我母亲不喜欢，但是我父亲喜欢花。”
+                                小李（稳定|对话|我&小张）：“好吧，我要回家吃晚饭了，下次再见。”
+                                小张（稳定|对话|小李）：“好的，再见小李。”
+                                小李（稳定|前往|家）：空
+                                <小李退出。剩下的角色：小张>
+                                小张（稳定|对话|我）：“现在外面很黑，我也要回家了，再见。”
+                                小张（稳定|前往|家）：空
+                                <小张退出。剩下的角色：无人>
+                                <结束>"""
+                example_statement = example_statement.replace("    ","",136)
+            else:
+                example_statement = """例子：
                                 输入：
                                 生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
                                 我：“你好，最近怎么样？”
@@ -429,7 +473,7 @@ class EnginePrompt:
                                 小张（稳定|前往|家）：空
                                 <小张退出。剩下的角色：无人>
                                 <结束>"""
-            example_statement = example_statement.replace("    ","",136)
+                example_statement = example_statement.replace("    ","",136)
 
         # 将预陈述、约束陈述和案例陈述按顺序拼接得到完整陈述，作为系统提示词的内容
         whole_statements = ("\n\n").join([pre_statement, constraint_statement, example_statement])
