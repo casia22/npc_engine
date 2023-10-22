@@ -8,7 +8,7 @@ import re, os, datetime
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.npc.action import ActionItem
-from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH, ACTION_MODEL
 from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from npc_engine.src.utils.model_api import get_model_answer
 
@@ -333,7 +333,7 @@ class NPC:
         self.action_result: Dict[str, Any] = ActionItem.str2json(response)
         # 检查action合法性，如不合法那就返回默认动作
         action_name = self.action_result["action"]
-        if action_name not in self.action_dict.keys():
+        if not action_name or action_name not in self.action_dict.keys():
             illegal_action = self.action_result
             self.action_result = {"name": "stand", "object": "", "parameters": []}
             logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
@@ -548,10 +548,17 @@ class NPC:
                 "content": prompt}
         ]
         # 测试使用百川2
-        # prompt = instruct+prompt
-        # answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
-        # 使用openai
-        answer = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=llm_prompt_list)
+        if ACTION_MODEL.startswith("baichuan2"):
+            prompt = instruct+prompt
+            answer = get_model_answer(model_name=ACTION_MODEL, inputs_list=[prompt])
+            logger.debug(f"<ACTION> 使用百川模型: {ACTION_MODEL}")
+        elif ACTION_MODEL.startswith("gpt"):
+            # 使用openai
+            answer = get_model_answer(model_name=OPENAI_MODEL, inputs_list=llm_prompt_list)
+            logger.debug(f"<ACTION> 使用openai模型{OPENAI_MODEL}")
+        else:
+            logger.error(f"未知的ACTION_MODEL:{ACTION_MODEL}")
+            answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
         return answer
 
     def save_memory(self):

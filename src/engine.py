@@ -37,7 +37,7 @@ from npc_engine.src.utils.send_utils import send_data
 colorama.init()
 from colorama import Fore, Style
 from npc_engine.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
-                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG)
+                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG,ACTION_MODEL)
 from npc_engine.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
 # key配置
@@ -110,7 +110,7 @@ class NPCEngine:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
         print(
             Fore.GREEN
-            + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using model {model}"
+            + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using general llm model {model}, action llm model  {ACTION_MODEL}"
             + Style.RESET_ALL
         )
         self.sock.bind((engine_url, self.engine_port))  # 修改为IPv6地址绑定方式 todo:这里可能要改为::1
