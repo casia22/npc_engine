@@ -101,8 +101,8 @@ class Conversation:
         ##for name in self.names:
         #    self.memory_head_names[name] = copy.deepcopy(self.names)
         # Conversation实例的ID
-        #self.convo_id: str = str(uuid4())
-        self.convo_id = "1234567890"
+        self.convo_id: str = str(uuid4())
+        #self.convo_id = "1234567890"
         # 将展示结束的剧本行作为记忆存起来
         self.temp_memory: List[str] = []
         self.script_perform: List[str] = []
@@ -111,8 +111,6 @@ class Conversation:
         # 存储剧本按行拆分结果的中间变量
         self.sentences: List[str] = []
         self.lines: List[Dict[str, Any]] = []
-        # 调用剧本生成函数生成剧本
-        self.generate_script(system_prompt, query_prompt)
 
     def reset_session(
         self, 

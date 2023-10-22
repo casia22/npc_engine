@@ -3,10 +3,13 @@
 ![Conversation](../img/conversation_module.png)
 
 游戏需要自己确认npc的群体对话触发机制，通常是一个包含固定半径的对话房间。
-发送create_conversation给engine后，engine会根据提供的参数返回一个长剧本包，游戏需要自己实现剧本演出。
-每一行剧本演出完成后，需要发送确认包给engine否则不会有记忆。
+发送create_conversation给engine后，engine会根据提供的参数返回对话剧本
+游戏端通过设置stream参数来控制对话剧本生成的模式：
+    其一是生成完整剧本，将整个剧本打包成大数据包并一次性传给游戏端（stream = False）
+    其二是生成流式剧本、每行剧本打包成一个数据包并持续传送给游戏端（stream = True）
+对话剧本的每一行在游戏端演出完成后，需要发送确认包给engine。
 
-剧本有插入功能，比如玩家要插入对话或者一个新的npc进入了对话，这时候发送re_create_conversation包(带着之前的对话ID)便可，会重新生成一个考虑到插入npc的接续剧本。
+对话剧本允许插话，玩家如果要插入对话或者一个新的npc进入了对话，这时候发送re_create_conversation包(带着之前的对话ID)便可，会重新生成一个考虑到插入npc的接续剧本。
 
 ## Conversation模块UDP包
 ```python
@@ -45,7 +48,7 @@
     "stream": True  # 是否采用流式响应
 }
 
-# 引擎端一次性创造并生成剧本后传给游戏端的数据包
+# 引擎端生成完整剧本传给游戏端的数据包
 {
     "name": "conversation",
     "mode": "script",  # 对话传输剧本模式的数据包
@@ -54,7 +57,7 @@
     "lines": [line1, line2, line3, line4, ...]  # 剧本信息，由若干行对话组成的序列
 }
 
-# 引擎端生成一行剧本后传给游戏端的数据包
+# 引擎端生成流式剧本传给游戏端的单个数据包
 {
     "name": "conversation",
     "mode": "line",   # 对话传输剧本行模式的数据包

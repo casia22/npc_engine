@@ -204,7 +204,7 @@ class NPCMemory:
 
         # 对query_text进行embedding
         query_embedding = self.embed_text(query_text)
-        logger.debug(f"Query embedding: {query_embedding}")
+        #logger.debug(f"Query embedding: {query_embedding}")
 
         # 从pinecone中搜索与query_text最相似的2k条记忆
         response = self.vector_database.search(vector=query_embedding, k=2 * k, thresh=0.8)

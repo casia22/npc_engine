@@ -134,9 +134,9 @@ class NPC:
         self.initial_memory = memory
         ################# 等到记忆添加实现闭环时删除 #################
 
-    async def async_init(self):
+    def _init(self):
         for piece in self.initial_memory:
-            await self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
+            self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
             logger.debug(f"add memory {piece} into npc {self.name} done.")
 
     def set_state(self, state: Dict[str, Any]) -> None:
@@ -180,7 +180,7 @@ class NPC:
     def set_mood(self, mood: str) -> None:
         self.mood = mood
 
-    async def get_purpose(self, time: str, k: int = 3) -> str:
+    def get_purpose(self, time: str, k: int = 3) -> str:
         """
         根据位置和时间+NPC记忆获取NPC的目的
         如果没有目的，那就参照最近记忆生成一个目的
@@ -216,7 +216,7 @@ class NPC:
             """
         else:
             # 如果有目的，那就使用目的来检索最近记忆和相关记忆
-            memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
+            memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=self.purpose, query_game_time=time, k=k)
             memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
             memory_related_text = [each.text for each in memory_dict["related_memories"]]
 
@@ -275,7 +275,7 @@ class NPC:
         return purpose
 
     # 生成行为
-    async def get_action(self, time: str, k: int = 3) -> Dict[str, Any]:
+    def get_action(self, time: str, k: int = 3) -> Dict[str, Any]:
         # TODO: 将返回的action做成类似conversation一样的list，然后返回游戏执行错误/成功，作为一个memoryitem
         """
         结合NPC的记忆、目的、情绪、位置、时间等信息来生成动作和参数
@@ -292,7 +292,7 @@ class NPC:
         """
         # 按照NPC目的和NPC观察检索记忆
         query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.locations) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
-        memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
+        memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text = [each.text for each in memory_dict["related_memories"]]
         memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
 
@@ -349,7 +349,7 @@ class NPC:
         return self.action_result
 
     # 生成单人2NPC对话
-    async def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
+    def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
                                player_state_desc:str,
                                time: str, k: int = 3) -> Dict[str, Any]:
         """
@@ -388,12 +388,12 @@ class NPC:
         query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
             self.state.observation.people) + ",".join(
             self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
-        memory_dict: Dict[str, Any] = await self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
+        memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text_purpose = [each.text for each in memory_dict["related_memories"]]
         memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
         # 按照玩家的问句检索记忆
         query_text_player: str = player_speech
-        memory_dict_player: Dict[str, Any] = await self.memory.search_memory(query_text=query_text_player, query_game_time=time, k=k)
+        memory_dict_player: Dict[str, Any] = self.memory.search_memory(query_text=query_text_player, query_game_time=time, k=k)
         memory_related_text_player = [each.text for each in memory_dict_player["related_memories"]]
         """
             2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
@@ -513,7 +513,7 @@ class NPC:
             然后 采取了动作: {action_prompt}
             时间在：{time}
         """
-        await self.memory.add_memory_text(text=memory_text, game_time=time)
+        self.memory.add_memory_text(text=memory_text, game_time=time)
 
         response_package = {
             "name": "talk_result",

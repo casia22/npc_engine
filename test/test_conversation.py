@@ -53,7 +53,7 @@ def test_engine_init_memory():
     #time.sleep(180)
 
 test_engine_init_memory()
-time.sleep(10)
+time.sleep(5)
 
 def test_conversation():
 
@@ -118,7 +118,7 @@ def test_conversation():
     send_data(pack1)
 
 test_conversation()
-time.sleep(6)
+time.sleep(9)
 
 def send_pack_create():
     pack1 = {        
