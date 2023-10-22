@@ -97,6 +97,7 @@ class NPC:
             action_dict: Dict[str, ActionItem],
             embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
+            action_space: List[str] = [],
             memory: List[str] = [],
             memory_k: int = 3,
             model: str = OPENAI_MODEL,
@@ -107,6 +108,7 @@ class NPC:
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
+        self.action_space: List[str] = action_space
         # NPC的常识
         self.public_knowledge = public_knowledge
         ## note:场景常识由scenario_name初始化决定；如果更新，使用set_scenario更新
@@ -298,7 +300,9 @@ class NPC:
 
         # 根据允许动作的预定义模版设置prompt
         # WARN: 动作空间应当从场景知识中获得，而非引擎属性。
-        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
+                                      action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in allowed_actions_dict.items()]
         # 构造prompt请求
@@ -399,7 +403,9 @@ class NPC:
             2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
         """
         # 根据允许动作的预定义模版设置prompt
-        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
+                                      action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
                          allowed_actions_dict.items()]
@@ -541,6 +547,10 @@ class NPC:
                 "role": "user",
                 "content": prompt}
         ]
+        # 测试使用百川2
+        # prompt = instruct+prompt
+        # answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
+        # 使用openai
         answer = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=llm_prompt_list)
         return answer
 
