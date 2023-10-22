@@ -470,8 +470,6 @@ class NPCEngine:
         :return:
         """
         # 获得场景对象
-        with open("./test.txt", 'w') as f:
-            f.write("hekkd")
         scene_name = json_data["scene_name"]
         scene_config: SceneConfig = self.public_knowledge.get_scene(scene_name=scene_name)
 
