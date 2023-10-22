@@ -3,6 +3,13 @@ import openai
 import json
 import boto3
 import requests
+import json
+import requests
+import io
+import boto3
+import time
+
+
 
 from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 # import zhipuai
@@ -23,6 +30,9 @@ def get_model_answer(model_name, inputs_list):
         answer = model.get_response(inputs_list=inputs_list)
     elif model_name == 'baidu-wxyy':
         model = BAIDU_API()
+        answer = model.get_response(inputs_list=inputs_list)
+    elif model_name == 'baichuan2-13b-4bit':
+        model = BaiChuan2()
         answer = model.get_response(inputs_list=inputs_list)
     return answer
 
@@ -113,6 +123,149 @@ class CPM_BEE:
         for re in obj_json['data']:
             return re['<ans>']
         return ''
+
+class BaiChuan2():
+    def __init__(self):
+        # 首先，你需要获取你的AWS访问密钥和密钥
+        access_key = 'AKIAQ33DL5YJDAN2VH4L'  # 请替换为你的access_key
+        secret_key = "8MawlvbweKFT3zKvvxyTS+ORpLUmpK2D8EhchqSY"  # 请替换为你的secret_key
+        region_name = 'us-east-1'  # 你的AWS区域
+        service = 'sagemaker'
+        self.endpoint = 'https://runtime.sagemaker.' + region_name + '.amazonaws.com/endpoints/' + 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint' + '/invocations'
+        self.parameters = {
+            "max_length": 1024,
+            "temperature": 0.1,
+            "top_p": 0.8
+        }
+        self.smr_client = boto3.client(
+            "sagemaker-runtime",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name='us-east-1'
+        )
+
+        class StreamScanner:
+            """
+            A helper class for parsing the InvokeEndpointWithResponseStream event stream.
+
+            The output of the model will be in the following format:
+            ```
+            b'{"outputs": [" a"]}\n'
+            b'{"outputs": [" challenging"]}\n'
+            b'{"outputs": [" problem"]}\n'
+            ...
+            ```
+
+            While usually each PayloadPart event from the event stream will contain a byte array
+            with a full json, this is not guaranteed and some of the json objects may be split across
+            PayloadPart events. For example:
+            ```
+            {'PayloadPart': {'Bytes': b'{"outputs": '}}
+            {'PayloadPart': {'Bytes': b'[" problem"]}\n'}}
+            ```
+
+            This class accounts for this by concatenating bytes written via the 'write' function
+            and then exposing a method which will return lines (ending with a '\n' character) within
+            the buffer via the 'readlines' function. It maintains the position of the last read
+            position to ensure that previous bytes are not exposed again.
+            """
+
+            def __init__(self):
+                self.buff = io.BytesIO()
+                self.read_pos = 0
+
+            def write(self, content):
+                self.buff.seek(0, io.SEEK_END)
+                self.buff.write(content)
+
+            def readlines(self):
+                self.buff.seek(self.read_pos)
+                for line in self.buff.readlines():
+                    if line[-1] != b'\n':
+                        self.read_pos += len(line)
+                        yield line[:-1]
+
+            def reset(self):
+                self.read_pos = 0
+
+        self.stream_scanner = StreamScanner()
+    def get_response(self, inputs_list):
+        """
+        :param inputs_list:
+        :return:
+        """
+        return self.call_baichuan2(prompt=inputs_list[0], history=[], stream=False)
+
+    def call_baichuan_no_stream(self, prompt, history=[]):
+        endpoint_name = 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint'
+        start = time.time()
+        response_model = self.smr_client.invoke_endpoint_with_response_stream(
+            EndpointName=endpoint_name,
+            Body=json.dumps(
+                {
+                    "inputs": prompt,
+                    "parameters": self.parameters,
+                    "history": history,
+                    "stream": True
+                }
+            ),
+            ContentType="application/json",
+        )
+
+        event_stream = response_model['Body']
+        scanner = self.stream_scanner
+        total_response = ""
+        for event in event_stream:
+            scanner.write(event['PayloadPart']['Bytes'])
+            for line in scanner.readlines():
+                try:
+                    resp = json.loads(line)
+                    word_slice = resp.get("outputs")['outputs']
+                    total_response += word_slice
+                except Exception as e:
+                    import traceback
+                    print(traceback.format_exc())
+                    continue
+        return total_response
+
+    def call_baichuan2_stream(self, prompt="写一篇500字的科幻小说，背景关于宇宙战争", history=[]):
+        endpoint_name = 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint'
+        start = time.time()
+        response_model = self.smr_client.invoke_endpoint_with_response_stream(
+            EndpointName=endpoint_name,
+            Body=json.dumps(
+                {
+                    "inputs": prompt,
+                    "parameters": self.parameters,
+                    "history": history,
+                    "stream": True
+                }
+            ),
+            ContentType="application/json",
+        )
+
+        event_stream = response_model['Body']
+        scanner = self.stream_scanner
+        total_response = ""
+        for event in event_stream:
+            scanner.write(event['PayloadPart']['Bytes'])
+            for line in scanner.readlines():
+                try:
+                    resp = json.loads(line)
+                    word_slice = resp.get("outputs")['outputs']
+                    total_response += word_slice
+                    # 如果是stream模式，那么返回一个迭代器
+                    yield word_slice
+                except Exception as e:
+                    import traceback
+                    print(traceback.format_exc())
+                    continue
+        return total_response
+
+    def call_baichuan2(self, prompt="写一篇500字的科幻小说，背景关于宇宙战争", history=[], stream=False):
+        if stream:
+            return self.call_baichuan2_stream(prompt, history)
+        return self.call_baichuan_no_stream(prompt, history)
 
 
 class OPENAI:

@@ -48,11 +48,12 @@ OPENAI_BASE = "https://api.qaqgpt.com/v1"
 OPENAI_MODEL = "gpt-3.5-turbo-16k"
 
 # get OPENAI KEY and BASE_URL from local json file
-OPENAI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "openai_config.json")
+OPENAI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "llm_config.json")
 openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
 OPENAI_KEY = openai_config_data["OPENAI_KEY"]
 OPENAI_BASE = openai_config_data["OPENAI_BASE"]
 OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
+ACTION_MODEL = openai_config_data["ACTION_MODEL"]
 
 # PACKS
 INIT_PACK = json.loads(

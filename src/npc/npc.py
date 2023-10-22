@@ -8,7 +8,7 @@ import re, os, datetime
 from npc_engine.src.npc.memory import NPCMemory
 from npc_engine.src.npc.knowledge import PublicKnowledge, SceneConfig
 from npc_engine.src.npc.action import ActionItem
-from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
+from npc_engine.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH, ACTION_MODEL
 from npc_engine.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from npc_engine.src.utils.model_api import get_model_answer
 
@@ -97,6 +97,7 @@ class NPC:
             action_dict: Dict[str, ActionItem],
             embedding_model: BaseEmbeddingModel,
             mood: str = "正常",
+            action_space: List[str] = [],
             memory: List[str] = [],
             memory_k: int = 3,
             model: str = OPENAI_MODEL,
@@ -107,6 +108,7 @@ class NPC:
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
+        self.action_space: List[str] = action_space
         # NPC的常识
         self.public_knowledge = public_knowledge
         ## note:场景常识由scenario_name初始化决定；如果更新，使用set_scenario更新
@@ -298,7 +300,9 @@ class NPC:
 
         # 根据允许动作的预定义模版设置prompt
         # WARN: 动作空间应当从场景知识中获得，而非引擎属性。
-        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
+                                      action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in allowed_actions_dict.items()]
         # 构造prompt请求
@@ -329,7 +333,7 @@ class NPC:
         self.action_result: Dict[str, Any] = ActionItem.str2json(response)
         # 检查action合法性，如不合法那就返回默认动作
         action_name = self.action_result["action"]
-        if action_name not in self.action_dict.keys():
+        if not action_name or action_name not in self.action_dict.keys():
             illegal_action = self.action_result
             self.action_result = {"name": "stand", "object": "", "parameters": []}
             logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
@@ -399,7 +403,9 @@ class NPC:
             2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
         """
         # 根据允许动作的预定义模版设置prompt
-        allowed_actions: list[str] = self.scene_knowledge.all_actions
+        scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
+        allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
+                                      action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
                          allowed_actions_dict.items()]
@@ -541,7 +547,18 @@ class NPC:
                 "role": "user",
                 "content": prompt}
         ]
-        answer = get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=llm_prompt_list)
+        # 测试使用百川2
+        if ACTION_MODEL.startswith("baichuan2"):
+            prompt = instruct+prompt
+            answer = get_model_answer(model_name=ACTION_MODEL, inputs_list=[prompt])
+            logger.debug(f"<ACTION> 使用百川模型: {ACTION_MODEL}")
+        elif ACTION_MODEL.startswith("gpt"):
+            # 使用openai
+            answer = get_model_answer(model_name=OPENAI_MODEL, inputs_list=llm_prompt_list)
+            logger.debug(f"<ACTION> 使用openai模型{OPENAI_MODEL}")
+        else:
+            logger.error(f"未知的ACTION_MODEL:{ACTION_MODEL}")
+            answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
         return answer
 
     def save_memory(self):
