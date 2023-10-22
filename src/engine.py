@@ -6,15 +6,17 @@ Contact: ..., yzj_cs_ilstar@163.com
 
 import asyncio
 import nest_asyncio
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
 import logging
 import socket
 import threading
+import time
 import traceback
 import uuid
 from typing import List, Dict, Any, Tuple
-
+from functools import partial
 nest_asyncio.apply()
 
 import colorama
@@ -115,8 +117,8 @@ class NPCEngine:
         )
         self.sock.bind((engine_url, self.engine_port))  # 修改为IPv6地址绑定方式 todo:这里可能要改为::1
         self.model = model
-        self.listen_thread = threading.Thread(target=self.listen)
-        self.listen_thread.start()
+        #self.listen_thread = threading.Thread(target=self.listen)
+        #self.listen_thread.start()
         
         # 加载模型embedding模型
         if NPC_MEMORY_CONFIG["hf_embedding_online"]:
@@ -131,7 +133,10 @@ class NPCEngine:
         logger.info("using local embedding model")
         logger.info("initialized NPC-ENGINE")
 
-    def listen(self, buffer_size=400000):
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.listen())
+
+    async def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
         :return:
@@ -139,56 +144,62 @@ class NPCEngine:
         print(f"listening on [::]:{self.engine_port}")
         logger.info(f"listening on [::]:{self.engine_port}")
         buffer = {}
-        while True:
-            data, addr = self.sock.recvfrom(buffer_size)
-            # 解析UDP数据包头部
-            # print(data)
-            msg_id, packet_no, total_packets, pack = data.split(b"@", 3)
-            packet_no = int(packet_no)
-            total_packets = int(total_packets)
-            # 缓存数据包
-            if msg_id not in buffer:
-                buffer[msg_id] = [b""] * total_packets
-            buffer[msg_id][packet_no - 1] = pack
-            # 检查是否所有数据包都已接收
-            if not any(part == b"" for part in buffer[msg_id]):
-                # 重组消息
-                msg_str = b"".join(buffer[msg_id]).decode("utf-8")
-                json_data = json.loads(msg_str)
-                logger.debug(f"received packet {json_data}")
-                FILE_HANDLER.flush()
-                try:
-                    # 按照完整数据包的func字段调用相应的函数
-                    if "func" in json_data.keys():
-                        func_name = json_data["func"]
-                        if hasattr(self, func_name):
-                            func = getattr(self, func_name)
-                            # TODO 多个func函数并没有异步函数
-                            asyncio.run(func(json_data))
-                        # test
-                        if "init" in json_data["func"]:
-                            logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
-                        if "create_conversation" in json_data["func"]:
-                            logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
-                        if "confirm_conversation" in json_data["func"]:
-                            logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
-                        if "close" in json_data["func"]:
-                            logger.info(f"[NPC-ENGINE]<close>: {json_data}")
+        with ThreadPoolExecutor() as pool:
+            while True:
+                data, addr = self.sock.recvfrom(buffer_size)
+                # 解析UDP数据包头部
+                msg_id, packet_no, total_packets, pack = data.split(b"@", 3)
+                packet_no = int(packet_no)
+                total_packets = int(total_packets)
+                # 缓存数据包
+                if msg_id not in buffer:
+                    buffer[msg_id] = [b""] * total_packets
+                buffer[msg_id][packet_no - 1] = pack
+                # 检查是否所有数据包都已接收
+                if not any(part == b"" for part in buffer[msg_id]):
+                    # 重组消息
+                    msg_str = b"".join(buffer[msg_id]).decode("utf-8")
+                    json_data = json.loads(msg_str)
+                    logger.debug(f"received packet {json_data}")
+                    FILE_HANDLER.flush()
+                    try:
+                        # 按照完整数据包的func字段调用相应的函数
+                        if "func" in json_data.keys():
+                            func_name = json_data["func"]
+                            if hasattr(self, func_name):
+                                func = getattr(self, func_name)
+                                func_partial = partial(func, json_data)
+                                self.loop.run_in_executor(pool, func_partial)
+                                #asyncio.run(func(json_data))
+                                #func_coro = func(json_data)         
+                                #new_thread = threading.Thread(target=func_coro.send(None))
+                                #new_thread.start()
+                                #self.listen_thread.start()
+                                #self.loop.create_task(func(json_data))
+                                #func_task = asyncio.ensure_future(func(json_data))
+                                #self.loop.run_until_complete(func(json_data))
+                            if "init" in json_data["func"]:
+                                logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
+                            if "create_conversation" in json_data["func"]:
+                                logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
+                            if "confirm_conversation" in json_data["func"]:
+                                logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
+                            if "close" in json_data["func"]:
+                                logger.info(f"[NPC-ENGINE]<close>: {json_data}")
+                    except json.JSONDecodeError:
+                        # print the raw data and the address of the sender and the time and the traceback
+                        print(
+                            f"json decode error: {data} from {addr} at {datetime.datetime.now()}"
+                        )
+                        # print error getting key
+                        print(f"error getting key: {json_data['func']}")
+                        logger.error(traceback.format_exc())
+                    except Exception as e:
+                        print(f"error: {e}")
+                        logger.error(traceback.format_exc())
+                        pass
 
-                except json.JSONDecodeError:
-                    # print the raw data and the address of the sender and the time and the traceback
-                    print(
-                        f"json decode error: {data} from {addr} at {datetime.datetime.now()}"
-                    )
-                    # print error getting key
-                    print(f"error getting key: {json_data['func']}")
-                    logger.error(traceback.format_exc())
-                except Exception as e:
-                    print(f"error: {e}")
-                    logger.error(traceback.format_exc())
-                    pass
-
-    async def batch_search_memory(self,
+    def batch_search_memory(self,
                                   npcs: List[str],
                                   query: str,
                                   memory_k: int):
@@ -210,7 +221,7 @@ class NPCEngine:
 
         return memories_items
 
-    async def create_conversation(self, json_data):
+    def create_conversation(self, json_data):
         # TODO 考虑数据包是否需要传送state参数，不需要则可以直接删除
         """
         根据游戏发送的Conversation信息，创建Conversation剧本并返回；
@@ -266,11 +277,31 @@ class NPCEngine:
             stream: bool = False
         memory_k = json_data["memory_k"]
 
+        # 提取并整合所有人的观测信息
+        share_obs_people_set = []
+        share_obs_items_set = []
+        share_obs_locations_set = []
+        for npc_state in states:
+            share_obs_people_set += npc_state["observation"]["people"]
+            share_obs_items_set += npc_state["observation"]["items"]
+            share_obs_locations_set += npc_state["observation"]["locations"]
+        share_obs_people_set = list(set(share_obs_people_set))
+        share_obs_items_set = list(set(share_obs_items_set))
+        share_obs_locations_set = list(set(share_obs_locations_set))
+        for name in names:
+            if name in share_obs_people_set:
+                share_obs_people_set.remove(name)
+        share_observations = {
+            "people" : share_obs_people_set,
+            "items" : share_obs_items_set,
+            "locations" : share_obs_locations_set
+        }
+
         # 初始化群体描述、心情和记忆
         descs: List[str] = [npc.desc for npc in npc_refs] + [json_data["player_desc"]]
         moods: List[str] = [npc.mood for npc in npc_refs]
         memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-        memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+        memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
 
         for name in names:
             items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
@@ -297,12 +328,10 @@ class NPCEngine:
             descs=descs,
             moods=moods,
             memories=memories,  # init参数中的记忆、addmemory的记忆被添加到创建对话prompt里面
-            states=states,
+            share_observations=share_observations,
             starting=starting,
             length=length
         )
-
-        # 创建Conversation，存入对象字典，生成剧本
         convo = Conversation(
             names=names,
             location=location,
@@ -321,7 +350,10 @@ class NPCEngine:
         self.conversation_dict[convo.convo_id] = convo
         # script = convo.generate_script()
 
-    async def re_create_conversation(self, json_data):
+        # 调用剧本生成函数生成剧本
+        convo.generate_script(system_prompt, query_prompt)
+
+    def re_create_conversation(self, json_data):
         # TODO 对话的再创建的提示词中缺乏对原对话房间角色的信息描述，且没有任何观测描述，需要和create统一一下
         """
         根据游戏发送的Conversation打断包中id，找到原来的Conversation对象，重新生成剧本并返回；
@@ -355,7 +387,7 @@ class NPCEngine:
         length = json_data["length"]
         stream = json_data["stream"]
 
-        if conversation_id in self.conversation_dict:
+        if conversation_id in self.conversation_dict.keys():
             convo = self.conversation_dict[conversation_id]
             names = convo.names
             location = convo.location
@@ -371,8 +403,8 @@ class NPCEngine:
                 descs += [player_desc]
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
-            memories_items = await self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
-
+            memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
+            
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
@@ -394,7 +426,7 @@ class NPCEngine:
             convo.set_stream(stream)
             convo.re_generate_script(character, system_prompt, query_prompt)
 
-    async def get_random_topic(
+    def get_random_topic(
         self, names: List[str], location: str, scenario_name:str, states: Dict[str, Dict[str, Any]], language: str
     ) -> str:
         """
@@ -416,7 +448,7 @@ class NPCEngine:
         topic: str = response["choices"][0]["message"]["content"].strip()
         return topic
 
-    async def init(self, json_data):
+    def init(self, json_data):
         """
         初始化NPC对象，ACTION对象。
         1.按init包中的scene字段加载指定场景的NPC和ACTION。
@@ -514,7 +546,7 @@ class NPCEngine:
                 model=self.model,
                 embedding_model=self.embedding_model
             )
-            await npc.async_init()
+            npc._init()
             self.npc_dict[npc.name] = npc
             logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
         # 按照GAME回传的init包中的npc字段，添加新的NPC
@@ -542,7 +574,7 @@ class NPCEngine:
                     model=self.model,
                     embedding_model=self.embedding_model
                 )
-                await npc.async_init()
+                npc._init()
                 self.npc_dict[npc.name] = npc
                 additional_npc.append(npc.name)
                 logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
@@ -554,10 +586,9 @@ class NPCEngine:
 
         # language
         self.language = json_data["language"]
-
         self.send_data({"name": "inited", "status": "success"})
 
-    async def confirm_conversation_line(self, json_data):
+    def confirm_conversation_line(self, json_data):
         """
         接受确认包，将游戏发过来对应的conversation和idx 添加到 npc的memory中。
         例：
@@ -575,9 +606,9 @@ class NPCEngine:
             convo = self.conversation_dict[conversation_id]
             memory_add, mood_change = convo.add_temp_memory(index)
             if len(memory_add.keys()) != 0:
-                await self.npc_information_update(memory_add, mood_change)
+                self.npc_information_update(memory_add, mood_change)
 
-    async def npc_information_update(self, memory_add, mood_change):
+    def npc_information_update(self, memory_add, mood_change):
         """
         将对话的内容添加到对应NPC的记忆list中，以第三人称的方式
         例如：
@@ -589,12 +620,12 @@ class NPCEngine:
         # 得到对话类中的人名列表
         for name in memory_add.keys():
             npc = self.npc_dict[name]
-            await npc.memory.add_memory_text(text="\n".join(memory_add[name]), game_time="Time")
+            npc.memory.add_memory_text(text="\n".join(memory_add[name]), game_time="Time")
             logger.debug(f"npc {name} add conversation pieces into memory done")
             npc.mood = mood_change[name]
             logger.debug(f"npc {name} update mood done")
 
-    async def action_done(self, json_data: Dict[str, Any]):
+    def action_done(self, json_data: Dict[str, Any]):
         """
         如果游戏成功执行了动作，那么就将动作和参数存入记忆中 更新purpose 生成新的action然后传给GAME
         如果执行失败，那就结合失败原因存入记忆
@@ -646,11 +677,11 @@ class NPCEngine:
         # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
         npc.set_scenario(scenario_name)
         # 添加NPC记忆
-        await npc.memory.add_memory_text(action_log, game_time=json_data["time"])
+        npc.memory.add_memory_text(action_log, game_time=json_data["time"])
         # 更新purpose
-        npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
+        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
-        new_action: Dict[str, Any] = await npc.get_action(time=json_data["time"], k=3)
+        new_action: Dict[str, Any] = npc.get_action(time=json_data["time"], k=3)
         action_packet = new_action
         action_packet["name"] = "action"
         # 发送新的action到环境
@@ -661,7 +692,7 @@ class NPCEngine:
                         action:{action_packet}
                         to game""")
 
-    async def wake_up(self, json_data):
+    def wake_up(self, json_data):
         """
         NPC激活，
             游戏端检测到有NPC长时间无action/游戏初始化init时 被调用
@@ -702,9 +733,9 @@ class NPCEngine:
         npc.set_state(json_data['npc_state'])
         npc.set_scenario(scenario=json_data["scenario_name"])
         # 更新NPC的purpose
-        npc.purpose = await npc.get_purpose(time=json_data["time"], k=3)
+        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
         # 生成新的action
-        new_action = await npc.get_action(time=json_data["time"], k=3)
+        new_action = npc.get_action(time=json_data["time"], k=3)
         action_packet = new_action
         action_packet["name"] = "action"
         # 发送新的action到环境
@@ -715,7 +746,7 @@ class NPCEngine:
                         action: {action_packet} 
                         to game""")
 
-    async def talk2npc(self, json_data):
+    def talk2npc(self, json_data):
         """
         玩家跟NPC进行交流,
             函数会先根据玩家对话检索相关记忆，产生回答、action和目的。
@@ -778,11 +809,11 @@ class NPCEngine:
 
         # 对当前情景进行描述，并存入记忆
         memory_desc: str = f"{player_name}对{npc.name}说:{speech_content}"
-        await npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
+        npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
         # 更新NPC的purpose
         # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
         # 生成新的response
-        response = await npc.get_npc_response(player_name=player_name, player_speech=speech_content,
+        response = npc.get_npc_response(player_name=player_name, player_speech=speech_content,
                                                 items_visible=items_visible, player_state_desc=player_state,
                                                 time=json_data["time"], k=3)
 
@@ -877,7 +908,6 @@ class NPCEngine:
         logger.info("Engine closing")
         # 退出程序
         sys.exit(0)
-
 
 if __name__ == "__main__":
     engine = NPCEngine()

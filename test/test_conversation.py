@@ -43,7 +43,7 @@ def test_engine_init_memory():
     # 初始化包
     pack1 = {"func":"init",
                 # 必填字段，代表在什么场景初始化
-                "scene_name": "酒吧",
+                "scene_name": "李大爷家",
                 "language": "C",
                 # 下面是🉑️选
                 "npc": []}
@@ -53,7 +53,7 @@ def test_engine_init_memory():
     #time.sleep(180)
 
 test_engine_init_memory()
-#time.sleep(10)
+time.sleep(5)
 
 def test_conversation():
 
@@ -90,8 +90,8 @@ def test_conversation():
                 {
                   "position": "李大爷家",
                   "observation": {
-                          "people": ["王大妈", "村长", "隐形李飞飞"],
-                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "people": ["王大妈", "村长", "警长"],
+                          "items": ["椅子1","椅子2","椅子3","床"],
                           "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["黄瓜", "1000元", "老报纸"]
@@ -99,8 +99,8 @@ def test_conversation():
                 {
                   "position": "李大爷家",
                   "observation": {
-                          "people": ["李大爷", "村长", "隐形李飞飞"],
-                          "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                          "people": ["李大爷", "村长", "警长"],
+                          "items": ["椅子1","椅子2","椅子3","床"],
                           "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
                                 },
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
@@ -116,10 +116,9 @@ def test_conversation():
     # 发送初始化包到引擎
     print("sending for conversation")
     send_data(pack1)
-    #print("all done")
 
-#test_conversation()
-#time.sleep(20)
+test_conversation()
+time.sleep(9)
 
 def send_pack_create():
     pack1 = {        
@@ -136,7 +135,7 @@ def send_pack_create():
 def test_conversation_re_creation():
     pack1 = {
         "func":"re_create_conversation",
-        "id":"76ee76f0-7d13-499b-a8ad-c4744cf44aea",
+        "id":"1234567890",
         "character":"警长",
         "interruption": "", # 玩家插入发言,可以留空
         "player_desc": "", # 玩家的个性描述
@@ -147,5 +146,16 @@ def test_conversation_re_creation():
     print("sending for conversation re-creation")
     send_data(pack1)
 
-#test_conversation_re_creation()
-#time.sleep(10)
+test_conversation_re_creation()
+time.sleep(10)
+
+def close_engine():
+    pack1 = {
+        "func":"close"
+    }
+    
+    print("send package to close engine")
+    send_data(pack1)
+
+#close_engine()
+#time.sleep(5)

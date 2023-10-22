@@ -38,6 +38,7 @@ class EnginePrompt:
         self.all_people: List[str] = knowledge.get_people(scenario_name=scenario_name)
         self.all_moods: List[str] = knowledge.get_moods(scenario_name=scenario_name)
 
+    # TODO 将英文版对话创建于中文版的形式保持一致
     def prompt_for_conversation_e(
         self,
         names: List[str] = None,
@@ -242,7 +243,7 @@ class EnginePrompt:
         descs: List[str] = None,
         moods: List[str] = None,
         memories: List[List[str]] = None,
-        states: List[Dict[str, Any]] = None,
+        share_observations: Dict[str, List[str]] = None,
         starting: str = "",
         length: str = "",
     ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -254,32 +255,31 @@ class EnginePrompt:
         小白的个性描述是：他是一位老师。
         在小白的记忆中：他刚刚做完作业。 他10年前是个歌手。
         小白此刻的心情是：稳定。
-        小白当前观测到的人有：小黑，小蓝。
-        小白当前观测到的物体有：大树，月季花。
-        小白当前观测到的地点有：教堂，学校。
         小黑的个性描述是：他是一个医生。
         在小黑的记忆中：他刚刚上完课。 他曾经是一个舞蹈演员。
         小黑此刻的心情是：稳定。
-        小黑当前观测到的人有：小白，小蓝。
-        小黑当前观测到的物体有：大树，月季花。
-        小黑当前观测到的地点有：教堂，学校。
+        这些角色除了看到了彼此以外，他们还观测到了其他的人和物。
+        他们观测到的远处的人有：隐形李飞飞，村长。
+        他们观测到的周围的物体有：椅子，床。
+        他们观测到的公园中的地点有：公园大门。
         基于上述信息，请发挥你的想象力，生成一个剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
 
-        这个剧本由许多行角色交互和会话状态组成。
-        角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
-        该角色交互模板中的所有标点符号都是全角的。
-        其中，
-        角色姓名：小白, 小黑
-        情绪状态：稳定, 开心, 伤心, 着急
-        动作类型：对话, 前往
-        动作参数：可以是场所名，角色姓名，或者空。
-        场所名：小白的家, 小黑的家, 公园
-        说话内容：可以是任务与主题有关的合规的内容，也可以是空。
+        这个剧本由若干行角色交互和会话状态组成。
+        角色交互的模板有两个，一个是角色对话模板，一个是角色前往模板
+        角色对话模板 - 角色姓名（情绪状态|对话|对话对象）：说话内容
+        角色前往模板 - 角色姓名（情绪状态|前往|前往对象）：空
+        角色姓名：小白，小黑
+        情绪状态：平静、开心、伤心、愤怒
+        对话对象：小白，小黑
+        说话内容：可以是任务与主题有关的合规的内容。
+        前往对象：可以是场所名也可以是角色姓名；前往的对象既可以是观测到的，也可以是没有观测到的
+        观测到的场所名：公园大门
+        被观测到的人由于距离这些角色太远，所以全程不参与交流。
         会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
-        该会话状态模板中的所有标点符号都是全角的。
         当剧本刚开始的时候，无人退出且所有角色都参与交流。
         后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
         当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
+        以上模板中的所有标点符号都是全角的。
 
         例子：
         输入：
@@ -312,7 +312,7 @@ class EnginePrompt:
         :param descs:
         :param moods:
         :param memories:
-        :param states:
+        :param share_observations:
         :param starting:
         :param length:
         :return system_prompt, query_prompt:
@@ -331,37 +331,88 @@ class EnginePrompt:
         for i, name in enumerate(names):
             supplementary_new = rf"""{name}的个性描述是：{descs[i]}
                                 在{name}的记忆中：{"".join(memories[i])}
-                                {name}此刻的心情是：{moods[i]}。
-                                {name}当前观测到的人有：{"，".join(states[i]["observation"]["people"])}。
-                                {name}当前观测到的物体有：{"，".join(states[i]["observation"]["items"])}。
-                                {name}当前观测到的地点有：{"，".join(states[i]["observation"]["locations"])}。"""
-            supplementary_new = supplementary_new.replace("    ","",40)
+                                {name}此刻的心情是：{moods[i]}。"""
+            supplementary_new = supplementary_new.replace("    ","",16)
             supplementary_list.append(supplementary_new)
         supplementary = "\n".join(supplementary_list)
+
+        # 显示地展示观测信息
+        #observation_statement = rf"""这些角色除了看到了彼此以外，他们还观测到了其他的人和物。
+        #                        他们观测到的远处的人有：{"，".join(share_observations["people"])}。
+        #                        他们观测到的周围的物体有：{"，".join(share_observations["items"])}。
+        #                        他们观测到的{location}中的地点有：{"，".join(share_observations["locations"])}。"""
+        #observation_statement = observation_statement.replace("    ","",24)
+
         # 蒋对话介绍、角色信息、观测信息和任务信息按顺序整合成预陈述
+        #pre_statement = "\n".join([introduction, supplementary, observation_statement, task])
         pre_statement = "\n".join([introduction, supplementary, task])
 
         # 获取约束陈述，用来规范大模型输出剧本的格式和逻辑
-        constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
-                                    角色交互的模板是 - 角色姓名（情绪状态|动作类型|动作参数）：说话内容
-                                    该角色交互模板中的所有标点符号都是全角的。
-                                    其中，
-                                    角色姓名：{", ".join(names)}
-                                    情绪状态：{", ".join(self.all_moods)}
-                                    动作类型：{", ".join(self.all_actions)}
-                                    动作参数：可以是场所名，角色姓名，或者空。
-                                    场所名：{", ".join(self.all_places)}
-                                    说话内容：可以是任务与主题有关的合规的内容，也可以是空。
+        if starting == "":
+            constraint_statement = rf"""这个剧本由若干行角色交互和会话状态组成。
+                                    角色交互的模板有两个，一个是角色对话模板，一个是角色前往模板
+                                    角色对话模板 - 角色姓名（情绪状态|对话|对话对象）：说话内容
+                                    角色前往模板 - 角色姓名（情绪状态|前往|前往对象）：空
+                                    角色姓名 ∈ {set(names)}
+                                    情绪状态 ∈ {set(self.all_moods)}
+                                    对话对象 ∈ {set(names)}
+                                    对话对象可以有多个，此时需要用&将对象名称连起来。
+                                    说话内容可以是任务与主题有关的合规的内容。
+                                    前往对象 = 前往角色/前往地点
+                                    前往地点 ∈ {set(share_observations["locations"])}∪{set(self.all_places)}
+                                    前往角色 ∈ {set(share_observations["people"])}
                                     会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
-                                    该会话状态模板中的所有标点符号都是全角的。
                                     当剧本刚开始的时候，无人退出且所有角色都参与交流。
                                     后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
-                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。"""
-        constraint_statement = constraint_statement.replace("    ","",126)
+                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
+                                    以上模板中的所有标点符号都是全角的。"""
+            constraint_statement = constraint_statement.replace("    ","",144)
+        else:
+            constraint_statement = rf"""这个剧本由许多行角色交互和会话状态组成。
+                                    角色交互的模板有两个，一个是角色对话模板，一个是角色前往模板
+                                    角色对话模板 - 角色姓名（情绪状态|对话|对话对象）：说话内容
+                                    角色前往模板 - 角色姓名（情绪状态|前往|前往对象）：空
+                                    角色姓名 ∈ {set(names)}
+                                    情绪状态 ∈ {set(self.all_moods)}
+                                    对话对象 ∈ {set(names + ["我"])}
+                                    对话对象可以有多个，此时需要用&将对象名称连起来。
+                                    说话内容可以是任务与主题有关的合规的内容。
+                                    前往对象 = 前往角色/前往地点
+                                    前往地点 ∈ {set(share_observations["locations"])}∪{set(self.all_places)}
+                                    前往角色 ∈ {set(share_observations["people"])}
+                                    会话状态的模板是 - <无人 / 角色姓名 退出。剩下的角色：若干角色姓名 / 无人> 以及 <结束>。
+                                    当剧本刚开始的时候，无人退出且所有角色都参与交流。
+                                    后面当有角色退出会话的时候，他/她将不再出现在后续剧本中，其余角色继续交流。
+                                    当所有角色都退出交流并且没有角色剩余的时候，这意味着剧本结束，你需要用 <结束> 作为结束标志。
+                                    以上模板中的所有标点符号都是全角的。"""
+            constraint_statement = constraint_statement.replace("    ","",144)
 
         # 根据是否有玩家的起头获取不同的案例陈述，为大模型提供生成对话剧本的简单例子
         if starting == "":
-            example_statement = """例子：
+            if length == "P":
+                example_statement = """例子：
+                                输入：
+                                生成一个精简的剧本，展现这些角色是如何围绕主题进行交互的，只交流主题相关的关键信息，省去主题无关的交流。
+                                输出：
+                                <无人退出。剩下的角色：小明，小李，小张>
+                                小明（稳定|对话|小李&小张）：“你好呀，你们最近过得如何？”
+                                小李（稳定|对话|小明）：“我很好，我们现在正在讨论数学。”
+                                小张（稳定|对话|小明）：“是的，我们忙于做数学作业。”
+                                小明（稳定|对话|小李&小张）：“好吧，下次再见。”
+                                小李（稳定|对话|小明）：“好的，再见。”
+                                小张（稳定|对话|小明）：“再见小明。”
+                                小张（稳定|前往|家）：空
+                                <小明退出。剩下的角色：小李，小张>
+                                小李（着急|对话|小张）：“哦！我妈妈让我回家，我得走了。”
+                                小张（稳定|对话|小李）：“好的，再见，我想去公园看看。”
+                                小李（着急|前往|家）：空
+                                <小李退出。剩下的角色：小张>
+                                小张（稳定|前往|公园）：空
+                                <小张退出。剩下的角色：无人>
+                                <结束>"""
+                example_statement = example_statement.replace("    ","",152)
+            else:
+                example_statement = """例子：
                                 输入：
                                 生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互的。
                                 输出：
@@ -381,9 +432,30 @@ class EnginePrompt:
                                 小张（稳定|前往|公园）：空
                                 <小张退出。剩下的角色：无人>
                                 <结束>"""
-            example_statement = example_statement.replace("    ","",152)
+                example_statement = example_statement.replace("    ","",152)
         else:
-            example_statement = """例子：
+            if length == "P":
+                example_statement = """例子：
+                                输入：
+                                生成一个精简的剧本，展现这些角色是如何围绕主题进行交互或者回复我的，省去与主题无关的交流。只交流主题相关的关键信息，省去主题无关的交流。
+                                我：“你好，最近怎么样？”
+                                输出：
+                                <无人退出。剩下的角色：小李，小张>
+                                小李（稳定|对话|我）：“我很好，我们在讨论花朵。”
+                                小张（开心|对话|我）：“对的，这些花很漂亮。”
+                                小李（稳定|对话|小张）：“我母亲很喜欢花朵。”
+                                小张（稳定|对话|小李）：“喔喔，我母亲不喜欢，但是我父亲喜欢花。”
+                                小李（稳定|对话|我&小张）：“好吧，我要回家吃晚饭了，下次再见。”
+                                小张（稳定|对话|小李）：“好的，再见小李。”
+                                小李（稳定|前往|家）：空
+                                <小李退出。剩下的角色：小张>
+                                小张（稳定|对话|我）：“现在外面很黑，我也要回家了，再见。”
+                                小张（稳定|前往|家）：空
+                                <小张退出。剩下的角色：无人>
+                                <结束>"""
+                example_statement = example_statement.replace("    ","",136)
+            else:
+                example_statement = """例子：
                                 输入：
                                 生成一个大约10到25行的剧本，展现这些角色是如何围绕主题进行交互或者回复我的。
                                 我：“你好，最近怎么样？”
@@ -401,7 +473,7 @@ class EnginePrompt:
                                 小张（稳定|前往|家）：空
                                 <小张退出。剩下的角色：无人>
                                 <结束>"""
-            example_statement = example_statement.replace("    ","",136)
+                example_statement = example_statement.replace("    ","",136)
 
         # 将预陈述、约束陈述和案例陈述按顺序拼接得到完整陈述，作为系统提示词的内容
         whole_statements = ("\n\n").join([pre_statement, constraint_statement, example_statement])

@@ -405,7 +405,7 @@ engine接收到action_done包之后会继续返回action行为包。
     "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
     "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
     "memory_k": 3,  # npc的记忆检索条数，必须填写
-    "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+    "length": "P"  # 可以选择的剧本长度模式，S M L X P 可选，分别是短剧本、中剧本、长剧本、超长剧本、精简剧本（短≠精简）
     "stream": True  # 是否采用流式响应
 }
 
@@ -492,10 +492,3 @@ engine接收到action_done包之后会继续返回action行为包。
 打包脚本为npc_engine/dist/release_windows.sh
 
 打包后可运行的windows项目在npc_engine/dist/release/windows_ver，其中脚本start_engine.bat用来启动engine
-
-
-
-
-
-
-
