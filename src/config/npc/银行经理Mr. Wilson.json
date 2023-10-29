@@ -1,0 +1,24 @@
+{
+    "name": "银行经理Mr. Wilson",
+    "desc": "银行的经理，一个严肃、正直但同时也非常机敏的人。他非常珍惜他的银行和客户，时刻准备应对任何紧急情况。",
+    "mood": "严肃",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

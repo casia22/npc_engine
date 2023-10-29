@@ -1,0 +1,24 @@
+{
+    "name": "保安Jake",
+    "desc": "一个之前在军队服役的壮汉，现在为银行工作。他对银行的安全非常重视，不会允许任何威胁靠近。",
+    "mood": "警觉",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

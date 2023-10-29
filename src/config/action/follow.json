@@ -1,0 +1,11 @@
+{
+  "name": "follow",
+  "definition": "<follow|person_name|>，向[person_name]移动并持续跟随，[person_name]必须出现在'观测到的人物'中",
+  "multi_param": false,
+  "example": "<follow|人名A|> <follow|人名B|>",
+  "log_template":{
+    "success": "{npc_name}跟随{object}走了一段路并成功",
+    "fail": "{npc_name}试图跟随{object}，但是失败了. 原因是{reason}"
+  }
+
+}
