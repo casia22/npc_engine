@@ -1,0 +1,30 @@
+{
+    "name": "Aiyana",
+    "desc": "一个勇敢的印第安女性，她的父母被土匪Red杀害，使她对Red怀有深深的仇恨。Aiyana是一个出色的追踪者和射手，誓言为家人复仇。",
+    "mood": "决绝",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [
+        {
+            "event": "父母被Red杀害",
+            "emotion": "悲伤与愤怒",
+            "date": "Unknown"
+        }
+    ],
+    "purpose": "为家人复仇，找到并打败土匪Red。",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

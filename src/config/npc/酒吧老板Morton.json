@@ -1,0 +1,24 @@
+{
+    "name": "酒吧老板Morton",
+    "desc": "小镇酒吧的老板，是个消息灵通的交际高手，酒吧是他的一切。",
+    "mood": "机敏",
+    "action_space": ["talk"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "土匪Red",
+    "desc": "一个野心勃勃的犯罪分子，计划抢劫银行获取财富。",
+    "mood": "开心",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

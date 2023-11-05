@@ -1,0 +1,24 @@
+{
+    "name": "牛仔John",
+    "desc": "曾是一个有名的枪手，现在希望过平静的生活。他为了一个女人而来到这个小镇。",
+    "mood": "忧郁",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "冒险家Lucy",
+    "desc": "一个勇敢的女性，不满足于传统的女性角色，前来西部寻找财富和冒险。",
+    "mood": "好奇",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

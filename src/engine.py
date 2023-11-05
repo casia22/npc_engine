@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
 import logging
-import socket
+import socket,traceback
 import threading
 import time
 import traceback
@@ -199,26 +199,20 @@ class NPCEngine:
                         logger.error(traceback.format_exc())
                         pass
 
-    def batch_search_memory(self,
-                                  npcs: List[str],
-                                  query: str,
-                                  memory_k: int):
-        tasks = {}
+    def batch_search_memory(self, npcs: List[str], query: str, memory_k: int):
+        """
+        同步批量搜索NPC的记忆(可能存在性能问题)
+        :param npcs:
+        :param query:
+        :param memory_k:
+        :return:
+        """
+        # TODO：如果有性能问题，考虑是否需要异步
         memories_items = {}
-        loop = asyncio.get_event_loop()
         for npc in npcs:
-            new_task = loop.create_task(npc.memory.search_memory(query_text=query,
-                                                                 query_game_time="Time",
-                                                                 k=memory_k))
-
-            tasks[npc.name] = new_task
-
-        for _, task in tasks.items():
-            loop.run_until_complete(task)
-
-        for name, task in tasks.items():
-            memories_items[name] = task.result()
-
+            memories_items[npc.name] = npc.memory.search_memory(query_text=query,
+                                         query_game_time="Time",
+                                         k=memory_k)
         return memories_items
 
     def create_conversation(self, json_data):
@@ -469,124 +463,128 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-        # 获得场景对象
-        scene_name = json_data["scene_name"]
-        scene_config: SceneConfig = self.public_knowledge.get_scene(scene_name=scene_name)
+        try:
+            # 获得场景对象
+            scene_name = json_data["scene_name"]
+            scene_config: SceneConfig = self.public_knowledge.get_scene(scene_name=scene_name)
 
-        # 根据知识创建引擎提示词的实例
-        self.engine_prompt = EnginePrompt(knowledge=self.public_knowledge, scenario_name=scene_name)
-        logger.debug(f"generate engine prompt done")
+            # 根据知识创建引擎提示词的实例
+            self.engine_prompt = EnginePrompt(knowledge=self.public_knowledge, scenario_name=scene_name)
+            logger.debug(f"generate engine prompt done")
 
-        # 按照action字段，添加新的ACTION
-        for action_name in self.public_knowledge.get_actions(scenario_name=scene_name):
-            with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
-                action_json = json.load(file)
-            action_item = ActionItem(
-                name=action_json["name"],
-                definition=action_json['definition'],
-                example=action_json['example'],
-                log_template=action_json["log_template"],
-                multi_param=action_json["multi_param"],
-            )
-            self.action_dict[action_item.name] = action_item
-            logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
+            # 按照action字段，添加新的ACTION
+            for action_name in self.public_knowledge.get_actions(scenario_name=scene_name):
+                with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
+                    action_json = json.load(file)
+                action_item = ActionItem(
+                    name=action_json["name"],
+                    definition=action_json['definition'],
+                    example=action_json['example'],
+                    log_template=action_json["log_template"],
+                    multi_param=action_json["multi_param"],
+                )
+                self.action_dict[action_item.name] = action_item
+                logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
 
-        # 按照npc字段，添加磁盘中JSON对应的NPC
-        for npc_name in self.public_knowledge.get_people(scenario_name=scene_name):
-            try:
-                with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
-                    npc_json = json.load(file)
-            except FileNotFoundError:
-                logger.warning(f"NPC {npc_name} not found in disk, skip")
-                continue
-            except json.decoder.JSONDecodeError:
-                logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
-                continue
-            """
-            {
-              "name":"李大爷",
-              "desc": "李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜",
-              "mood":"开心",
-              "scenario_name": "李大爷家",
-              "npc_state": {
-                    "position": "李大爷家卧室",
-                    "observation": {
-                            "people": ["王大妈", "村长", "隐形李飞飞"],
-                            "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
-                            "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
-                                  },
-                    "backpack":["黄瓜", "1000元", "老报纸"]
-                         },
-              "memory":["20年前在工厂表现优异获得表彰。","15年前在工厂收了两个徒弟。","8年前李大爷的两个徒弟在工厂表现优异都获得表彰。","6年前从工厂辞职并过上普通的生活。","4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。"]
-            }
-            """
-            # 如果已经存在NPC在内存中，则不再config从加载覆盖
-            if npc_json["name"] in self.npc_dict.keys():
-                npc_name = npc_json["name"]
-                logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
-                continue
+            # 按照npc字段，添加磁盘中JSON对应的NPC
+            for npc_name in self.public_knowledge.get_people(scenario_name=scene_name):
+                try:
+                    with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
+                        npc_json = json.load(file)
+                except FileNotFoundError:
+                    logger.warning(f"NPC {npc_name} not found in disk, skip")
+                    continue
+                except json.decoder.JSONDecodeError:
+                    logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
+                    continue
+                """
+                {
+                  "name":"李大爷",
+                  "desc": "李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜",
+                  "mood":"开心",
+                  "scenario_name": "李大爷家",
+                  "npc_state": {
+                        "position": "李大爷家卧室",
+                        "observation": {
+                                "people": ["王大妈", "村长", "隐形李飞飞"],
+                                "items": ["椅子#1","椅子#2","椅子#3[李大爷占用]","床"],
+                                "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                                      },
+                        "backpack":["黄瓜", "1000元", "老报纸"]
+                             },
+                  "memory":["20年前在工厂表现优异获得表彰。","15年前在工厂收了两个徒弟。","8年前李大爷的两个徒弟在工厂表现优异都获得表彰。","6年前从工厂辞职并过上普通的生活。","4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。"]
+                }
+                """
+                # 如果已经存在NPC在内存中，则不再config从加载覆盖
+                if npc_json["name"] in self.npc_dict.keys():
+                    npc_name = npc_json["name"]
+                    logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
+                    continue
 
-            npc = NPC(
-                name=npc_json["name"],
-                desc=npc_json["desc"],
-                public_knowledge=self.public_knowledge,
-                scenario_name=scene_name,
-                # 初始化NPC的状态，目前背包和观察都初始化为空
-                state={
-                    'position': npc_json["npc_state"]["position"],
-                    'backpack': npc_json["npc_state"]["backpack"],
-                    'ob_people': npc_json["npc_state"]["observation"]["people"],
-                    'ob_items': npc_json["npc_state"]["observation"]["items"],
-                    'ob_locations': npc_json["npc_state"]["observation"]["locations"]
-                },
-                action_dict=self.action_dict,
-                mood=npc_json["mood"],
-                memory=npc_json["memory"],
-                action_space=npc_json["action_space"],
-                model=self.model,
-                embedding_model=self.embedding_model
-            )
-            npc._init()
-            self.npc_dict[npc.name] = npc
-            logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
-        # 按照GAME回传的init包中的npc字段，添加新的NPC
-        additional_npc = []  # 由init数据包设置的新NPC
-        if "npc" in json_data:
-            for npc_data in json_data["npc"]:
-                # 如果已经存在NPC在内存中，则依然从UDP参数覆盖(UDP参数我们认为有更高的优先级)
                 npc = NPC(
-                    name=npc_data["name"],
-                    desc=npc_data["desc"],
+                    name=npc_json["name"],
+                    desc=npc_json["desc"],
                     public_knowledge=self.public_knowledge,
                     scenario_name=scene_name,
-                    # 初始化NPC的状态
+                    # 初始化NPC的状态，目前背包和观察都初始化为空
                     state={
-                        'position': npc_data["npc_state"]["position"],
-                        'backpack': npc_data["npc_state"]["backpack"],
-                        'ob_people': npc_data["npc_state"]["observation"]["people"],
-                        'ob_items': npc_data["npc_state"]["observation"]["items"],
-                        'ob_locations': npc_data["npc_state"]["observation"]["locations"]
+                        'position': npc_json["npc_state"]["position"],
+                        'backpack': npc_json["npc_state"]["backpack"],
+                        'ob_people': npc_json["npc_state"]["observation"]["people"],
+                        'ob_items': npc_json["npc_state"]["observation"]["items"],
+                        'ob_locations': npc_json["npc_state"]["observation"]["locations"]
                     },
                     action_dict=self.action_dict,
-                    mood=npc_data["mood"],
-                    action_space=npc_data["action_space"],
-                    memory=npc_data["memory"],
+                    mood=npc_json["mood"],
+                    memory=npc_json["memory"],
+                    action_space=npc_json["action_space"],
                     model=self.model,
                     embedding_model=self.embedding_model
                 )
                 npc._init()
                 self.npc_dict[npc.name] = npc
-                additional_npc.append(npc.name)
-                logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
-        # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
-        appended_npc = [npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]
-        self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
-        logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
-                     f"appended npc:{appended_npc}")
+                logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
+            # 按照GAME回传的init包中的npc字段，添加新的NPC
+            additional_npc = []  # 由init数据包设置的新NPC
+            if "npc" in json_data:
+                for npc_data in json_data["npc"]:
+                    # 如果已经存在NPC在内存中，则依然从UDP参数覆盖(UDP参数我们认为有更高的优先级)
+                    npc = NPC(
+                        name=npc_data["name"],
+                        desc=npc_data["desc"],
+                        public_knowledge=self.public_knowledge,
+                        scenario_name=scene_name,
+                        # 初始化NPC的状态
+                        state={
+                            'position': npc_data["npc_state"]["position"],
+                            'backpack': npc_data["npc_state"]["backpack"],
+                            'ob_people': npc_data["npc_state"]["observation"]["people"],
+                            'ob_items': npc_data["npc_state"]["observation"]["items"],
+                            'ob_locations': npc_data["npc_state"]["observation"]["locations"]
+                        },
+                        action_dict=self.action_dict,
+                        mood=npc_data["mood"],
+                        action_space=npc_data["action_space"],
+                        memory=npc_data["memory"],
+                        model=self.model,
+                        embedding_model=self.embedding_model
+                    )
+                    npc._init()
+                    self.npc_dict[npc.name] = npc
+                    additional_npc.append(npc.name)
+                    logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
+            # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
+            appended_npc = [npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]
+            self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
+            logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
+                         f"appended npc:{appended_npc}")
 
-        # language
-        self.language = json_data["language"]
-        self.send_data({"name": "inited", "status": "success"})
+            # language
+            self.language = json_data["language"]
+            self.send_data({"name": "inited", "status": "success"})
+        except Exception as e:
+            logger.error(f"init error:{traceback.format_exc()}")
+            self.send_data({"name": "inited", "status": "failed"})
 
     def confirm_conversation_line(self, json_data):
         """
@@ -600,13 +598,16 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-        conversation_id = json_data["conversation_id"]
-        index = json_data["index"]
-        if conversation_id in self.conversation_dict:
-            convo = self.conversation_dict[conversation_id]
-            memory_add, mood_change = convo.add_temp_memory(index)
-            if len(memory_add.keys()) != 0:
-                self.npc_information_update(memory_add, mood_change)
+        try:
+            conversation_id = json_data["conversation_id"]
+            index = json_data["index"]
+            if conversation_id in self.conversation_dict:
+                convo = self.conversation_dict[conversation_id]
+                memory_add, mood_change = convo.add_temp_memory(index)
+                if len(memory_add.keys()) != 0:
+                    self.npc_information_update(memory_add, mood_change)
+        except Exception as e:
+            logger.error(f"confirm_conversation_line error:{traceback.format_exc()}")
 
     def npc_information_update(self, memory_add, mood_change):
         """
@@ -661,36 +662,39 @@ class NPCEngine:
         "parameters":[],
         }
         """
-        status:str = json_data["status"]
-        action_item:ActionItem = self.action_dict[json_data["action"]]
-        npc_name:str = json_data["npc_name"]
-        scenario_name:str = json_data["scenario_name"]
-        npc:NPC = self.npc_dict[npc_name]
-        if status == "success":
-            action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
-                                                  reason=json_data["reason"])
-        else:
-            action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
-                                                  reason=json_data["reason"])
-        # 更新NPC的状态
-        npc.set_state(json_data['npc_state'])
-        # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
-        npc.set_scenario(scenario_name)
-        # 添加NPC记忆
-        npc.memory.add_memory_text(action_log, game_time=json_data["time"])
-        # 更新purpose
-        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
-        # 生成新的action
-        new_action: Dict[str, Any] = npc.get_action(time=json_data["time"], k=3)
-        action_packet = new_action
-        action_packet["name"] = "action"
-        # 发送新的action到环境
-        self.send_script(action_packet)
-        logger.debug(f"""[NPC-ENGINE]<action_done> 
-                        npc_name:{npc.name}, 
-                        purpose: {npc.purpose},
-                        action:{action_packet}
-                        to game""")
+        try:
+            status:str = json_data["status"]
+            action_item:ActionItem = self.action_dict[json_data["action"]]
+            npc_name:str = json_data["npc_name"]
+            scenario_name:str = json_data["scenario_name"]
+            npc:NPC = self.npc_dict[npc_name]
+            if status == "success":
+                action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
+                                                      reason=json_data["reason"])
+            else:
+                action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
+                                                      reason=json_data["reason"])
+            # 更新NPC的状态
+            npc.set_state(json_data['npc_state'])
+            # 更新NPC的场景属性(自动更新scenario_knowledge和自动更新scenario属性)
+            npc.set_scenario(scenario_name)
+            # 添加NPC记忆
+            npc.memory.add_memory_text(action_log, game_time=json_data["time"])
+            # 更新purpose
+            npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
+            # 生成新的action
+            new_action: Dict[str, Any] = npc.get_action(time=json_data["time"], k=3)
+            action_packet = new_action
+            action_packet["name"] = "action"
+            # 发送新的action到环境
+            self.send_script(action_packet)
+            logger.debug(f"""[NPC-ENGINE]<action_done> 
+                            npc_name:{npc.name}, 
+                            purpose: {npc.purpose},
+                            action:{action_packet}
+                            to game""")
+        except Exception as e:
+            logger.error(f"[NPC-ENGINE]<action_done> error:{traceback.format_exc()}")
 
     def wake_up(self, json_data):
         """
@@ -726,25 +730,28 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-        # 获得NPC的引用
-        npc_name = json_data["npc_name"]
-        npc = self.npc_dict[npc_name]
-        # 更新NPC的状态
-        npc.set_state(json_data['npc_state'])
-        npc.set_scenario(scenario=json_data["scenario_name"])
-        # 更新NPC的purpose
-        npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
-        # 生成新的action
-        new_action = npc.get_action(time=json_data["time"], k=3)
-        action_packet = new_action
-        action_packet["name"] = "action"
-        # 发送新的action到环境
-        self.send_script(action_packet)
-        logger.debug(f"""[NPC-ENGINE]<wake_up> 
-                        npc_name: {npc.name}, 
-                        purpose: {npc.purpose} 
-                        action: {action_packet} 
-                        to game""")
+        try:
+            # 获得NPC的引用
+            npc_name = json_data["npc_name"]
+            npc = self.npc_dict[npc_name]
+            # 更新NPC的状态
+            npc.set_state(json_data['npc_state'])
+            npc.set_scenario(scenario=json_data["scenario_name"])
+            # 更新NPC的purpose
+            npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
+            # 生成新的action
+            new_action = npc.get_action(time=json_data["time"], k=3)
+            action_packet = new_action
+            action_packet["name"] = "action"
+            # 发送新的action到环境
+            self.send_script(action_packet)
+            logger.debug(f"""[NPC-ENGINE]<wake_up> 
+                            npc_name: {npc.name}, 
+                            purpose: {npc.purpose} 
+                            action: {action_packet} 
+                            to game""")
+        except Exception as e:
+            logger.error(f"[NPC-ENGINE]<wake_up> error: {traceback.format_exc()}")
 
     def talk2npc(self, json_data):
         """
@@ -794,38 +801,41 @@ class NPCEngine:
         :param json_data:
         :return:
         """
-        # 获得玩家信息
-        player_name = json_data["player_name"]
-        speech_content = json_data["speech_content"]
-        items_visible = json_data["items_visible"]
-        player_state = json_data["state"]
+        try:
+            # 获得玩家信息
+            player_name = json_data["player_name"]
+            speech_content = json_data["speech_content"]
+            items_visible = json_data["items_visible"]
+            player_state = json_data["state"]
 
-        # 获得NPC的引用
-        npc_name = json_data["npc_name"]
-        npc = self.npc_dict[npc_name]
-        # 更新NPC的状态
-        npc.set_state(json_data['npc_state'])
-        npc.set_scenario(scenario=json_data["scenario_name"])
+            # 获得NPC的引用
+            npc_name = json_data["npc_name"]
+            npc = self.npc_dict[npc_name]
+            # 更新NPC的状态
+            npc.set_state(json_data['npc_state'])
+            npc.set_scenario(scenario=json_data["scenario_name"])
 
-        # 对当前情景进行描述，并存入记忆
-        memory_desc: str = f"{player_name}对{npc.name}说:{speech_content}"
-        npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
-        # 更新NPC的purpose
-        # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
-        # 生成新的response
-        response = npc.get_npc_response(player_name=player_name, player_speech=speech_content,
-                                                items_visible=items_visible, player_state_desc=player_state,
-                                                time=json_data["time"], k=3)
+            # 对当前情景进行描述，并存入记忆
+            memory_desc: str = f"{player_name}对{npc.name}说:{speech_content}"
+            npc.memory.add_memory_text(memory_desc, game_time=json_data["time"])
+            # 更新NPC的purpose
+            # npc.purpose = await npc.get_purpose(time=json_data["time"], k=3) # todo:应该移动到response发送后面，强制依赖response更新新的action
+            # 生成新的response
+            response = npc.get_npc_response(player_name=player_name, player_speech=speech_content,
+                                                    items_visible=items_visible, player_state_desc=player_state,
+                                                    time=json_data["time"], k=3)
 
-        response["name"] = "talk_result"
-        # 发送新的action到环境
-        self.send_script(response)
-        logger.debug(f"""[NPC-ENGINE]<talk2npc> 
-                        npc_name: {npc.name}, 
-                        purpose: {npc.purpose},
-                        answer: {response["answer"]}
-                        action: {response["actions"]} 
-                        to game""")
+            response["name"] = "talk_result"
+            # 发送新的action到环境
+            self.send_script(response)
+            logger.debug(f"""[NPC-ENGINE]<talk2npc> 
+                            npc_name: {npc.name}, 
+                            purpose: {npc.purpose},
+                            answer: {response["answer"]}
+                            action: {response["actions"]} 
+                            to game""")
+        except Exception as e:
+            logger.error(f"[NPC-ENGINE]<talk2npc> error: {traceback.format_exc()}")
 
     def send_script(self, script):
         """
@@ -900,14 +910,18 @@ class NPCEngine:
             }
         :return:
         """
-        # 关闭socket
-        self.sock.close()
-        logger.debug("socket closed")
-        # 保存所有NPC到本地
-        self.save_npc_json()
-        logger.info("Engine closing")
-        # 退出程序
-        sys.exit(0)
+        try:
+            # 关闭socket
+            self.sock.close()
+            logger.debug("socket closed")
+            # 保存所有NPC到本地
+            self.save_npc_json()
+            logger.info("Engine closing")
+            # 退出程序
+            sys.exit(0)
+        except Exception as e:
+            logger.error(f"[NPC-ENGINE]<close> error: {traceback.format_exc()}")
+            sys.exit(0)
 
 if __name__ == "__main__":
     engine = NPCEngine()

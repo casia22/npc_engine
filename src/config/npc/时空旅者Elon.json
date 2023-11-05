@@ -1,0 +1,24 @@
+{
+    "name": "时空旅者Elon",
+    "desc": "来自22世纪的时空探索者，因为一个实验故障，误打误撞来到了19世纪的西部世界。他带着一些高科技的小玩意，经常让小镇的居民大开眼界。",
+    "mood": "好奇",
+    "action_space": ["move", "talk", "attack", "follow"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": [],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}
