@@ -668,11 +668,7 @@ class NPCEngine:
             npc_name:str = json_data["npc_name"]
             scenario_name:str = json_data["scenario_name"]
             npc:NPC = self.npc_dict[npc_name]
-            if status == "success":
-                action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
-                                                      reason=json_data["reason"])
-            else:
-                action_log: str = action_item.get_log(npc_name, json_data["object"], json_data["parameters"],
+            action_log: str = action_item.get_log(status, npc_name, json_data["object"], json_data["parameters"],
                                                       reason=json_data["reason"])
             # 更新NPC的状态
             npc.set_state(json_data['npc_state'])

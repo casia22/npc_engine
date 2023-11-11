@@ -35,7 +35,7 @@ class ActionItem:
             return {'action': "", 'object': "", 'parameters': ""}
 
 
-    def get_log(self, npc_name:str, obj:str, parameters:List[str], reason:str)->str:
+    def get_log(self, action_status:str, npc_name:str, obj:str, parameters:List[str], reason:str)->str:
         """
         使用其日志模版，转换为自然语言记录在记忆中，方便语义检索
         输出例：
@@ -51,9 +51,10 @@ class ActionItem:
             {npc_name}成功地从{object}获得{parameters}
             {npc_name}未能从{object}获得{parameters}。原因：{reason}
         """
-        if reason:
-            return self.log_template['fail'].format(npc_name=npc_name, object=obj,
-                                                    parameters=','.join(parameters), reason=reason)
+        # 若动作处理成功就不加载reason
+        if action_status == "success":
+            return self.log_template['success'].format(npc_name=npc_name, object=obj,
+                                                parameters=','.join(parameters))
 
-        return self.log_template['success'].format(npc_name=npc_name,object=obj,
-                                                   parameters=','.join(parameters))
+        return self.log_template['fail'].format(npc_name=npc_name, object=obj,
+                                                parameters=','.join(parameters), reason=reason)
