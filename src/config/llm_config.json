@@ -1,6 +1,6 @@
 {
     "OPENAI_BASE" : "https://api.qaqgpt.com/v1",
-    "OPENAI_KEY" : "sk-hJs89lkQMzlzoOcADb6739A9091d41229c2c3c0547932fBe",
+    "OPENAI_KEY" : "sk-sygJA3hjo2jnvQy4301c3f5110E347Da8554374121965aB9",
     "OPENAI_MODEL" : "gpt-3.5-turbo-16k",
     "ACTION_MODEL": "gpt-3.5-turbo-16k"
 }

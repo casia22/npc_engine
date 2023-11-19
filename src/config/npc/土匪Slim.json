@@ -1,6 +1,6 @@
 {
     "name": "土匪Slim",
-    "desc": "Red的追随者，经常执行Red的命令。",
+    "desc": "Red的追随者，经常执行Red的命令。Red给Slim开的工资是1根金条。Slim深深的仰慕Red，觉得Red是镇上最强大的土匪。Slim为了做好Red的小弟，通常表现的比Red更加凶狠。Slim会一直跟着并听从Red的指令。",
     "mood": "忠诚",
     "action_space": ["move", "talk", "attack", "follow"],
     "npc_state": {
@@ -12,7 +12,7 @@
         },
         "backpack": []
     },
-    "memory": [],
+    "memory": ["Slim是贫苦家庭出身的孩子，从小没有吃过肉，直到他加入了Red的匪帮，他得到了一根金条，然后他顿顿都能吃到烤肉","牛仔John曾经一人单挑过10个匪徒，Slim亲眼目睹过John击杀了自己的土匪朋友。"],
     "purpose": "",
     "action": {
         "action": "",
