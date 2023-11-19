@@ -191,17 +191,21 @@ class NPC:
         :param k: int
         :return: str
         """
+        # 根据当前位置构造可去的位置(排除当前位置
+        scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
+                                           place != self.state.position]
         if not self.purpose:
             # 如果没有目的，那就参照最近记忆
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
             可有的心情是{self.scene_knowledge.all_moods}，
-            当前心情是{self.mood}，正在{self.state.position}，现在时间是{time},
+            当前心情是{self.mood}，现在时间是{time},
+            {self.name}当前位置是:{self.state.position}，
             最近记忆:{[item.text for item in list(self.memory.latest_k.queue)]},
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
             {self.name}现在身上的物品:{self.state.backpack}，
-            {self.name}可去的地方:{self.scene_knowledge.all_places}，
+            {self.name}可去的地方:{scene_allowed_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，            
             """
             prompt = f"""
@@ -226,12 +230,13 @@ class NPC:
             role_play_instruct = f"""
             请你扮演{self.name}，特性是：{self.desc}，
             可有的心情是{self.scene_knowledge.all_moods}，
-            心情是{self.mood}，正在{self.state.position}，现在时间是{time},
+            心情是{self.mood}，现在时间是{time},
+            {self.name}当前位置是:{self.state.position}，
             {self.name}的最近记忆:{memory_latest_text}，
             {self.name}脑海中相关记忆:{memory_related_text}，
             {self.name}现在看到的人:{self.state.observation.people}，
             {self.name}现在看到的物品:{self.state.observation.items}，
-            {self.name}可去的地方:{self.scene_knowledge.all_places}，
+            {self.name}可去的地方:{scene_allowed_places}，
             {self.name}现在看到的地点:{self.state.observation.locations}，    
             {self.name}之前的目的是:{self.purpose}
             """
@@ -305,15 +310,22 @@ class NPC:
                                       action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in allowed_actions_dict.items()]
+
+        # 设置允许位置
+        scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
+                                           place != self.state.position]
+
         # 构造prompt请求
         instruct = f"""
-            请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在{self.state.position}，现在时间是{time},
+            请你扮演{self.name}，特性是:{self.desc}，心情是{self.mood}，
+            现在时间是{time},
+            {self.name}当前位置是:{self.state.position}，
             你的最近记忆:{memory_latest_text}
             你脑海中相关记忆:{memory_related_text}，
             你现在看到的人:{self.state.observation.people}，
             你现在看到的物品:{self.state.observation.items}，
             你现在身上的物品:{self.state.backpack}，
-            你可去的地方:{self.scene_knowledge.all_places}，
+            你可去的地方:{scene_allowed_places}，
             你现在看到的地点:{self.state.observation.locations}，
             你当前的目的是:{self.purpose}
         """
@@ -338,9 +350,10 @@ class NPC:
             self.action_result = {"name": "stand", "object": "", "parameters": []}
             logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
         # 按照配置文件决定是否分割参数
-        if not self.action_dict[action_name].multi_param:
-            # 如果非多参数，比如对话，那就把参数合并成一个字符串
-            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
+        if action_name in self.action_dict.keys():
+            if not self.action_dict[action_name].multi_param:
+                # 如果非多参数，比如对话，那就把参数合并成一个字符串
+                self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         # 添加npc_name
         self.action_result["npc_name"] = self.name
         logger.debug(f"""
@@ -409,16 +422,21 @@ class NPC:
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
                          allowed_actions_dict.items()]
+        # 根据当前位置构造可去的位置(排除当前位置
+        scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
+                                            place != self.state.position]
         # 构造prompt请求
         instruct = f"""
-                    请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，正在的地方是{self.state.position}，现在时间是{time},
+                    请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，
+                    现在时间是{time},
+                    {self.name}当前位置是:{self.state.position}，
                     你之前的目的是:{self.purpose},
                     你的最近记忆:{memory_latest_text},
                     你脑海中相关记忆:{memory_related_text_purpose+memory_related_text_player}，
                     你现在看到的人:{self.state.observation.people}，
                     你现在看到的物品:{self.state.observation.items}，
                     你现在身上的物品:{self.state.backpack}，
-                    你可去的地方:{self.scene_knowledge.all_places}，
+                    你可去的地方:{scene_allowed_places}，
                     你现在看到的地点:{self.state.observation.locations}，
                     
                     一个叫{player_name}的人在跟你对话，
@@ -492,9 +510,10 @@ class NPC:
             self.action_result = {"name": "stand", "object": "", "parameters": []}
             logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
         # 按照配置文件决定是否分割参数
-        if not self.action_dict[action_name].multi_param:
-            # 如果非多参数，比如对话，那就把参数合并成一个字符串
-            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
+        if action_name in self.action_dict.keys():
+            if not self.action_dict[action_name].multi_param:
+                # 如果非多参数，比如对话，那就把参数合并成一个字符串
+                self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         self.action_result["npc_name"] = self.name
         # 更新NPC的情绪和purpose
         try:

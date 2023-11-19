@@ -23,7 +23,7 @@ init_packet = {
                 },
                 "backpack": ["鱼饵", "渔具维修工具"]
             },
-            "action_space": ["mov", "chat"],
+            "action_space": ["move", "talk"],
             "memory": [
                 "从小就跟随父亲学习捕鱼技巧。",
                 "曾多次出海捕鱼，积累丰富的经验。",
@@ -45,7 +45,7 @@ init_packet = {
                 },
                 "backpack": ["干粮", "水壶", "急救包"]
             },
-            "action_space": ["mov", "chat"],
+            "action_space": ["move", "talk"],
             "memory": [
                 "从小生活在山区，接受父亲的猎人训练。",
                 "熟悉各种野生动物的习性和行踪。",
@@ -116,6 +116,24 @@ wakeup_packet_3 = {
     "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
 }
 
+wakeup_packet_test_repeat_move = {
+    "func": "wake_up",
+    "npc_name": "村长",
+
+    "scenario_name": "李大爷家",
+    "npc_state": {
+        "position": "卧室",
+        "observation": {
+            "people": ["王大妈", "村长", "隐形李飞飞"],
+            "items": ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床[包括:被子、枕头、床单、床垫、私房钱]"],
+            "locations": []
+        },
+        "backpack": ["中华烟[剩余4根]", "1000元", "吃了一半的西瓜"]
+    },
+    "time": "2021-01-01 12:00:00",  # 游戏世界的时间戳
+}
+
+
 action_done_packet_1 = {
     "func": "action_done",
     "npc_name": "王大妈",
@@ -133,7 +151,7 @@ action_done_packet_1 = {
         "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
     },
 
-    "action": "mov",
+    "action": "move",
     "object": "李大爷家",  # 之前传过来的动作对象
     "parameters": [],  # 之前传过来的参数
     "reason": "",  # "王大妈在去往‘警察局’的路上被李大爷打断"
@@ -156,7 +174,7 @@ action_done_packet_2 = {
         "backpack": ["优质西瓜", "大砍刀", "黄金首饰"]
     },
 
-    "action": "mov",
+    "action": "move",
     "object": "警察局",  # 之前传过来的动作对象
     "parameters": [],  # 之前传过来的参数
     "reason": "李大爷在去往‘警察局’的路上被王大妈打断",  # "王大妈在去往‘警察局’的路上被李大爷打断"

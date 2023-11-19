@@ -28,7 +28,7 @@
             "黄金首饰"
         ]
     },
-    "action_space": ["mov", "chat"],
+    "action_space": ["move", "talk"],
     "memory": [
         "王大妈成功到达了李大爷家",
         "王大妈成功到达了李大爷家",
