@@ -50,9 +50,7 @@ OPENAI_MODEL = "gpt-3.5-turbo-16k"
 # get OPENAI KEY and BASE_URL from local json file
 OPENAI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "llm_config.json")
 openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
-OPENAI_KEY = openai_config_data["OPENAI_KEY"]
-OPENAI_BASE = openai_config_data["OPENAI_BASE"]
-OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
+
 ACTION_MODEL = openai_config_data["ACTION_MODEL"]
 
 # PACKS
@@ -199,8 +197,54 @@ NPC_MEMORY_CONFIG = {
     # db
     "db_dir": "./npc_memory.db",
 }
+"""
+LLM api config
+"""
+
+"""
+百度
+"""
+BAIDU_API_CONFIG = {
+
+    "API_KEY": "qq7WLVgNX88unRoUVLtNz8fQ",
+    "SECRET_KEY": "gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo",  # gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo
+    "API_BASE": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant?access_token=",
+    "URL": "https://aip.baidubce.com/oauth/2.0/token",
+    'ACCESS_TOKEN': None
+}
+CPM_BEE_API_CONFIG = {
+    "CLIENT_NAME": 'sagemaker-runtime',
+    "CLIENT_REGION": 'us-west-2',
+    "AWS_ACCESS_KEY_ID": "AKIAQSLD5VQOWP3HFUHU",
+    "AWS_SECRET_ACCESS_KEY": "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",
+    "ENDPOINT_NAME": 'cpm-bee-230915134716SHWT',
+    "MAX_NEW_TOKENS": 1024
+}
+BAICHUAN2_CONFIG = {
+    "REGION_NAME": "us-east-1",
+    "ACCESS_KEY": "AKIAQ33DL5YJDAN2VH4L",
+    "SECRET_KEY": "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",
+    "ENDPOINT_NAME": "bc2-13b-stream-2023-10-22-11-39-50-913-endpoint",
+    "MAX_LENGTH": 1024,
+    "TEMPERATURE": 0.1,
+    "TOP_P": 0.8
+}
+OPENAI_CONFIG = {
+    "API_BASE": OPENAI_BASE,
+    "API_KEY": OPENAI_KEY,
+    "MAX_TOKENS": 1024,
+    "TEMPERATURE": 0.5,
+    "STOP": None
+}
+QWEN_CONFIG = {
+    "API_BASE": "http://localhost:5001/v1",
+    "API_KEY": "None",
+}
+GLM3_6B_CONFIG={
+    "API_BASE":"http://127.0.0.1:5001",
+}
 
 # assert dim of hf model == dim of pinecone index
 assert (
-    PINECONE_CONFIG["pinecone_index_dim"] == NPC_MEMORY_CONFIG["hf_dim"]
+        PINECONE_CONFIG["pinecone_index_dim"] == NPC_MEMORY_CONFIG["hf_dim"]
 ), "dim of hf model != dim of pinecone index"
