@@ -24,15 +24,15 @@ jobs:
 
       - name: Build site
         run: | 
-          cd doc/
+          cd nuwa/doc/
           mkdocs build --verbose --clean
           
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          publish_dir: ./doc/site
+          publish_dir: ./nuwa/doc/site
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           publish_branch: gh-pages
-          external_repository: casia22/npc_engine_doc
+          external_repository: casia22/nuwa_doc
