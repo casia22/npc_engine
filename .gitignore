@@ -8,23 +8,23 @@ __pycache__/
 build/
 npc_memory/*
 
-# material
-# 以LFS的方式存储bin参数文件
-# material/models/embedding/*
+# material 存储模型文件
+nuwa/material/models/embedding/*
 
 # documentation
-doc/site
-
+nuwa/doc/site
 yzj*
-dist/code/*
-dist/release/windows_ver/code/*
+dist/
 
-test/npc_memory/*
 *.log
-src/npc_memory/*.log
-src/data/*.log
-src/data/*.pkl
-src/data/*.db
+*.zip
+
+# example_project
+example_project/data/*.log
+example_project/data/*.pkl
+example_project//data/*.db
+
+# pypi
 *.egg-info
 *.egg-info/
 *.dist-info/
