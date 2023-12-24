@@ -589,5 +589,6 @@ if __name__ == '__main__':
             """},
     ]
     print(get_model_answer(model_name='qwen', inputs_list=inputs_list_openai, stream=False))
+    #print(get_model_answer(model_name='glm3-6b', inputs_list=inputs_list_openai, stream=False))
 
     # print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list3))
