@@ -9,49 +9,30 @@ import nest_asyncio
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
-import logging
-import socket,traceback
-import threading
-import time
+import socket
 import traceback
 import uuid
 from typing import List, Dict, Any, Tuple
 from functools import partial
 nest_asyncio.apply()
-
 import colorama
 import openai
 #import zhipuai
-
-# 这部分代码保证项目能被python解释器搜索到
 from pathlib import Path
 import sys
-
 
 from nuwa.src.npc.action import ActionItem
 from nuwa.src.npc.npc import NPC
 from nuwa.src.npc.knowledge import PublicKnowledge, SceneConfig
 from nuwa.src.config.template import EnginePrompt
 from nuwa.src.npc.conversation import Conversation
-from nuwa.src.utils.send_utils import send_data
 
 colorama.init()
 from colorama import Fore, Style
-from nuwa.src.config.config import (OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL, ZHIPU_KEY,CONFIG_PATH,
-                                          CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,NPC_MEMORY_CONFIG,ACTION_MODEL)
+from nuwa.src.config.config import NPC_MEMORY_CONFIG
+from nuwa.src.utils.engine_logger import EngineLogger
 from nuwa.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
-# key配置
-#zhipuai.api_key = ZHIPU_KEY
-openai.api_key = OPENAI_KEY
-openai.api_base = OPENAI_BASE
-
-# LOGGER配置
-logger = logging.getLogger("ENGINE")
-CONSOLE_HANDLER.setLevel(logging.DEBUG)
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
-logger.setLevel(logging.DEBUG)
 
 class NPCEngine:
     """
@@ -61,14 +42,37 @@ class NPCEngine:
 
     def __init__(
         self,
+        project_root_path: Path,
         engine_url="::1",
         engine_port=8199,
         game_url="::1",
         game_port=8084,
-        model=OPENAI_MODEL,
         logo=True,
     ):
-        logger.info("initializing NPC-ENGINE")
+        # 初始化项目日志
+        # LOGGER配置
+        engine_logger = EngineLogger(project_root_path=project_root_path)
+        engine_logger.set_up()
+        self.logger = engine_logger.get_logger("ENGINE")
+        self.logger.info("initializing NPC-ENGINE")
+        # 设置用户定义路径
+        self.PROJECT_ROOT_PATH = project_root_path  # 用户输入的项目根目录
+        self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
+        # 读取LLM_CONFIG
+        OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
+        openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
+        OPENAI_KEY = openai_config_data["OPENAI_KEY"]
+        OPENAI_BASE = openai_config_data["OPENAI_BASE"]
+        GENERAL_MODEL = openai_config_data["GENERAL_MODEL"]  # general model实际上只能选择openai的model 应为目前conversation的model是自己实现的openai请求 没有走model_api
+        ACTION_MODEL = openai_config_data["ACTION_MODEL"]
+        # model 设置
+        self.model = GENERAL_MODEL
+        self.action_model = ACTION_MODEL
+        # key配置
+        # zhipuai.api_key = ZHIPU_KEY
+        openai.api_key = OPENAI_KEY
+        openai.api_base = OPENAI_BASE
+
         if logo:
             print(
                 Fore.BLUE
@@ -111,26 +115,22 @@ class NPCEngine:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
         print(
             Fore.GREEN
-            + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using general llm model {model}, action llm model  {ACTION_MODEL}"
+            + f"listening on [::]:{self.engine_port}, sending data to {self.game_url}:{self.game_port}, using general llm model {self.model}, action llm model  {self.action_model}"
             + Style.RESET_ALL
         )
         self.sock.bind((engine_url, self.engine_port))  # 修改为IPv6地址绑定方式 todo:这里可能要改为::1
-        self.model = model
-        #self.listen_thread = threading.Thread(target=self.listen)
-        #self.listen_thread.start()
         
         # 加载模型embedding模型
         if NPC_MEMORY_CONFIG["hf_embedding_online"]:
-            logger.info("using online embedding model")
+            self.logger.info("using online embedding model")
             self.embedding_model = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         else:
-            logger.info("using local embedding model")
+            self.logger.info("using local embedding model")
             self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
-        # 上面👆的embedding_model
-        self.public_knowledge = PublicKnowledge()
+        self.public_knowledge = PublicKnowledge(project_root_path=self.PROJECT_ROOT_PATH)
 
-        logger.info("using local embedding model")
-        logger.info("initialized NPC-ENGINE")
+        self.logger.info("using local embedding model")
+        self.logger.info("initialized NPC-ENGINE")
 
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.listen())
@@ -141,7 +141,7 @@ class NPCEngine:
         :return:
         """
         print(f"listening on [::]:{self.engine_port}")
-        logger.info(f"listening on [::]:{self.engine_port}")
+        self.logger.info(f"listening on [::]:{self.engine_port}")
         buffer = {}
         with ThreadPoolExecutor() as pool:
             while True:
@@ -159,8 +159,8 @@ class NPCEngine:
                     # 重组消息
                     msg_str = b"".join(buffer[msg_id]).decode("utf-8")
                     json_data = json.loads(msg_str)
-                    logger.debug(f"received packet {json_data}")
-                    FILE_HANDLER.flush()
+                    self.logger.debug(f"received packet {json_data}")
+
                     try:
                         # 按照完整数据包的func字段调用相应的函数
                         if "func" in json_data.keys():
@@ -169,22 +169,14 @@ class NPCEngine:
                                 func = getattr(self, func_name)
                                 func_partial = partial(func, json_data)
                                 self.loop.run_in_executor(pool, func_partial)
-                                #asyncio.run(func(json_data))
-                                #func_coro = func(json_data)         
-                                #new_thread = threading.Thread(target=func_coro.send(None))
-                                #new_thread.start()
-                                #self.listen_thread.start()
-                                #self.loop.create_task(func(json_data))
-                                #func_task = asyncio.ensure_future(func(json_data))
-                                #self.loop.run_until_complete(func(json_data))
                             if "init" in json_data["func"]:
-                                logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
+                                self.logger.info(f"[NPC-ENGINE]<UDP INIT>: {json_data}")
                             if "create_conversation" in json_data["func"]:
-                                logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
+                                self.logger.info(f"[NPC-ENGINE]<create_conversation>: {json_data}")
                             if "confirm_conversation" in json_data["func"]:
-                                logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
+                                self.logger.info(f"[NPC-ENGINE]<confirm_conversation>: {json_data}")
                             if "close" in json_data["func"]:
-                                logger.info(f"[NPC-ENGINE]<close>: {json_data}")
+                                self.logger.info(f"[NPC-ENGINE]<close>: {json_data}")
                     except json.JSONDecodeError:
                         # print the raw data and the address of the sender and the time and the traceback
                         print(
@@ -192,10 +184,10 @@ class NPCEngine:
                         )
                         # print error getting key
                         print(f"error getting key: {json_data['func']}")
-                        logger.error(traceback.format_exc())
+                        self.logger.error(traceback.format_exc())
                     except Exception as e:
                         print(f"error: {e}")
-                        logger.error(traceback.format_exc())
+                        self.logger.error(traceback.format_exc())
                         pass
 
     def batch_search_memory(self, npcs: List[str], query: str, memory_k: int):
@@ -306,7 +298,7 @@ class NPCEngine:
 
         # 如果没有指定topic，就GPT生成一个
         if topic == "":
-            #logger.error("There is no topic for creating a conversation.")
+            #self.logger.error("There is no topic for creating a conversation.")
             topic = self.get_random_topic(names, location, scenario_name, states, self.language)
 
         # 根据语言选择对应的系统提示函数
@@ -338,6 +330,7 @@ class NPCEngine:
             sock = self.sock,
             game_url = self.game_url,
             game_port = self.game_port,
+            project_root = self.PROJECT_ROOT_PATH
         )  # todo: 这里engine会等待OPENAI并无法处理新的接收
 
         self.conversation_dict[convo.convo_id] = convo
@@ -469,11 +462,11 @@ class NPCEngine:
 
             # 根据知识创建引擎提示词的实例
             self.engine_prompt = EnginePrompt(knowledge=self.public_knowledge, scenario_name=scene_name)
-            logger.debug(f"generate engine prompt done")
+            self.logger.debug(f"generate engine prompt done")
 
             # 按照action字段，添加新的ACTION
             for action_name in self.public_knowledge.get_actions(scenario_name=scene_name):
-                with open(CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
+                with open(self.CONFIG_PATH / "action" / (action_name + ".json"), "r", encoding="utf-8") as file:
                     action_json = json.load(file)
                 action_item = ActionItem(
                     name=action_json["name"],
@@ -483,18 +476,18 @@ class NPCEngine:
                     multi_param=action_json["multi_param"],
                 )
                 self.action_dict[action_item.name] = action_item
-                logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
+                self.logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
 
             # 按照npc字段，添加磁盘中JSON对应的NPC
             for npc_name in self.public_knowledge.get_people(scenario_name=scene_name):
                 try:
-                    with open(CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
+                    with open(self.CONFIG_PATH / "npc" / (npc_name + ".json"), "r", encoding="utf-8") as file:
                         npc_json = json.load(file)
                 except FileNotFoundError:
-                    logger.warning(f"NPC {npc_name} not found in disk, skip")
+                    self.logger.warning(f"NPC {npc_name} not found in disk, skip")
                     continue
                 except json.decoder.JSONDecodeError:
-                    logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
+                    self.logger.warning(f"NPC {npc_name} json decode error, check the format of {npc_name}.json, skip")
                     continue
                 """
                 {
@@ -517,7 +510,7 @@ class NPCEngine:
                 # 如果已经存在NPC在内存中，则不再config从加载覆盖
                 if npc_json["name"] in self.npc_dict.keys():
                     npc_name = npc_json["name"]
-                    logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
+                    self.logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
                     continue
 
                 npc = NPC(
@@ -538,11 +531,12 @@ class NPCEngine:
                     memory=npc_json["memory"],
                     action_space=npc_json["action_space"],
                     model=self.model,
-                    embedding_model=self.embedding_model
+                    embedding_model=self.embedding_model,
+                    project_root_path=self.PROJECT_ROOT_PATH
                 )
                 npc._init()
                 self.npc_dict[npc.name] = npc
-                logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
+                self.logger.debug(f"<DISK NPC INIT>npc:{npc.name}")
             # 按照GAME回传的init包中的npc字段，添加新的NPC
             additional_npc = []  # 由init数据包设置的新NPC
             if "npc" in json_data:
@@ -566,23 +560,24 @@ class NPCEngine:
                         action_space=npc_data["action_space"],
                         memory=npc_data["memory"],
                         model=self.model,
-                        embedding_model=self.embedding_model
+                        embedding_model=self.embedding_model,
+                        project_root_path=self.PROJECT_ROOT_PATH
                     )
                     npc._init()
                     self.npc_dict[npc.name] = npc
                     additional_npc.append(npc.name)
-                    logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
+                    self.logger.debug(f"<UDP NPC INIT> npc:{npc.name}")
             # UDP发送过来的新NPC，也被视为people常识，knowledge需要更新
             appended_npc = [npc_name for npc_name in additional_npc if npc_name not in self.public_knowledge.get_people(scenario_name=scene_name)]
             self.public_knowledge.update_people(scenario_name=scene_name, content=list(set(scene_config.all_people + additional_npc)))
-            logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
+            self.logger.debug(f"knowledge update done, people:{self.public_knowledge.get_people(scenario_name=scene_name)}, "
                          f"appended npc:{appended_npc}")
 
             # language
             self.language = json_data["language"]
             self.send_data({"name": "inited", "status": "success"})
         except Exception as e:
-            logger.error(f"init error:{traceback.format_exc()}")
+            self.logger.error(f"init error:{traceback.format_exc()}")
             self.send_data({"name": "inited", "status": "failed"})
 
     def confirm_conversation_line(self, json_data):
@@ -606,7 +601,7 @@ class NPCEngine:
                 if len(memory_add.keys()) != 0:
                     self.npc_information_update(memory_add, mood_change)
         except Exception as e:
-            logger.error(f"confirm_conversation_line error:{traceback.format_exc()}")
+            self.logger.error(f"confirm_conversation_line error:{traceback.format_exc()}")
 
     def npc_information_update(self, memory_add, mood_change):
         """
@@ -621,9 +616,9 @@ class NPCEngine:
         for name in memory_add.keys():
             npc = self.npc_dict[name]
             npc.memory.add_memory_text(text="\n".join(memory_add[name]), game_time="Time")
-            logger.debug(f"npc {name} add conversation pieces into memory done")
+            self.logger.debug(f"npc {name} add conversation pieces into memory done")
             npc.mood = mood_change[name]
-            logger.debug(f"npc {name} update mood done")
+            self.logger.debug(f"npc {name} update mood done")
 
     def action_done(self, json_data: Dict[str, Any]):
         """
@@ -683,13 +678,13 @@ class NPCEngine:
             action_packet["name"] = "action"
             # 发送新的action到环境
             self.send_script(action_packet)
-            logger.debug(f"""[NPC-ENGINE]<action_done> 
+            self.logger.debug(f"""[NPC-ENGINE]<action_done> 
                             npc_name:{npc.name}, 
                             purpose: {npc.purpose},
                             action:{action_packet}
                             to game""")
         except Exception as e:
-            logger.error(f"[NPC-ENGINE]<action_done> error:{traceback.format_exc()}")
+            self.logger.error(f"[NPC-ENGINE]<action_done> error:{traceback.format_exc()}")
 
     def wake_up(self, json_data):
         """
@@ -740,13 +735,13 @@ class NPCEngine:
             action_packet["name"] = "action"
             # 发送新的action到环境
             self.send_script(action_packet)
-            logger.debug(f"""[NPC-ENGINE]<wake_up> 
+            self.logger.debug(f"""[NPC-ENGINE]<wake_up> 
                             npc_name: {npc.name}, 
                             purpose: {npc.purpose} 
                             action: {action_packet} 
                             to game""")
         except Exception as e:
-            logger.error(f"[NPC-ENGINE]<wake_up> error: {traceback.format_exc()}")
+            self.logger.error(f"[NPC-ENGINE]<wake_up> error: {traceback.format_exc()}")
 
     def talk2npc(self, json_data):
         """
@@ -823,14 +818,14 @@ class NPCEngine:
             response["name"] = "talk_result"
             # 发送新的action到环境
             self.send_script(response)
-            logger.debug(f"""[NPC-ENGINE]<talk2npc> 
+            self.logger.debug(f"""[NPC-ENGINE]<talk2npc> 
                             npc_name: {npc.name}, 
                             purpose: {npc.purpose},
                             answer: {response["answer"]}
                             action: {response["actions"]} 
                             to game""")
         except Exception as e:
-            logger.error(f"[NPC-ENGINE]<talk2npc> error: {traceback.format_exc()}")
+            self.logger.error(f"[NPC-ENGINE]<talk2npc> error: {traceback.format_exc()}")
 
     def send_script(self, script):
         """
@@ -890,10 +885,10 @@ class NPCEngine:
         保存NPC的json数据到本地
         :return:
         """
-        logger.info(f"saving npc json, names:{self.npc_dict.keys()}")
+        self.logger.info(f"saving npc json, names:{self.npc_dict.keys()}")
         for npc in self.npc_dict.values():
             npc.save_memory()
-        logger.info("npc json saved")
+        self.logger.info("npc json saved")
 
     def close(self, json_data):
         """
@@ -908,15 +903,17 @@ class NPCEngine:
         try:
             # 关闭socket
             self.sock.close()
-            logger.debug("socket closed")
+            self.logger.debug("socket closed")
             # 保存所有NPC到本地
             self.save_npc_json()
-            logger.info("Engine closing")
+            self.logger.info("Engine closing")
             # 退出程序
             sys.exit(0)
         except Exception as e:
-            logger.error(f"[NPC-ENGINE]<close> error: {traceback.format_exc()}")
+            self.logger.error(f"[NPC-ENGINE]<close> error: {traceback.format_exc()}")
             sys.exit(0)
 
 if __name__ == "__main__":
-    engine = NPCEngine()
+    import os
+    PROJECT_ROOT_PATH = Path(os.path.abspath(__file__)).parent.parent.parent / "example_project"
+    engine = NPCEngine(project_root_path=PROJECT_ROOT_PATH)

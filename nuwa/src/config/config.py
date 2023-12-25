@@ -3,47 +3,12 @@ Filename: config.py
 Author: Mengshi*, Yangzejun
 Contact: ..., yzj_cs_ilstar@163.com
 """
-
-import json
-import logging
 from pathlib import Path
-import time
-import os
 
 
-# 用户项目主路径
-PROJECT_ROOT_PATH = Path(os.getcwd())
-LOG_FILE_PATH = PROJECT_ROOT_PATH / "logs"
-CONFIG_PATH = PROJECT_ROOT_PATH / "config"
-MEMORY_DB_PATH = PROJECT_ROOT_PATH / "data" / "npc_memory.db"
-OPENAI_CONFIG_PATH = PROJECT_ROOT_PATH / "config" / "llm_config.json"
-
+# NUWA主路径
 CODE_ROOT_PATH = Path(__file__).parent.parent.parent
 MODEL_BASE_PATH = CODE_ROOT_PATH / "material" / "models"
-
-# 时间(兼容windows文件名)
-time_format = "%Y-%m-%d-%H-%M-%S"
-time_str = time.strftime(time_format, time.localtime())
-
-# LOGGER配置
-# 日志格式
-LOG_FORMAT = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-
-# 日志级别
-CONSOLE_LOG_LEVEL = logging.INFO
-FILE_LOG_LEVEL = logging.DEBUG
-
-# 控制台处理器
-CONSOLE_HANDLER = logging.StreamHandler()
-CONSOLE_HANDLER.setLevel(CONSOLE_LOG_LEVEL)
-CONSOLE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
-
-# 文件处理器
-if not os.path.exists(LOG_FILE_PATH):
-    os.makedirs(LOG_FILE_PATH)
-FILE_HANDLER = logging.FileHandler(LOG_FILE_PATH / f'engine_{time_str}.log')
-FILE_HANDLER.setLevel(FILE_LOG_LEVEL)
-FILE_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT))
 
 # KEYS
 ZHIPU_KEY = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
@@ -51,116 +16,6 @@ OPENAI_KEY = "sk-hJs89lkQMzlzoOcADb6739A9091d41229c2c3c0547932fBe"
 OPENAI_BASE = "https://api.qaqgpt.com/v1"
 OPENAI_MODEL = "gpt-3.5-turbo-16k"
 
-# get OPENAI KEY and BASE_URL from local json file
-try:
-    openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
-    OPENAI_KEY = openai_config_data["OPENAI_KEY"]
-    OPENAI_BASE = openai_config_data["OPENAI_BASE"]
-    OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
-    ACTION_MODEL = openai_config_data["ACTION_MODEL"]
-except FileNotFoundError:
-    raise FileNotFoundError(
-        f"./config/llm_config.json not found in current folder!, make sure you have a config file in ./config/llm_config.json"
-    )
-    import sys
-    sys.exit(1)
-
-# PACKS
-INIT_PACK = json.loads(
-    """
-{
-        "func":"init",
-		 "npc":"{npc_list}",
-		 "knowledge":{
-			"all_actions": "{all_actions}",
-			 "all_places": "{all_places}",
-			 "all_moods": "{all_moods}",
-			 "all_people": "{all_people}"
-				     },
-   		"language": "{language}"
-}
-"""
-)
-
-NPC_CONFIG = json.loads(
-    """
-    {
-        "name": "{name}",
-        "desc": "{desc}",
-        "mood": "{mood}",
-        "location": "{location}",
-        "memory": "{memory}"
-    }
-"""
-)
-
-CONV_CONFIG = json.loads(
-    """
-    {
-        "func": "create_conversation",
-        "npc": "{npc}",
-        "location": "{location}",
-        "topic": "{topic}",
-        "observations": "{observations}",
-        "starting": "{starting}",
-        "player_desc": "{player_desc}",
-        "memory_k": "{memory_k}",
-        "length": "{length}"
-    }
-"""
-)
-
-CONV_SCRIPT = json.loads(
-    """
-    {
-        "name": "conversation",
-        "id": "{id}",
-        "length": "{length}",
-        "location": "{location}",
-        "lines": "{lines}"
-    }
-"""
-)
-
-CONV_CNFM = json.loads(
-    """
-    {
-        "func": "confirm_conversation_line",
-        "conversation_id": "{id}",
-        "index": "{index}"
-    }
-"""
-)
-
-CONV_LINE = json.loads(
-    """
-    {
-    "type": "{type}",
-    "state": "{state}",
-    "name": "{name}",
-    "mood": "{mood}",
-    "words": "{words}",
-    "action": "{action}"
-    }
-"""
-)
-
-CONV_RECRE = json.loads(
-    """
-    {
-        "func": "re_create_conversation",
-        "id": "{id}",
-        "character": "{character}",
-        "interruption": "{interruption}",
-        "player_desc": "{player_desc}",
-        "length": "{length}"
-    }
-"""
-)
-
-ALL_ACTIONS = ["stay", "move", "chat"]
-ALL_PLACES = ["李大爷家", "王大妈家", "广场", "瓜田", "酒吧", "警局"]
-ALL_MOODS = ["正常", "焦急", "严肃", "开心", "伤心"]
 
 # get your token in http://hf.co/settings/tokens
 HF_TOKEN = "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"

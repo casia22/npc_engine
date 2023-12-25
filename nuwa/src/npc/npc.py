@@ -1,24 +1,15 @@
 import json
 import logging
 import socket
+from pathlib import Path
 from typing import List, Dict, Any, Tuple
-import pickle
-import re, os, datetime
 
 from nuwa.src.npc.memory import NPCMemory
 from nuwa.src.npc.knowledge import PublicKnowledge, SceneConfig
 from nuwa.src.npc.action import ActionItem
-from nuwa.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH, ACTION_MODEL
 from nuwa.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from nuwa.src.utils.model_api import get_model_answer
 
-
-# LOGGER配置
-logger = logging.getLogger("NPC")
-CONSOLE_HANDLER.setLevel(logging.DEBUG)
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
-logger.setLevel(logging.DEBUG)
 
 # npc的宽泛知识
 class PersonalKnowledge:
@@ -96,15 +87,20 @@ class NPC:
             state: Dict[str, Any],
             action_dict: Dict[str, ActionItem],
             embedding_model: BaseEmbeddingModel,
+            project_root_path: Path,
+            model: str = "gpt-3.5-turbo-16k",
             mood: str = "正常",
             action_space: List[str] = [],
             memory: List[str] = [],
-            memory_k: int = 3,
-            model: str = OPENAI_MODEL,
+            memory_k: int = 3
     ) -> None:
-
+        # NPC模块LOGGER
+        self.logger = logging.getLogger("NPC")
+        # 用户项目根目录设置
+        self.PROJECT_ROOT_PATH = project_root_path
+        self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
         # model
-        self.model: str = model
+        self.ACTION_MODEL: str = model
         # NPC固定参数
         self.name: str = name
         self.desc: str = desc
@@ -129,7 +125,8 @@ class NPC:
         self.purpose: str = ""
         # NPC的记忆
         self.embedding_model = embedding_model
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k,EmbeddingModel=self.embedding_model)
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k,EmbeddingModel=self.embedding_model,
+                                           project_root_path=self.PROJECT_ROOT_PATH)
 
         ####################### 先清空现有VB #######################
         self.memory.clear_memory()
@@ -139,7 +136,7 @@ class NPC:
     def _init(self):
         for piece in self.initial_memory:
             self.memory.add_memory_text(piece, game_time="XXXXXXXXXXXXXXXX")
-            logger.debug(f"add memory {piece} into npc {self.name} done.")
+            self.logger.debug(f"add memory {piece} into npc {self.name} done.")
 
     def set_state(self, state: Dict[str, Any]) -> None:
         self.state = State(
@@ -177,7 +174,7 @@ class NPC:
         """
         self.scenario = scenario
         self.scene_knowledge = self.public_knowledge.get_scene(scene_name=scenario)
-        logger.debug(f"NPC:{self.name} 已经切换到了 {self.scenario} 场景")
+        self.logger.debug(f"NPC:{self.name} 已经切换到了 {self.scenario} 场景")
 
     def set_mood(self, mood: str) -> None:
         self.mood = mood
@@ -260,11 +257,11 @@ class NPC:
             purpose: str = purpose_response.split("]<")[1].replace(">", "")
             mood: str = purpose_response.split("]<")[0].replace("[", "")
         except IndexError:
-            logger.error(f"返回的目的格式不正确，返回内容为：{purpose_response}, 设定purpose为''")
+            self.logger.error(f"返回的目的格式不正确，返回内容为：{purpose_response}, 设定purpose为''")
             purpose = "" # NULL
             mood = self.mood
 
-        logger.debug(f"""
+        self.logger.debug(f"""
             <发起PURPOSE请求>
             <请求内容>:{role_play_instruct}
             <请求提示>:{prompt}
@@ -348,7 +345,7 @@ class NPC:
         if not action_name or action_name not in self.action_dict.keys():
             illegal_action = self.action_result
             self.action_result = {"name": "stand", "object": "", "parameters": []}
-            logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
             if not self.action_dict[action_name].multi_param:
@@ -356,7 +353,7 @@ class NPC:
                 self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         # 添加npc_name
         self.action_result["npc_name"] = self.name
-        logger.debug(f"""
+        self.logger.debug(f"""
             <发起ACTION请求>
             <请求内容>:{instruct}
             <请求提示>:{prompt}
@@ -494,12 +491,12 @@ class NPC:
         try:
             [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
         except ValueError:
-            logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
+            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
         except Exception as e:
             mood_purpose = "[正常]<>"
             action_prompt = "<||>"
             answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
-            logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_prompt:{action_prompt} answer_prompt:{answer_prompt}")
+            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_prompt:{action_prompt} answer_prompt:{answer_prompt}")
 
         # 检查抽取到的动作
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
@@ -508,7 +505,7 @@ class NPC:
         if action_name not in self.action_dict.keys():
             illegal_action = self.action_result
             self.action_result = {"name": "stand", "object": "", "parameters": []}
-            logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
             if not self.action_dict[action_name].multi_param:
@@ -520,7 +517,7 @@ class NPC:
             purpose: str = mood_purpose.split("]<")[1].replace(">", "")
             mood: str = mood_purpose.split("]<")[0].replace("[", "")
         except IndexError:
-            logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
+            self.logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
             purpose = "" # NULL
             mood = self.mood
         self.purpose = purpose
@@ -547,7 +544,7 @@ class NPC:
             "actions": [self.action_result]
         }
 
-        logger.debug(f"""
+        self.logger.debug(f"""
                     <TALK2NPC请求>
                     <请求内容>:{instruct}
                     <请求提示>:{prompt}
@@ -567,16 +564,16 @@ class NPC:
                 "content": prompt}
         ]
         # 测试使用百川2
-        if ACTION_MODEL.startswith("baichuan2"):
+        if self.ACTION_MODEL.startswith("baichuan2"):
             prompt = instruct+prompt
-            answer = get_model_answer(model_name=ACTION_MODEL, inputs_list=[prompt])
-            logger.debug(f"<ACTION> 使用百川模型: {ACTION_MODEL}")
-        elif ACTION_MODEL.startswith("gpt"):
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=[prompt])
+            self.logger.debug(f"<ACTION> 使用百川模型: {self.ACTION_MODEL}")
+        elif self.ACTION_MODEL.startswith("gpt"):
             # 使用openai
-            answer = get_model_answer(model_name=OPENAI_MODEL, inputs_list=llm_prompt_list)
-            logger.debug(f"<ACTION> 使用openai模型{OPENAI_MODEL}")
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list)
+            self.logger.debug(f"<ACTION> 使用openai模型{self.ACTION_MODEL}")
         else:
-            logger.error(f"未知的ACTION_MODEL:{ACTION_MODEL}")
+            self.logger.error(f"未知的ACTION_MODEL:{self.ACTION_MODEL}")
             answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
         return answer
 
@@ -584,7 +581,7 @@ class NPC:
         """
         以npc_name.json的形式保存npc的状态
         """
-        NPC_CONFIG_PATH = CONFIG_PATH / "npc" / f"{self.name}.json"
+        NPC_CONFIG_PATH = self.CONFIG_PATH / "npc" / f"{self.name}.json"
         """ 保存示例: 李大爷.json
         {
           "name":"李大爷",
@@ -617,5 +614,5 @@ class NPC:
         # 以json字符串的形式保存
         with open(NPC_CONFIG_PATH, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        logger.debug(f"已保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
+        self.logger.debug(f"已保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
 

@@ -6,27 +6,17 @@ NPC的记忆处理类
 import hashlib
 import json
 import queue
+from pathlib import Path
 from typing import Any, Dict, List
-
 import numpy as np
-#import pinecone
-import requests
-import logging
-
+import logging,os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-from nuwa.src.config.config import NPC_MEMORY_CONFIG, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, \
-    MEMORY_DB_PATH
+from nuwa.src.config.config import NPC_MEMORY_CONFIG
 from nuwa.src.utils.database import PickleDB
 from nuwa.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from nuwa.src.utils.faissdatabase import VectorDatabase
-import os
 
-# LOGGER配置
-logger = logging.getLogger("NPC_MEMORY")
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
-logger.setLevel(logging.DEBUG)  # 设为 DEBUG 级别以显示所有日志
 
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):
@@ -68,6 +58,7 @@ class NPCMemory:
             npc_name: str,
             k: int,
             EmbeddingModel: BaseEmbeddingModel,
+            project_root_path: Path = Path(os.getcwd()),
             the_npc_memory_config: Dict[str, Any] = NPC_MEMORY_CONFIG,
 
     ):
@@ -78,10 +69,14 @@ class NPCMemory:
         pinecone_index_name: Pinecone的索引名称
         embeding_model: embedding模型的引用，需要提供embed_text(text)方法
         """
+        # NPC_MEMORY模块LOGGER配置 
+        self.logger = logging.getLogger("NPC_MEMORY")
         # npc_memory设置
         self.npc_name = npc_name
         self.latest_k = queue.Queue(maxsize=k)
-        self.base_path = os.path.join(PROJECT_ROOT_PATH, "data")
+        self.project_root_path = project_root_path
+        self.MEMORY_DB_PATH = project_root_path / "data" / "npc_memory.db"
+        self.base_path = os.path.join(project_root_path, "data")
         self.vdb_path = os.path.join(self.base_path, f"{self.npc_name}.pkl")
         print("vdb_path", self.vdb_path)
         """embedding model设置"""
@@ -100,10 +95,10 @@ class NPCMemory:
         # 如果向量数据库文件不存在，立即保存新创建的数据库
         if not os.path.exists(self.vdb_path):
             self.vector_database.save()
-        logger.debug(f"{self.npc_name} memory init done, k={k}, model_name=sbert-base-chinese-nli")
+        self.logger.debug(f"{self.npc_name} memory init done, k={k}, model_name=sbert-base-chinese-nli")
 
         """数据库设置"""
-        self.memory_db = PickleDB(MEMORY_DB_PATH)
+        self.memory_db = PickleDB(self.MEMORY_DB_PATH)
 
     def embed_text(self, text: str) -> list:
         """使用用户指定的embedding模型对文本进行embedding，返回一个list
@@ -152,7 +147,7 @@ class NPCMemory:
         self.vector_database.put(key=memory_item.md5_hash, vector=embedding)
 
         self.memory_db.set(key=memory_item.md5_hash, value=memory_item.to_json_str())
-        logger.debug(f"add memory {memory_item.md5_hash} done")
+        self.logger.debug(f"add memory {memory_item.md5_hash} done")
 
     def add_memory_file(self, file_path: str, game_time: str, chunk_size: int = 50, chunk_overlap: int = 10):
         """
@@ -176,13 +171,13 @@ class NPCMemory:
         text_chunks: List[str] = [doc.page_content for doc in texts]
         # 构造记忆对象
         memory_items: List[MemoryItem] = [MemoryItem(text, game_time) for text in text_chunks]
-        logger.info(
+        self.logger.info(
             f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[len(each.text) for each in memory_items]}, 为{len(text_chunks)}个片段，每个片段长度为{chunk_size}，重叠长度为{chunk_overlap}")
-        logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
+        self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
         # 将记忆上传到向量数据库，存入KV数据库
         for memory_item in memory_items:
             self.add_memory(memory_item)
-            logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
+            self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
 
     def time_score(self, game_time: str, memory_game_time: str) -> float:
         """
@@ -199,41 +194,41 @@ class NPCMemory:
     def search_memory(self, query_text: str, query_game_time: str, k: int, top_p: float = 1) -> Dict[
         str, List[MemoryItem]]:
 
-        logger.debug(f"NPC:{self.npc_name} 开始搜索记忆, 检索语句为：{query_text}，检索数量为：{k}，top_p为：{top_p}")
+        self.logger.debug(f"NPC:{self.npc_name} 开始搜索记忆, 检索语句为：{query_text}，检索数量为：{k}，top_p为：{top_p}")
 
         # 对query_text进行embedding
         query_embedding = self.embed_text(query_text)
-        #logger.debug(f"Query embedding: {query_embedding}")
+        #self.logger.debug(f"Query embedding: {query_embedding}")
 
         # 从pinecone中搜索与query_text最相似的2k条记忆
         response = self.vector_database.search(vector=query_embedding, k=2 * k, thresh=0.8)
-        # logger.debug(f"Vector database response: {response}")
+        # self.logger.debug(f"Vector database response: {response}")
 
         keys, distances = response
         vdb_response = [{"id": key, "score": distance} for key, distance in zip(keys, distances)]
-        # logger.debug(f"vdb_response: {vdb_response}")
+        # self.logger.debug(f"vdb_response: {vdb_response}")
 
         match_items: List[MemoryItem] = [
             MemoryItem.from_json_str(self.memory_db.get(match["id"])) for match in vdb_response
         ]
-        logger.debug(f"Matched memory items: {match_items}")
+        self.logger.debug(f"Matched memory items: {match_items}")
 
         # 提取每个match到的MemoryItem中的cosine score
         match_scores: List[float] = [float(match["score"]) for match in vdb_response]
-        # logger.debug(f"Match scores: {match_scores}")
+        # self.logger.debug(f"Match scores: {match_scores}")
 
         # MemoryItem中的game_time，结合query_game_time和cosine score筛选出k个importance最大的match
         time_scores: List[float] = [
             self.time_score(match_item.game_time, query_game_time)
             for match_item in match_items
         ]
-        # logger.debug(f"Time scores: {time_scores}")
+        # self.logger.debug(f"Time scores: {time_scores}")
 
         importance_scores: List[float] = [
             time_score * match_score
             for time_score, match_score in zip(time_scores, match_scores)
         ]
-        # logger.debug(f"Importance scores: {importance_scores}")
+        # self.logger.debug(f"Importance scores: {importance_scores}")
 
         match_items: List[MemoryItem] = [
             item.set_score(score) for item, score in zip(match_items, importance_scores)
@@ -242,7 +237,7 @@ class NPCMemory:
         # 选取最大的k个importance_scores所对应的match_items
         importance_scores_array: np.array = np.array(importance_scores)
         top_k_indices = np.argsort(importance_scores_array)[-k:]
-        # logger.debug(f"Top k indices: {top_k_indices}")
+        # self.logger.debug(f"Top k indices: {top_k_indices}")
 
         top_k_match_items: List[MemoryItem] = [match_items[index] for index in top_k_indices]
 
@@ -269,7 +264,7 @@ class NPCMemory:
             "related_memories": selected_items,
             "latest_memories": list(self.latest_k.queue),
         }
-        logger.debug(
+        self.logger.debug(
             f"NPC:{self.npc_name} 检索记忆完成，得分:{importance_scores}, 过滤后检索数量为：{len(selected_items)}, 检索结果为：{related_memorys_list}")
 
         return related_memorys_list
@@ -285,33 +280,31 @@ class NPCMemory:
         但是不清空KV数据库中的记忆
         """
         self.vector_database.remove()
-        logger.debug("NPC: {} 向量库记忆已清空".format(self.npc_name))
+        self.logger.debug("NPC: {} 向量库记忆已清空".format(self.npc_name))
 
     def shutdown(self):
         """关闭方法，将latest_k队列中的text按照语义上传到向量数据库,并存入KV数据库"""
-        logger.debug("NPC: {} 的{}条向量库记忆上传中...".format(self.npc_name, self.latest_k.qsize()))
+        self.logger.debug("NPC: {} 的{}条向量库记忆上传中...".format(self.npc_name, self.latest_k.qsize()))
         while not self.latest_k.empty():
             memory_item = self.latest_k.get()
             self.add_memory(memory_item)
-            logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
-        logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
+            self.logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
+        self.logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
 
 
 def main():
     # logger设置
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(CONSOLE_HANDLER)
-    logger.addHandler(FILE_HANDLER)
+    PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent.parent / "example_project"
 
     """NPC测试"""
     embedder = LocalEmbedding()
-    npcM = NPCMemory(npc_name="stone9111", k=3, EmbeddingModel=embedder)
+    npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH,npc_name="stone9111", k=3, EmbeddingModel=embedder)
     """
     NPC 文件检索测试
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
     """
-    npcM.add_memory_file(file_path=PROJECT_ROOT_PATH / 'src' / 'data' / 'stone91_mem.txt',
+    npcM.add_memory_file(file_path=PROJECT_ROOT_PATH / 'data' / 'stone91_mem.txt',
                                game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
     print(npcM.search_memory("我想要攻击外星人，有什么趁手的装备吗？", "2021-08-01 12:00:00", k=3))
 

@@ -1,23 +1,8 @@
-
-from sentence_transformers import SentenceTransformer
-# import typing like List etc
-from typing import List
-import openai
 import os
 import numpy as np
 import faiss
 import pickle
-import hashlib
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.text_splitter import MarkdownHeaderTextSplitter
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import TextLoader
-from langchain.document_loaders import TextLoader
-from langchain.document_loaders import PyPDFLoader
-# openai.api_key = "sk-hzqDmA2VFMqIXEOo4aE36e753fC145808178FcDcA6D3627d"
-# openai.api_base = "https://api.ai-yyds.com/v1"
+
 
 class VectorDatabase:
     def __init__(self, dim, vdb_file_path):

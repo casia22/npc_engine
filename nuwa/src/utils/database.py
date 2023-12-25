@@ -15,12 +15,7 @@ import os
 import pickledb
 import logging
 from pathlib import Path
-from nuwa.src.config.config import NPC_MEMORY_CONFIG,CONSOLE_HANDLER,FILE_HANDLER,PROJECT_ROOT_PATH,MEMORY_DB_PATH
 
-# LOGGER配置
-logger = logging.getLogger("DATABASE")
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
 
 class PickleDB:
     _instances = {}
@@ -43,6 +38,8 @@ class PickleDB:
         :param db_path: 数据库文件的路径
         :param auto_dump: 是否自动保存更改，默认为True
         """
+        # LOGGER配置
+        self.logger = logging.getLogger("DATABASE")
         self.db_path = db_path
         self.auto_dump = auto_dump
         if not hasattr(self, 'db'):
@@ -54,11 +51,11 @@ class PickleDB:
         :return: 返回数据库对象
         """
         if os.path.exists(self.db_path):
-            logger.info(f"使用已有数据库：{self.db_path}")
+            self.logger.info(f"使用已有数据库：{self.db_path}")
         else:
-            logger.info(f"不存在数据库：{self.db_path}，创建新数据库")
+            self.logger.info(f"不存在数据库：{self.db_path}，创建新数据库")
         result = pickledb.load(self.db_path, self.auto_dump, sig=False)
-        logger.info(f"数据库已加载：{self.db_path}")
+        self.logger.info(f"数据库已加载：{self.db_path}")
         return result
 
     def get(self, key):
@@ -88,7 +85,7 @@ class PickleDB:
             result:bool = self.db.rem(key)
         except KeyError:
             return False
-        logger.debug(f"键{key}已删除")
+        self.logger.debug(f"键{key}已删除")
         return result
 
     def dump(self):
@@ -97,7 +94,7 @@ class PickleDB:
         :return: 如果保存成功，返回True，否则返回False
         """
         result = self.db.dump()
-        logger.debug(f"database {self.db_path} 已持久化到{self.db_path}")
+        self.logger.debug(f"database {self.db_path} 已持久化到{self.db_path}")
         return result
 
     def clear(self):
@@ -106,5 +103,5 @@ class PickleDB:
         :return:
         """
         result =self.db.deldb()
-        logger.debug(f"database {self.db_path} 已清空")
+        self.logger.debug(f"database {self.db_path} 已清空")
         return result

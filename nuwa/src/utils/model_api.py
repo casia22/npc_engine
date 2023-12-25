@@ -9,9 +9,6 @@ import io
 import boto3
 import time
 
-
-
-from nuwa.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
 # import zhipuai
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
 
@@ -86,7 +83,6 @@ class BAIDU_API:
         params = {"grant_type": "client_credentials", "client_id": self.api_key, "client_secret": self.secret_key}
         self.access_token = str(requests.post(url, params=params).json().get("access_token"))
         return self.access_token
-
 
 class CPM_BEE:
     def __init__(self):
@@ -267,9 +263,18 @@ class BaiChuan2():
             return self.call_baichuan2_stream(prompt, history)
         return self.call_baichuan_no_stream(prompt, history)
 
-
 class OPENAI:
     def __init__(self, model_name):
+        # 从llm配置中读取key
+        self.PROJECT_ROOT_PATH = project_root_path  # 用户输入的项目根目录
+        self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
+        # 读取LLM_CONFIG
+        OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
+        openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
+        OPENAI_KEY = openai_config_data["OPENAI_KEY"]
+        OPENAI_BASE = openai_config_data["OPENAI_BASE"]
+        OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
+        ACTION_MODEL = openai_config_data["ACTION_MODEL"]
         self.api_base = OPENAI_BASE
         self.api_key =  OPENAI_KEY
         self.model_name = model_name

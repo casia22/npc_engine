@@ -8,35 +8,29 @@ from typing import List, Dict
 from pathlib import Path
 import concurrent.futures
 
-from nuwa.src.config.config import OPENAI_KEY, OPENAI_BASE, OPENAI_MODEL, CONSOLE_HANDLER, FILE_HANDLER, PROJECT_ROOT_PATH, MEMORY_DB_PATH, CONFIG_PATH
-
-# LOGGER配置
-logger = logging.getLogger("KNOWLEDGE")
-CONSOLE_HANDLER.setLevel(logging.DEBUG)
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
-logger.setLevel(logging.DEBUG)
-
 
 class SceneConfig:
     """
     SceneConfig类，用于初始化和存储场景配置。
     """
 
-    def __init__(self, config_name: str):
+    def __init__(self, config_name: str, project_root_path: Path):
         """
         初始化SceneConfig类。
 
         参数:
         config_name (str): 配置文件名（不包括.json扩展名）
         """
+        # 路径配置
+        self.PROJECT_ROOT_PATH = project_root_path
+        self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
         self.config_name = config_name
         self.all_actions: List[str] = []
         self.all_places: List[str] = []
         self.all_moods: List[str] = []
         self.all_people: List[str] = []
 
-        with open(CONFIG_PATH / "knowledge" / "scenes" / (self.config_name + ".json"), "r", encoding="utf-8") as file:
+        with open(self.CONFIG_PATH / "knowledge" / "scenes" / (self.config_name + ".json"), "r", encoding="utf-8") as file:
             scenario_json = json.load(file)
 
         self.all_actions = scenario_json.get('all_actions', [])
@@ -52,16 +46,22 @@ class PublicKnowledge:
     它会在引擎刚启动的时候
     """
 
-    def __init__(self, debug_mode=False):
+    def __init__(self, project_root_path:Path, debug_mode=False):
         """
         初始化PublicKnowledge类。
         """
+        # LOGGER配置
+        self.logger = logging.getLogger("KNOWLEDGE")
+        # path配置
+        self.PROJECT_ROOT_PATH = project_root_path
+        self.CONFIG_PATH = project_root_path / "config"
+        
         self.scene_config_kv: Dict[str, SceneConfig] = {}
         self.debug_mode = debug_mode
         self._load_configs()
         # ["雁栖村","雁栖村丛林","雁栖村矿场","王大妈家","李大爷家","警察局"] 等等
         self.scene_names_knowledge: List[str] = self.get_config_names()
-        logger.info("Public knowledge loaded.")
+        self.logger.info("Public knowledge loaded.")
 
     def get_config_names(self) -> List[str]:
         """
@@ -78,7 +78,7 @@ class PublicKnowledge:
         加载所有的配置文件到字典中。
         """
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            config_files = [file for file in os.listdir(CONFIG_PATH / "knowledge" / "scenes") if file.endswith('.json')]
+            config_files = [file for file in os.listdir(self.CONFIG_PATH / "knowledge" / "scenes") if file.endswith('.json')]
             futures = {executor.submit(self._load_config, file): file for file in config_files}
 
             for future in concurrent.futures.as_completed(futures):
@@ -88,7 +88,7 @@ class PublicKnowledge:
                     self.scene_config_kv[config_name] = scene_config
                 except Exception as exc:
                     print(f'{file} generated an exception: {exc}')
-            logger.debug(f"Loaded scenario knowledge: {config_files}")
+            self.logger.debug(f"Loaded scenario knowledge: {config_files}")
 
     def _load_config(self, file: str) -> tuple:
         """
@@ -101,7 +101,7 @@ class PublicKnowledge:
         tuple: 配置名和SceneConfig对象
         """
         config_name = file[:-5]  # 去掉.json后缀名
-        scene_config = SceneConfig(config_name)
+        scene_config = SceneConfig(config_name, self.PROJECT_ROOT_PATH)
         return config_name, scene_config
 
     def get_scene(self, scene_name: str) -> SceneConfig:
@@ -169,7 +169,7 @@ class PublicKnowledge:
         """
         if not self.debug_mode:
             for scenario_name, scene_config in self.scene_config_kv.items():
-                with open(CONFIG_PATH / "knowledge" / "scenes" / (scenario_name + ".json"), "w",
+                with open(self.CONFIG_PATH / "knowledge" / "scenes" / (scenario_name + ".json"), "w",
                           encoding="utf-8") as file:
                     json.dump({
                         'all_actions': scene_config.all_actions,
@@ -177,12 +177,13 @@ class PublicKnowledge:
                         'all_moods': scene_config.all_moods,
                         'all_people': scene_config.all_people
                     }, file)
-        logger.info("Public knowledge shutdown.")
+        self.logger.info("Public knowledge shutdown.")
 
 
 if __name__ == "__main__":
     # 创建PublicKnowledge对象
-    public_knowledge = PublicKnowledge()
+    project_root_path = Path(__file__).parent.parent.parent.parent / "example_project"
+    public_knowledge = PublicKnowledge(project_root_path=project_root_path)
 
     # 尝试获取一个场景配置
     scene_name = '雁栖村'  # 请替换为你的实际场景名

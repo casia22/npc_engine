@@ -7,16 +7,8 @@ import requests
 from sentence_transformers import SentenceTransformer
 from typing import Any, Dict, List
 
-from nuwa.src.config.config import MODEL_BASE_PATH,CONSOLE_HANDLER,FILE_HANDLER,NPC_MEMORY_CONFIG
+from nuwa.src.config.config import MODEL_BASE_PATH,NPC_MEMORY_CONFIG
 
-# LOGGER配置
-logger = logging.getLogger("EMBEDDING")
-logger.addHandler(CONSOLE_HANDLER)
-logger.addHandler(FILE_HANDLER)
-
-CONSOLE_HANDLER.setLevel(logging.DEBUG)
-logger.addHandler(CONSOLE_HANDLER)
-logger.setLevel(logging.DEBUG)
 
 class SingletonEmbeddingModel(type):
     """
@@ -45,6 +37,8 @@ class LocalEmbedding(BaseEmbeddingModel):
     用来向量化文本的组件，按照config，加载本地的huggingface权重并进行推理
     """
     def __init__(self, model_name:str="uer/sbert-base-chinese-nli", vector_width:int=768):
+        # 初始化EMBEDDING模块 LOGGER配置
+        self.logger = logging.getLogger("EMBEDDING")
         #####################################
         # 转化model_name为huggingface的本地文件夹,
         # 例: uer/sbert-base-chinese-nli  ==> uer_sbert-base-chinese-nli
@@ -55,12 +49,12 @@ class LocalEmbedding(BaseEmbeddingModel):
 
         # 加载模型到本地
         if not os.path.exists(self.model_path_hf):
-            logger.info(f"模型{model_name}的权重不存在，正在下载... 目标路径：{self.model_path_hf}")
+            self.logger.info(f"模型{model_name}的权重不存在，正在下载... 目标路径：{self.model_path_hf}")
             model = SentenceTransformer(model_name)
             model.save(str(self.model_path_hf))
             self.model = model
         else:
-            logger.info(f"模型{model_name}的权重已存在，加载本地权重... 路径：{self.model_path_hf}")
+            self.logger.info(f"模型{model_name}的权重已存在，加载本地权重... 路径：{self.model_path_hf}")
             self.model = SentenceTransformer(self.model_path_hf)
 
         # 获取并检查向量宽度
@@ -68,14 +62,14 @@ class LocalEmbedding(BaseEmbeddingModel):
         assert vector_width == vector_width_from_weights, f"模型{model_name}的向量宽度为{vector_width_from_weights}，与用户指定的{vector_width}不符"
         self.vector_width = vector_width
 
-        logger.info(f"模型{model_name}的权重已加载，向量宽度为{vector_width_from_weights}")
+        self.logger.info(f"模型{model_name}的权重已加载，向量宽度为{vector_width_from_weights}")
 
     def embed_text(self, input_string:str):
         try:
             vector = self.model.encode(input_string).tolist()
         except Exception as e:
             import traceback
-            logger.error(f"向量化文本时出现错误：{e}")
+            self.logger.error(f"向量化文本时出现错误：{e}")
             vector = [0.0]*self.vector_width
         return vector
 
@@ -86,6 +80,7 @@ class HuggingFaceEmbedding(BaseEmbeddingModel):
     """
     def __init__(self, model_name:str="uer/sbert-base-chinese-nli", vector_width:int=768):
         """embedding model设置"""
+        self.logger = logging.getLogger("EMBEDDING")
         # huggingface embedding model
         self.hf_api_url = NPC_MEMORY_CONFIG["hf_api_url"]
         self.hf_headers = NPC_MEMORY_CONFIG["hf_headers"]
@@ -93,7 +88,7 @@ class HuggingFaceEmbedding(BaseEmbeddingModel):
 
         self.vector_width = vector_width
         self.model_name = model_name
-        logger.info(f"模型{model_name}WEB EMBED API 已经初始化")
+        self.logger.info(f"模型{model_name}WEB EMBED API 已经初始化")
 
     def embed_text(self, text: str) -> list:
         """使用Hugging Face模型对文本进行嵌入"""
@@ -107,7 +102,7 @@ class HuggingFaceEmbedding(BaseEmbeddingModel):
             response.raise_for_status()  # Raises stored HTTPError, if one occurred.
         except requests.Timeout:
             print("The request timed out")
-            logger.info(f"The embedding request of {text} timed out")
+            self.logger.info(f"The embedding request of {text} timed out")
             return [0.0] * self.hf_dim
         except requests.HTTPError as http_err:
             print(f"The embedding of {text} HTTP error occurred: {http_err}")
