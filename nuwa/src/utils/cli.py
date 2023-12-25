@@ -1,15 +1,15 @@
 import argparse
 import os
-import sys
+import sys, zipfile
+from pathlib import Path
+from nuwa.src.config.config import CODE_ROOT_PATH
 
-
-def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, model=None, logo=True):
+def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, logo=True):
     """
     运行引擎
     :param project_dir: 用户指定的配置目录
     """
-    # 检查project_dir是否存在要求的文件 config/, llm_config.json
-    # TODO: 目前引擎只能够在当前目录下存在config/llm_config.json的情况下运行
+    # 检查project_dir是否存在要求的文件 PROJECT_DIR/config/llm_config.json
     if project_dir is None:
         print("Project dir not specified, use current dir as project dir")
         project_dir = os.getcwd()
@@ -29,12 +29,28 @@ def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, model=
     # 运行引擎的代码...
     from nuwa.src.engine import NPCEngine
     engine = NPCEngine(
+        project_root_path=project_dir,
         engine_url="::1",
         engine_port=engine_port,
         game_url="::1",
         game_port=game_port,
-        model=model,
         logo=logo)
+
+def init_project(target_directory, project_name):
+    zip_path = CODE_ROOT_PATH / "material" / 'templates' / 'template.zip'
+    # path 转换
+    target_directory = Path(target_directory)
+
+    # 构建最终的项目路径
+    final_project_path = target_directory / project_name
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(final_project_path)
+    print(f"项目已初始化在 {final_project_path}")
+
+# CLI 命令处理
+def handle_init_command(args):
+    target_directory = args.target_directory or os.getcwd()
+    init_project(target_directory, args.project_name)
 
 
 def build_mac(project_dir=os.getcwd(), model=None):
@@ -43,7 +59,6 @@ def build_mac(project_dir=os.getcwd(), model=None):
 
 
 def main():
-    from nuwa.src.config import config
     parser = argparse.ArgumentParser(description='Nuwa: A simulation engine for NPC')
     subparsers = parser.add_subparsers(help='commands', dest='command')
 
@@ -53,10 +68,13 @@ def main():
     # 端口
     run_parser.add_argument('-e', '--engine-port', type=int, help='Port of the engine', default=8199)
     run_parser.add_argument('-g', '--game-port', type=int, help='Port of the game', default=8084)
-    # 模型，默认为OPENAI_MODEL
-    run_parser.add_argument('-m', '--model', type=str, help='Model of the engine', default=config.OPENAI_MODEL)
     # 是否显示logo
     run_parser.add_argument('-l', '--logo', type=bool, help='Whether to show logo', default=True)
+
+    # init
+    init_parser = subparsers.add_parser('init', help='Init a new project')
+    init_parser.add_argument('-t', '--target-directory', type=str, help='Path to the target dir', default=None)
+    init_parser.add_argument('-n', '--project-name', type=str, help='Name of the project', default="example_project")
 
     # build
     build_parser = subparsers.add_parser('build', help='Build nuwa engine')
@@ -66,7 +84,18 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'run':
-        run_engine(project_dir=args.project_dir, engine_port=args.engine_port, game_port=args.game_port, model=args.model, logo=args.logo)
+        run_engine(project_dir=Path(args.project_dir), engine_port=args.engine_port,
+                   game_port=args.game_port, logo=args.logo)
+    elif args.command == 'init':
+        """
+        nuwa init 默认在本地初始化exmaple project
+        nuwa init -t 会在目标文件夹初始化example project
+        nuwa init -n 会在当前目录初始化指定名字的project
+        nuwa init -t  -n 会在目标文件夹初始化指定名字的project
+        """
+        if args.target_directory is None:
+            args.target_directory = Path(os.getcwd())
+        handle_init_command(args)
 
 if __name__ == "__main__":
     main()

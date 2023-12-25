@@ -18,6 +18,7 @@ dist/
 
 *.log
 *.zip
+!nuwa/material/templates/template.zip
 
 # example_project
 example_project/data/*.log
