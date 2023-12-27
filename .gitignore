@@ -46,7 +46,6 @@ example_project/data/npc_memory.db
 .pytest_cache/
 .pyarmor
 .idea
-
 test/.pytest_cache/
 
 .DS_Store
