@@ -36,14 +36,14 @@ jobs:
 
     - name: Package with PyInstaller
       run: |
-        cd dist/win
-        nuwa_version=$(nuwa -v)
-        app_name="nuwa_${nuwa_version}.exe"
-        zip_name="nuwa_windows_${nuwa_version}.zip"
+        cd dist\win
+        $nuwa_version = nuwa -v
+        $app_name = "nuwa_$($nuwa_version).exe"
+        $zip_name = "nuwa_windows_$($nuwa_version).zip"
         pyinstaller nuwa.spec
-        move dist\nuwa.exe dist\$app_name
-        move project dist\
-        powershell Compress-Archive -Path dist\* -DestinationPath $zip_name
+        Move-Item "dist\nuwa.exe" "dist\$app_name"
+        Move-Item project dist\
+        Compress-Archive -Path dist\* -DestinationPath $zip_name
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -54,7 +54,7 @@ jobs:
 
     - name: Upload to S3
       run: |
-        nuwa_version=$(nuwa -v)
-        zip_name="nuwa_windows_${nuwa_version}.zip"
-        cd dist/win
-        aws s3 cp $zip_name s3://nuwa-release/release/windows/$zip_name 
+        $nuwa_version = nuwa -v
+        $zip_name = "nuwa_windows_$($nuwa_version).zip"
+        cd dist\win
+        aws s3 cp $zip_name s3://nuwa-release/release/windows/$zip_name
