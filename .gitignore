@@ -15,6 +15,7 @@ nuwa/material/models/embedding/*
 nuwa/doc/site
 yzj*
 dist/
+!dist/mac_intel/nuwa.spec
 
 *.log
 *.zip
@@ -40,6 +41,7 @@ example_project//data/*.db
 .idea
 
 .github
+!.github/workflows/*.yml
 
 test/.pytest_cache/
 
