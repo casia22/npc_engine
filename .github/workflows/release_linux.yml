@@ -41,7 +41,6 @@ jobs:
         app_name="nuwa_${nuwa_version}"
         zip_name="nuwa_linux_${{ matrix.os }}_${nuwa_version}.zip"
         pyinstaller nuwa.spec
-        mv dist/nuwa* dist/$app_name
         mv project dist/
         zip -r $zip_name dist/*
 
