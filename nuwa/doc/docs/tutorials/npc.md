@@ -1,5 +1,5 @@
 ## NPC配置总览
-NPC的配置文件在nuwa/src/config/npc/目录下，以json格式存储，每个NPC一个文件，文件名为NPC的姓名。
+NPC的配置文件在project/config/npc/目录下，以json格式存储，每个NPC一个文件，文件名为NPC的姓名。
 
 NPC的初始化有两种方式，一种是通过[NPC配置文件](#配置文件初始化)，一种是通过[UDP数据包](#udp方式初始化)。
 
@@ -7,14 +7,14 @@ NPC的初始化有两种方式，一种是通过[NPC配置文件](#配置文件�
 
 ## NPC配置方法
 ## 配置文件初始化
-绝大多数NPC都应当以 “NPC_NAME.json”的方式放在nuwa/src/config/npc/目录下，然后在Scenario配置文件中引用。
+绝大多数NPC都应当以 “NPC_NAME.json”的方式放在project/config/npc/目录下，然后在Scenario配置文件中引用。
 
 在Scenario初始化的时候，会自动读取NPC的配置文件，将NPC的初始状态加载到引擎。
 
 如果一个NPC在多个Scenario中被初始化，只有第一次是有效的，后续的初始化会被忽略。
 下面是一个例子：
 ```python
-# nuwa/src/config/npc/村长.json
+# project/config/npc/村长.json
 {
     "name": "村长",  # 角色姓名
     "desc": "村长有着浓密的白色胡须，出生于1940年，喜欢抽中华烟，他白天会在瓜田工作，晚上会在广场上遛弯，如果遇到矛盾他会主持调节，太晚了的时候就会回家睡觉。村长最喜欢吃西瓜。",  # 角色描述，一般包含外貌、出生日期、兴趣爱好、生活习惯等
@@ -65,7 +65,7 @@ NPC的初始化有两种方式，一种是通过[NPC配置文件](#配置文件�
 ## UDP方式初始化
 UDP方式是对NPC配置文件的补充，可以在游戏运行过程中动态的添加新的NPC。(存在则覆盖)
 
-Engine关闭后，新NPC的状态会被保存到nuwa/src/config/npc/目录下的NPC配置文件中。
+Engine关闭后，新NPC的状态会被保存到project/config/npc/目录下的NPC配置文件中。
 ```python
 init_packet = {
     "func": "init",

@@ -11,13 +11,14 @@
 ## 1.1 引擎配置
 在使用之前，开发者需要更新维护引擎的配置文件，配置文件位于**nuwa/Config**文件夹中，包括：
 
-- OpenAI API的配置文件: src/config/openai_config.json 
-- [动作配置文件](action.md#action配置例): src/config/action/your_action_XXX.json
-- [NPC配置文件](npc.md#配置文件初始化): src/config/npc/your_npc_nameXXX.json
-- [场景配置文件](scenario.md#scenario配置方法): src/config/knowledge/scenes/your_scenario_nameXXX.json
+- OpenAI API的配置文件: project/config/openai_config.json 
+- [动作配置文件](action.md#action配置例): project/config/action/your_action_XXX.json
+- [NPC配置文件](npc.md#配置文件初始化): project/config/npc/your_npc_nameXXX.json
+- [场景配置文件](scenario.md#scenario配置方法): project/config/knowledge/scenes/your_scenario_nameXXX.json
 
 ## 1.2 引擎启动
-引擎可以使用对应平台的**运行脚本**(windows下是.bat)或者手动使用**python src/engine.py**运行。
+引擎可以使用对应平台的[**发行版**](https://nuwa-release.s3.us-west-2.amazonaws.com/index.html)，通过脚本或程序执行./nuwa来拉起引擎。
+
 
 ## 1.3 引擎交互
 引擎端和游戏端通过UDP数据包按照[UDP数据包格式](#udp)进行交互，引擎端默认在8199端口监听游戏端数据包，游戏端默认在8084端口监听引擎端数据包。
@@ -28,9 +29,9 @@
 
 ## ✨配置文件结构
 ## 2.1 项目目录结构
-- python_lib(依赖库)
-- code(项目代码)
-  - npc-engine\
+- dist(项目代码)
+  - nuwa.exe (引擎执行入口) 
+  - project\
     - logs\(运行日志)
     - src\(源代码)
       - config\(配置文件)

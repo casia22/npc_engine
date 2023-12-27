@@ -1,10 +1,10 @@
 ## 📜 快速开始
 你可点击发行版本中的.bat文件来快速启动引擎，相关响应会在控制台中显示。
 ## 1.1 下载引擎
-访问我们的[github仓库](https://github.com/casia22/npc-engine)下载最新的引擎代码，或者直接点击[这里](https://github.com/casia22/npc-engine/releases).
+[点击这里](https://nuwa-release.s3.us-west-2.amazonaws.com/index.html)下载最新的您系统的引擎发行版
 
 ## 1.2 启动引擎
-每个发行版本中都会有对应平台的快速调试脚本(start_engine.bat), 双击即可启动引擎。执行过程的日志和收发包都会记录在logs文件夹下。
+每个发行版本双击即可启动引擎。执行过程的日志和收发包都会记录在logs文件夹下。
 ## 1.3 脚本交互(python)
 引擎监听8084端口，游戏端监听8199端口，引擎端和游戏端通过UDP数据包进行交互。
 

@@ -1,5 +1,5 @@
 ## Action配置总览
-Action配置文件在nuwa/src/config/action/文件夹下，以json格式存储。
+Action配置文件在project/config/action/文件夹下，以json格式存储。
 
 Action模块支持开发者通过[配置文件](#action配置例)的方式定义NPC的具体行为。
 
@@ -8,7 +8,7 @@ Action模块和[Scenario配置文件](scenario.md#Scenario配置方法)结合，
 ## Action配置例
 Action(动作)例子如下:
 ```python
-# nuwa/src/config/action/get.json
+# project/config/action/get.json
 {
   # 动作名字。支持自定义，最好具有代表性。
   "name": "get", 
