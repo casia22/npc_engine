@@ -1,0 +1,56 @@
+name: Release for Windows
+
+on:
+  push:
+    branches:
+      - release # 或者你希望触发此工作流程的任何分支
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest # 使用最新的 Windows 环境
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.6'  # 选择适合你项目的 Python 版本
+
+    - name: Install dependencies
+      run: |
+        pip install -r nuwa/requirements.txt
+        pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
+        pip install -e .
+
+    - name: Download models and init project
+      run: |
+        nuwa download
+        cd dist/windows
+        nuwa init -n project
+
+    - name: Package with PyInstaller
+      run: |
+        cd dist/windows
+        nuwa_version=$(nuwa -v)
+        app_name="nuwa_${nuwa_version}.exe"
+        zip_name="nuwa_windows_${nuwa_version}.zip"
+        pyinstaller nuwa.spec
+        move dist\nuwa.exe dist\$app_name
+        move project dist\
+        powershell Compress-Archive -Path dist\* -DestinationPath $zip_name
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'us-west-2'  # 例如: us-east-1
+
+    - name: Upload to S3
+      run: |
+        nuwa_version=$(nuwa -v)
+        zip_name="nuwa_windows_${nuwa_version}.zip"
+        cd dist/windows
+        aws s3 cp $zip_name s3://nuwa-release/release/windows/$zip_name 
