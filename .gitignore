@@ -12,7 +12,9 @@ npc_memory/*
 nuwa/material/models/embedding/*
 
 # distribution and packaging
+dist/mac_intel/project/
 dist/*
+dist/mac_intel/dist/
 !dist/mac_intel/
 !dist/mac_intel/nuwa.spec
 !dist/win/
@@ -30,7 +32,7 @@ yzj*
 example_project/data/*.log
 example_project/data/*.pkl
 example_project/data/*.db
-
+example_project/data/npc_memory.db
 # pypi
 *.egg-info
 *.egg-info/
@@ -47,6 +49,6 @@ example_project/data/*.db
 
 test/.pytest_cache/
 
-
+.DS_Store
 # Poetry
 __pypackages__/
