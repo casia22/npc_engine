@@ -271,9 +271,12 @@ class OPENAI:
         # 读取LLM_CONFIG
         OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
         openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
+        OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
+        openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
         OPENAI_KEY = openai_config_data["OPENAI_KEY"]
         OPENAI_BASE = openai_config_data["OPENAI_BASE"]
-        OPENAI_MODEL = openai_config_data["OPENAI_MODEL"]
+        GENERAL_MODEL = openai_config_data[
+            "GENERAL_MODEL"]  # general model实际上只能选择openai的model 应为目前conversation的model是自己实现的openai请求 没有走model_api
         ACTION_MODEL = openai_config_data["ACTION_MODEL"]
         self.api_base = OPENAI_BASE
         self.api_key =  OPENAI_KEY
