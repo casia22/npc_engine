@@ -1,17 +1,14 @@
-name: Release for mac intel
+name: Release for Windows
 
 on:
   push:
     branches:
       - release # 或者你希望触发此工作流程的任何分支
-      - release_mac
+      - release_win
 
 jobs:
   build-and-deploy:
-    strategy:
-      matrix:
-        os: [macos-12, macos-11] # 或者你需要的任何其他环境
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest # 使用最新的 Windows 环境
 
     steps:
     - name: Checkout repository
@@ -22,6 +19,9 @@ jobs:
       with:
         python-version: '3.9.6'  # 选择适合你项目的 Python 版本
 
+    - name: Set environment variable
+      run: echo "PYTHONIOENCODING=UTF-8" >> $GITHUB_ENV
+
     - name: Install dependencies
       run: |
         pip install -r nuwa/requirements.txt
@@ -31,19 +31,18 @@ jobs:
     - name: Download models and init project
       run: |
         nuwa download
-        cd dist/mac_intel
+        cd dist/win
         nuwa init -n project
 
     - name: Package with PyInstaller
       run: |
-        cd dist/mac_intel  # 如果需要在这个目录下运行 pyinstaller
-        nuwa_version=$(nuwa -v)
-        app_name="nuwa_${nuwa_version}"
-        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
+        cd dist\win
+        $nuwa_version = nuwa -v
+        $app_name = "nuwa_$($nuwa_version).exe"
+        $zip_name = "nuwa_windows_$($nuwa_version).zip"
         pyinstaller nuwa.spec
-        mv dist/nuwa* dist/$app_name
-        mv project dist/
-        zip -r $zip_name dist/*
+        Move-Item project dist\
+        Compress-Archive -Path dist\* -DestinationPath $zip_name
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -54,7 +53,7 @@ jobs:
 
     - name: Upload to S3
       run: |
-        nuwa_version=$(nuwa -v)
-        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
-        cd dist/mac_intel
-        aws s3 cp $zip_name s3://nuwa-release/release/mac_intel/$zip_name 
+        $nuwa_version = nuwa -v
+        $zip_name = "nuwa_windows_$($nuwa_version).zip"
+        cd dist\win
+        aws s3 cp $zip_name s3://nuwa-release/release/windows/$zip_name

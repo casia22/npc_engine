@@ -1,4 +1,6 @@
+# encoding: utf-8
 import argparse
+import io
 import os
 import sys, zipfile
 from pathlib import Path
@@ -58,7 +60,7 @@ def init_project(target_directory, project_name):
                 # 写入文件
                 with zip_ref.open(info.filename) as source, open(target_file_path, "wb") as target:
                     target.write(source.read())
-    print(f"项目已初始化在 {final_project_path}")
+    print(f"project inited in: {final_project_path}")
 
 # CLI 命令处理
 def handle_init_command(args):
@@ -76,6 +78,9 @@ def download_model_weights(args):
 
 
 def main():
+    if sys.stdout.encoding != 'UTF-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
     parser = argparse.ArgumentParser(description='Nuwa: A simulation engine for NPC')
     # nuwa -v for version
     parser.add_argument('-v', '--version', action='version', version=f'{__version__}')

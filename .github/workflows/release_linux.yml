@@ -1,16 +1,16 @@
-name: Release for mac intel
+name: Release for linux  # 目前只是Ubuntu的用户端SDK; linux上面还需要做服务器端SDK打包到docker里面提供web服务这样
 
 on:
   push:
     branches:
       - release # 或者你希望触发此工作流程的任何分支
-      - release_mac
+      - release_linux
 
 jobs:
   build-and-deploy:
     strategy:
       matrix:
-        os: [macos-12, macos-11] # 或者你需要的任何其他环境
+        os: [ubuntu-20.04, ubuntu-18.04, debian-10, debian-9, centos-8, centos-7] # , fedora-34] # 或者你需要的任何其他环境
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -31,17 +31,16 @@ jobs:
     - name: Download models and init project
       run: |
         nuwa download
-        cd dist/mac_intel
+        cd dist/linux
         nuwa init -n project
 
     - name: Package with PyInstaller
       run: |
-        cd dist/mac_intel  # 如果需要在这个目录下运行 pyinstaller
+        cd dist/linux  # 如果需要在这个目录下运行 pyinstaller
         nuwa_version=$(nuwa -v)
         app_name="nuwa_${nuwa_version}"
-        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
+        zip_name="nuwa_linux_${{ matrix.os }}_${nuwa_version}.zip"
         pyinstaller nuwa.spec
-        mv dist/nuwa* dist/$app_name
         mv project dist/
         zip -r $zip_name dist/*
 
@@ -55,6 +54,6 @@ jobs:
     - name: Upload to S3
       run: |
         nuwa_version=$(nuwa -v)
-        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
-        cd dist/mac_intel
-        aws s3 cp $zip_name s3://nuwa-release/release/mac_intel/$zip_name 
+        zip_name="nuwa_linux_${{ matrix.os }}_${nuwa_version}.zip"
+        cd dist/linux
+        aws s3 cp $zip_name s3://nuwa-release/release/linux/$zip_name 
