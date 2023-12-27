@@ -10,7 +10,7 @@ jobs:
   build-and-deploy:
     strategy:
       matrix:
-        os: [ubuntu-20.04] # ubuntu-18.04, debian-10, debian-9, centos-8, centos-7, fedora-34] # 或者你需要的任何其他环境
+        os: [ubuntu-20.04, ubuntu-18.04, debian-10, debian-9, centos-8, centos-7] # , fedora-34] # 或者你需要的任何其他环境
     runs-on: ${{ matrix.os }}
 
     steps:
