@@ -566,15 +566,15 @@ class NPC:
         # 测试使用百川2
         if self.ACTION_MODEL.startswith("baichuan2"):
             prompt = instruct+prompt
-            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=[prompt])
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=[prompt], project_root_path=self.PROJECT_ROOT_PATH)
             self.logger.debug(f"<ACTION> 使用百川模型: {self.ACTION_MODEL}")
         elif self.ACTION_MODEL.startswith("gpt"):
             # 使用openai
-            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list)
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list, project_root_path=self.PROJECT_ROOT_PATH)
             self.logger.debug(f"<ACTION> 使用openai模型{self.ACTION_MODEL}")
         else:
             self.logger.error(f"未知的ACTION_MODEL:{self.ACTION_MODEL}")
-            answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt])
+            answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt], project_root_path=self.PROJECT_ROOT_PATH)
         return answer
 
     def save_memory(self):
