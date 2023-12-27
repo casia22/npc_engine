@@ -1,0 +1,32 @@
+<div id="navigation"></div>
+<div id="listing"></div>
+
+<!-- add jQuery - if you already have it just ignore this line -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script>
+    if (typeof jQuery == 'undefined') {
+        document.write(unescape("%3Cscript src='https://cdn.jsdelivr.net/npm/jquery@3.1.1/dist/jquery.min.js' type='text/javascript'%3E%3C/script%3E"));
+    }
+</script>
+<script>
+    if (typeof jQuery == 'undefined') {
+        document.write(unescape("%3Cscript src='https://libs.baidu.com/jquery/3.1.1/jquery.min.js' type='text/javascript'%3E%3C/script%3E"));
+    }
+</script>
+
+
+<!-- the JS variables for the listing -->
+<script type="text/javascript">
+  var S3BL_IGNORE_PATH = true;
+  //var BUCKET_NAME = 'nuwa-release';
+  var BUCKET_URL = 'https://s3.us-west-2.amazonaws.com/nuwa-release' ;//'nuwa-release.s3';
+  var S3B_ROOT_DIR = 'release/';
+  var S3B_SORT = 'DEFAULT';
+  var S3B_STAT_DIRS = false;
+  var EXCLUDE_FILE = 'index.html';  // change to array to exclude multiple files
+  var AUTO_TITLE = true;
+  //var S3_REGION = 'us-west-2'; // for us-east-1
+</script>
+
+<!-- the JS to the do the listing -->
+<script type="text/javascript" src="https://rufuspollock.github.io/s3-bucket-listing/list.js"></script>

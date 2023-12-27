@@ -11,12 +11,17 @@ npc_memory/*
 # material 存储模型文件
 nuwa/material/models/embedding/*
 
+# distribution and packaging
+dist/*
+!dist/mac_intel/
+!dist/mac_intel/nuwa.spec
+!dist/win/
+!dist/win/nuwa.spec
+!dist/s3_website
+
 # documentation
 nuwa/doc/site
 yzj*
-dist/
-!dist/mac_intel/nuwa.spec
-
 *.log
 *.zip
 !nuwa/material/templates/template.zip
@@ -24,7 +29,7 @@ dist/
 # example_project
 example_project/data/*.log
 example_project/data/*.pkl
-example_project//data/*.db
+example_project/data/*.db
 
 # pypi
 *.egg-info
@@ -39,9 +44,6 @@ example_project//data/*.db
 .pytest_cache/
 .pyarmor
 .idea
-
-.github
-!.github/workflows/*.yml
 
 test/.pytest_cache/
 

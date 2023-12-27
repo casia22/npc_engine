@@ -1,0 +1,59 @@
+name: Release for mac intel
+
+on:
+  push:
+    branches:
+      - release # 或者你希望触发此工作流程的任何分支
+
+jobs:
+  build-and-deploy:
+    strategy:
+      matrix:
+        os: [macos-12, macos-11, macos-10.15] # 或者你需要的任何其他环境
+      runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.6'  # 选择适合你项目的 Python 版本
+
+    - name: Install dependencies
+      run: |
+        pip install -r nuwa/requirements.txt
+        pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
+        pip install -e .
+
+    - name: Download models and init project
+      run: |
+        nuwa download
+        cd dist/mac_intel
+        nuwa init -n project
+
+    - name: Package with PyInstaller
+      run: |
+        cd dist/mac_intel  # 如果需要在这个目录下运行 pyinstaller
+        nuwa_version=$(nuwa -v)
+        app_name="nuwa_${nuwa_version}"
+        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
+        pyinstaller nuwa.spec
+        mv dist/nuwa* dist/$app_name
+        mv project dist/
+        zip -r $zip_name dist/*
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'us-west-2'  # 例如: us-east-1
+
+    - name: Upload to S3
+      run: |
+        nuwa_version=$(nuwa -v)
+        zip_name="nuwa_mac_intel_${{ matrix.os }}_${nuwa_version}.zip"
+        cd dist/mac_intel
+        aws s3 cp $zip_name s3://nuwa-release/release/mac_intel/$zip_name 
