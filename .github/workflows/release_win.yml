@@ -27,12 +27,12 @@ jobs:
     - name: Download models and init project
       run: |
         nuwa download
-        cd dist/windows
+        cd dist/win
         nuwa init -n project
 
     - name: Package with PyInstaller
       run: |
-        cd dist/windows
+        cd dist/win
         nuwa_version=$(nuwa -v)
         app_name="nuwa_${nuwa_version}.exe"
         zip_name="nuwa_windows_${nuwa_version}.zip"
@@ -52,5 +52,5 @@ jobs:
       run: |
         nuwa_version=$(nuwa -v)
         zip_name="nuwa_windows_${nuwa_version}.zip"
-        cd dist/windows
+        cd dist/win
         aws s3 cp $zip_name s3://nuwa-release/release/windows/$zip_name 
