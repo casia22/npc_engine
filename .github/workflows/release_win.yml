@@ -41,7 +41,6 @@ jobs:
         $app_name = "nuwa_$($nuwa_version).exe"
         $zip_name = "nuwa_windows_$($nuwa_version).zip"
         pyinstaller nuwa.spec
-        Move-Item "dist\nuwa.exe" "dist\$app_name"
         Move-Item project dist\
         Compress-Archive -Path dist\* -DestinationPath $zip_name
 
