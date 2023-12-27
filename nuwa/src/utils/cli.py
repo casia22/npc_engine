@@ -2,9 +2,11 @@ import argparse
 import os
 import sys, zipfile
 from pathlib import Path
-from nuwa.src.config.config import CODE_ROOT_PATH
+from nuwa.src.config.config import CODE_ROOT_PATH, NPC_MEMORY_CONFIG
+from nuwa.src.utils.embedding import LocalEmbedding
+from nuwa import __version__
 
-def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, logo=True):
+def run_engine(project_dir:Path=Path(os.getcwd()), engine_port=None, game_port=None, logo=True):
     """
     运行引擎
     :param project_dir: 用户指定的配置目录
@@ -12,7 +14,7 @@ def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, logo=T
     # 检查project_dir是否存在要求的文件 PROJECT_DIR/config/llm_config.json
     if project_dir is None:
         print("Project dir not specified, use current dir as project dir")
-        project_dir = os.getcwd()
+        project_dir = Path(os.getcwd())
     if not os.path.exists(project_dir):
         print("Project dir not exists!")
         print("Please make sure your are using nuwa run on your project dir!")
@@ -38,13 +40,24 @@ def run_engine(project_dir=os.getcwd(), engine_port=None, game_port=None, logo=T
 
 def init_project(target_directory, project_name):
     zip_path = CODE_ROOT_PATH / "material" / 'templates' / 'template.zip'
-    # path 转换
     target_directory = Path(target_directory)
-
-    # 构建最终的项目路径
     final_project_path = target_directory / project_name
+
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(final_project_path)
+        for info in zip_ref.infolist():
+            # 解决文件名编码问题
+            filename = info.filename.encode('cp437').decode('utf-8')
+            target_file_path = final_project_path / filename
+
+            # 如果是目录，则创建目录
+            if info.is_dir():
+                os.makedirs(target_file_path, exist_ok=True)
+            else:
+                # 确保文件的目录存在
+                os.makedirs(target_file_path.parent, exist_ok=True)
+                # 写入文件
+                with zip_ref.open(info.filename) as source, open(target_file_path, "wb") as target:
+                    target.write(source.read())
     print(f"项目已初始化在 {final_project_path}")
 
 # CLI 命令处理
@@ -56,10 +69,17 @@ def handle_init_command(args):
 def build_mac(project_dir=os.getcwd(), model=None):
     pass
 
+def download_model_weights(args):
+    print("Downloading model weights...")
+    embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
+    print("Model weights downloaded!")
 
 
 def main():
     parser = argparse.ArgumentParser(description='Nuwa: A simulation engine for NPC')
+    # nuwa -v for version
+    parser.add_argument('-v', '--version', action='version', version=f'{__version__}')
+
     subparsers = parser.add_subparsers(help='commands', dest='command')
 
     # run
@@ -75,6 +95,9 @@ def main():
     init_parser = subparsers.add_parser('init', help='Init a new project')
     init_parser.add_argument('-t', '--target-directory', type=str, help='Path to the target dir', default=None)
     init_parser.add_argument('-n', '--project-name', type=str, help='Name of the project', default="example_project")
+
+    # download
+    download_parser = subparsers.add_parser('download', help='Download nuwa model')
 
     # build
     build_parser = subparsers.add_parser('build', help='Build nuwa engine')
@@ -96,6 +119,8 @@ def main():
         if args.target_directory is None:
             args.target_directory = Path(os.getcwd())
         handle_init_command(args)
+    elif args.command == 'download':
+        download_model_weights(args)
 
 if __name__ == "__main__":
     main()

@@ -131,10 +131,13 @@ class NPCEngine:
 
         self.logger.info("using local embedding model")
         self.logger.info("initialized NPC-ENGINE")
-
-        self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.listen())
-
+        try:
+            self.loop = asyncio.get_event_loop()
+            self.loop.run_until_complete(self.listen())
+        except KeyboardInterrupt:
+            self.logger.info("Detected Ctrl+C, exiting...")
+            self.logger.info("Exiting...")
+            self.sock.close()
     async def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
@@ -185,6 +188,10 @@ class NPCEngine:
                         # print error getting key
                         print(f"error getting key: {json_data['func']}")
                         self.logger.error(traceback.format_exc())
+                    except KeyboardInterrupt:
+                        self.logger.info("Detected Ctrl+C, exiting...")
+                        self.sock.close()
+
                     except Exception as e:
                         print(f"error: {e}")
                         self.logger.error(traceback.format_exc())
