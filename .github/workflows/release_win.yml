@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release # 或者你希望触发此工作流程的任何分支
+      - release_win
 
 jobs:
   build-and-deploy:
@@ -17,6 +18,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.9.6'  # 选择适合你项目的 Python 版本
+
+    - name: Set environment variable
+      run: echo "PYTHONIOENCODING=UTF-8" >> $GITHUB_ENV
 
     - name: Install dependencies
       run: |

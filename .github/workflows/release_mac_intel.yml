@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - release # 或者你希望触发此工作流程的任何分支
+      - release_mac
 
 jobs:
   build-and-deploy:
     strategy:
       matrix:
-        os: [macos-12, macos-11, macos-10.15] # 或者你需要的任何其他环境
+        os: [macos-12, macos-11] # 或者你需要的任何其他环境
     runs-on: ${{ matrix.os }}
 
     steps:
