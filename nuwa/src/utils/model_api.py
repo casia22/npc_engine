@@ -16,11 +16,11 @@ import time
 """
 model_name = ['gpt-3.5-turbo-16k', 'cpm-bee]
 """
-def get_model_answer(model_name, inputs_list):
+def get_model_answer(model_name, inputs_list, project_root_path):
     model = 'no activate model'
     answer = 'no answer'
     if model_name == 'gpt-3.5-turbo-16k':
-        model = OPENAI(model_name)
+        model = OPENAI(model_name,project_root_path=project_root_path)
         answer = model.get_response(inputs_list)
     elif model_name == 'cpm-bee':
         model = CPM_BEE()
@@ -264,7 +264,7 @@ class BaiChuan2():
         return self.call_baichuan_no_stream(prompt, history)
 
 class OPENAI:
-    def __init__(self, model_name):
+    def __init__(self, model_name, project_root_path):
         # 从llm配置中读取key
         self.PROJECT_ROOT_PATH = project_root_path  # 用户输入的项目根目录
         self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
