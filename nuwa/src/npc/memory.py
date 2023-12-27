@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 import numpy as np
 import logging,os
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+# from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from nuwa.src.config.config import NPC_MEMORY_CONFIG
 from nuwa.src.utils.database import PickleDB
@@ -149,35 +149,35 @@ class NPCMemory:
         self.memory_db.set(key=memory_item.md5_hash, value=memory_item.to_json_str())
         self.logger.debug(f"add memory {memory_item.md5_hash} done")
 
-    def add_memory_file(self, file_path: str, game_time: str, chunk_size: int = 50, chunk_overlap: int = 10):
-        """
-        将一个文本txt文件中的记忆，分片split长传到向量数据库作为记忆
-        game_time 是上传文本的记忆时间戳，用于计算记忆的时效性。(可能没有什么意义)
-
-        :param file_path: .txt结尾的文件
-        :param game_time: 上传记忆文件对应的游戏时间戳
-        """
-        # 读取文本并进行拆分
-        with open(file_path, "r", encoding="utf-8") as file:
-            input_text_file = file.read()
-        text_splitter = RecursiveCharacterTextSplitter(
-            # Set a tiny chunk size, just to show.
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            length_function=len,
-            add_start_index=True,
-        )
-        texts: List = text_splitter.create_documents([input_text_file])
-        text_chunks: List[str] = [doc.page_content for doc in texts]
-        # 构造记忆对象
-        memory_items: List[MemoryItem] = [MemoryItem(text, game_time) for text in text_chunks]
-        self.logger.info(
-            f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[len(each.text) for each in memory_items]}, 为{len(text_chunks)}个片段，每个片段长度为{chunk_size}，重叠长度为{chunk_overlap}")
-        self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
-        # 将记忆上传到向量数据库，存入KV数据库
-        for memory_item in memory_items:
-            self.add_memory(memory_item)
-            self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
+    # def add_memory_file(self, file_path: str, game_time: str, chunk_size: int = 50, chunk_overlap: int = 10):
+    #     """
+    #     将一个文本txt文件中的记忆，分片split长传到向量数据库作为记忆
+    #     game_time 是上传文本的记忆时间戳，用于计算记忆的时效性。(可能没有什么意义)
+    #
+    #     :param file_path: .txt结尾的文件
+    #     :param game_time: 上传记忆文件对应的游戏时间戳
+    #     """
+    #     # 读取文本并进行拆分
+    #     with open(file_path, "r", encoding="utf-8") as file:
+    #         input_text_file = file.read()
+    #     text_splitter = RecursiveCharacterTextSplitter(
+    #         # Set a tiny chunk size, just to show.
+    #         chunk_size=chunk_size,
+    #         chunk_overlap=chunk_overlap,
+    #         length_function=len,
+    #         add_start_index=True,
+    #     )
+    #     texts: List = text_splitter.create_documents([input_text_file])
+    #     text_chunks: List[str] = [doc.page_content for doc in texts]
+    #     # 构造记忆对象
+    #     memory_items: List[MemoryItem] = [MemoryItem(text, game_time) for text in text_chunks]
+    #     self.logger.info(
+    #         f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[len(each.text) for each in memory_items]}, 为{len(text_chunks)}个片段，每个片段长度为{chunk_size}，重叠长度为{chunk_overlap}")
+    #     self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
+    #     # 将记忆上传到向量数据库，存入KV数据库
+    #     for memory_item in memory_items:
+    #         self.add_memory(memory_item)
+    #         self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
 
     def time_score(self, game_time: str, memory_game_time: str) -> float:
         """
@@ -304,8 +304,8 @@ def main():
     NPC 文件检索测试
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
     """
-    npcM.add_memory_file(file_path=PROJECT_ROOT_PATH / 'data' / 'stone91_mem.txt',
-                               game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
+    # npcM.add_memory_file(file_path=PROJECT_ROOT_PATH / 'data' / 'stone91_mem.txt',
+    #                           game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
     print(npcM.search_memory("我想要攻击外星人，有什么趁手的装备吗？", "2021-08-01 12:00:00", k=3))
 
     """
