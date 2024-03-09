@@ -124,7 +124,8 @@ if __name__ == "__main__":
     print(embedding.embed_text("你好"))
     # hugingface embedding
     embedding = HuggingFaceEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
-    print(embedding.embed_text("你好"))
+    print()
+    print(embedding)
     """ 下面是几个可用的模型例子
     "model_id": "uer/sbert-base-chinese-nli",
     "dim": 768,

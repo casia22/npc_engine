@@ -1,6 +1,6 @@
 {
   "name": "move",
-  "definition": "<move|location|>，向[location]移动，[location]必须出现在'可去的地方'中",
+  "definition": "<move|location|>，向[location]移动，[location]必须为之前提到的确切的地点名称",
   "multi_param": false,
   "example": "<move|卧室|>",
   "log_template":{

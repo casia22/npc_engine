@@ -61,10 +61,10 @@ class NPCEngine:
         # 读取LLM_CONFIG
         OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
         openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
-        OPENAI_KEY = openai_config_data["OPENAI_KEY"]
-        OPENAI_BASE = openai_config_data["OPENAI_BASE"]
-        GENERAL_MODEL = openai_config_data["GENERAL_MODEL"]  # general model实际上只能选择openai的model 应为目前conversation的model是自己实现的openai请求 没有走model_api
-        ACTION_MODEL = openai_config_data["ACTION_MODEL"]
+        OPENAI_KEY = openai_config_data["OPENAI_CONFIG"]["OPENAI_KEYS_BASES"][0]["OPENAI_KEY"]
+        OPENAI_BASE = openai_config_data["OPENAI_CONFIG"]["OPENAI_KEYS_BASES"][0]["OPENAI_BASE"]
+        GENERAL_MODEL = openai_config_data["LLM_MODEL_SELECTION"]["GENERAL_MODEL"]  # general model实际上只能选择openai的model 应为目前conversation的model是自己实现的openai请求 没有走model_api
+        ACTION_MODEL = openai_config_data["LLM_MODEL_SELECTION"]["ACTION_MODEL"]
         # model 设置
         self.model = GENERAL_MODEL
         self.action_model = ACTION_MODEL
@@ -119,7 +119,7 @@ class NPCEngine:
             + Style.RESET_ALL
         )
         self.sock.bind((engine_url, self.engine_port))  # 修改为IPv6地址绑定方式 todo:这里可能要改为::1
-        
+
         # 加载模型embedding模型
         if NPC_MEMORY_CONFIG["hf_embedding_online"]:
             self.logger.info("using online embedding model")
@@ -248,7 +248,7 @@ class NPCEngine:
             "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
             "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
             "memory_k": 3,  # npc的记忆检索条数，必须填写
-            "length": "M"  # 可以选择的剧本长度，S M L X 可选。 
+            "length": "M"  # 可以选择的剧本长度，S M L X 可选。
             "stream": True  # 是否需要采用流式数据包格式
         }
 
@@ -388,7 +388,7 @@ class NPCEngine:
             mood = self.npc_dict[character].mood
             npc_refs = [self.npc_dict[name] for name in names]
             descs = [npc.desc for npc in npc_refs]
-            
+
             if character != "":
                 npc_refs.append(self.npc_dict[character])
                 descs += [self.npc_dict[character].desc]
@@ -397,7 +397,7 @@ class NPCEngine:
 
             memories: List[str] = []  # 记忆来自于init初始化中的记忆参数
             memories_items = self.batch_search_memory(npcs=npc_refs, query=topic, memory_k=memory_k)
-            
+
             for name in names:
                 items_list = memories_items[name]["related_memories"] + list(memories_items[name]["latest_memories"])
                 memory_content = [m_item.text for m_item in items_list]
@@ -923,4 +923,5 @@ class NPCEngine:
 if __name__ == "__main__":
     import os
     PROJECT_ROOT_PATH = Path(os.path.abspath(__file__)).parent.parent.parent / "example_project"
+    print("path:", PROJECT_ROOT_PATH)
     engine = NPCEngine(project_root_path=PROJECT_ROOT_PATH)

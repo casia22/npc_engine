@@ -310,7 +310,7 @@ class NPC:
 
         # 设置允许位置
         scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
-                                           place != self.state.position]
+                                           place != self.state.position]  # 保留不是当前位置的场景记忆中的位置供llm选择
 
         # 构造prompt请求
         instruct = f"""
