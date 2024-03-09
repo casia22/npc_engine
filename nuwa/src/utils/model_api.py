@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-import openai
 import json
-import boto3
-import requests
-import json
-import requests
-import io
-import boto3
+import os
+import random
 import time
+from pathlib import Path
+
+import google.generativeai as genai
+import openai
+import requests
 
 # import zhipuai
 # zhipuai.api_key = "3fe121b978f1f456cfac1d2a1a9d8c06.iQsBvb1F54iFYfZq"
@@ -16,22 +16,24 @@ import time
 """
 model_name = ['gpt-3.5-turbo-16k', 'cpm-bee]
 """
-def get_model_answer(model_name, inputs_list, project_root_path):
-    model = 'no activate model'
+
+
+def get_model_answer(model_name, inputs_list, project_root_path,  stream=False):
+    PROJECT_ROOT_PATH = project_root_path  # 用户输入的项目根目录
+    # 读取LLM_CONFIG
+
     answer = 'no answer'
     if model_name == 'gpt-3.5-turbo-16k':
-        model = OPENAI(model_name,project_root_path=project_root_path)
-        answer = model.get_response(inputs_list)
-    elif model_name == 'cpm-bee':
-        model = CPM_BEE()
-        answer = model.get_response(inputs_list=inputs_list)
+        model = OPENAI(model_name, project_root_path=project_root_path)
+        answer = model.get_response(inputs_list, stream=stream)
     elif model_name == 'baidu-wxyy':
         model = BAIDU_API()
         answer = model.get_response(inputs_list=inputs_list)
-    elif model_name == 'baichuan2-13b-4bit':
-        model = BaiChuan2()
-        answer = model.get_response(inputs_list=inputs_list)
+    elif model_name == 'gemini-pro':
+        model = GEMINI(model_name, project_root_path=project_root_path)
+        answer = model.get_response(inputs_list)
     return answer
+
 
 class BAIDU_API:
     # DOC: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/4lilb2lpf
@@ -39,8 +41,8 @@ class BAIDU_API:
     # 开通新模型: https://console.bce.baidu.com/qianfan/chargemanage/list
 
     def __init__(self):
-        API_KEY = "qq7WLVgNX88unRoUVLtNz8fQ" # qq7WLVgNX88unRoUVLtNz8fQ
-        SECRET_KEY = "gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo" # gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo
+        API_KEY = "qq7WLVgNX88unRoUVLtNz8fQ"  # qq7WLVgNX88unRoUVLtNz8fQ
+        SECRET_KEY = "gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo"  # gA3VOdcRnGM4gKKkKKi93A79Dwevm3zo
         self.access_token = None
         self.api_key = API_KEY
         self.secret_key = SECRET_KEY
@@ -84,205 +86,22 @@ class BAIDU_API:
         self.access_token = str(requests.post(url, params=params).json().get("access_token"))
         return self.access_token
 
-class CPM_BEE:
-    def __init__(self):
-        self.client_name = 'sagemaker-runtime'
-        self.client_region = 'us-west-2'
-        self.aws_access_key_id = "AKIAQSLD5VQOWP3HFUHU"
-        self.aws_secret_access_key = "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"
-        self.endpoint_name = 'cpm-bee-230915134716SHWT'
-        self.max_nex_tokens = 1024
-        self.load_model()
-
-    def load_model(self):
-        self.sagemaker_runtime = boto3.client(self.client_name,
-                                         region_name=self.client_region,
-                                         aws_access_key_id=self.aws_access_key_id,
-                                         aws_secret_access_key=self.aws_secret_access_key
-                                         )
-
-    def get_response(self, inputs_list):
-        input_body = {
-            "inputs": inputs_list,
-            "parameters": {"max_new_tokens": self.max_nex_tokens, "repetition_penalty": 1.1, "temperature": 0.5}
-        }
-
-        response = self.sagemaker_runtime.invoke_endpoint(
-            EndpointName=self.endpoint_name,
-            Body=bytes(json.dumps(input_body), 'utf-8'),
-            ContentType='application/json',
-            Accept='application/json'
-        )
-
-        # json.load是指针
-        obj_json = json.load(response['Body'])
-        for re in obj_json['data']:
-            return re['<ans>']
-        return ''
-
-class BaiChuan2():
-    def __init__(self):
-        # 首先，你需要获取你的AWS访问密钥和密钥
-        access_key = 'AKIAQ33DL5YJDAN2VH4L'  # 请替换为你的access_key
-        secret_key = "8MawlvbweKFT3zKvvxyTS+ORpLUmpK2D8EhchqSY"  # 请替换为你的secret_key
-        region_name = 'us-east-1'  # 你的AWS区域
-        service = 'sagemaker'
-        self.endpoint = 'https://runtime.sagemaker.' + region_name + '.amazonaws.com/endpoints/' + 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint' + '/invocations'
-        self.parameters = {
-            "max_length": 1024,
-            "temperature": 0.1,
-            "top_p": 0.8
-        }
-        self.smr_client = boto3.client(
-            "sagemaker-runtime",
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            region_name='us-east-1'
-        )
-
-        class StreamScanner:
-            """
-            A helper class for parsing the InvokeEndpointWithResponseStream event stream.
-
-            The output of the model will be in the following format:
-            ```
-            b'{"outputs": [" a"]}\n'
-            b'{"outputs": [" challenging"]}\n'
-            b'{"outputs": [" problem"]}\n'
-            ...
-            ```
-
-            While usually each PayloadPart event from the event stream will contain a byte array
-            with a full json, this is not guaranteed and some of the json objects may be split across
-            PayloadPart events. For example:
-            ```
-            {'PayloadPart': {'Bytes': b'{"outputs": '}}
-            {'PayloadPart': {'Bytes': b'[" problem"]}\n'}}
-            ```
-
-            This class accounts for this by concatenating bytes written via the 'write' function
-            and then exposing a method which will return lines (ending with a '\n' character) within
-            the buffer via the 'readlines' function. It maintains the position of the last read
-            position to ensure that previous bytes are not exposed again.
-            """
-
-            def __init__(self):
-                self.buff = io.BytesIO()
-                self.read_pos = 0
-
-            def write(self, content):
-                self.buff.seek(0, io.SEEK_END)
-                self.buff.write(content)
-
-            def readlines(self):
-                self.buff.seek(self.read_pos)
-                for line in self.buff.readlines():
-                    if line[-1] != b'\n':
-                        self.read_pos += len(line)
-                        yield line[:-1]
-
-            def reset(self):
-                self.read_pos = 0
-
-        self.stream_scanner = StreamScanner()
-    def get_response(self, inputs_list):
-        """
-        :param inputs_list:
-        :return:
-        """
-        return self.call_baichuan2(prompt=inputs_list[0], history=[], stream=False)
-
-    def call_baichuan_no_stream(self, prompt, history=[]):
-        endpoint_name = 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint'
-        start = time.time()
-        response_model = self.smr_client.invoke_endpoint_with_response_stream(
-            EndpointName=endpoint_name,
-            Body=json.dumps(
-                {
-                    "inputs": prompt,
-                    "parameters": self.parameters,
-                    "history": history,
-                    "stream": True
-                }
-            ),
-            ContentType="application/json",
-        )
-
-        event_stream = response_model['Body']
-        scanner = self.stream_scanner
-        total_response = ""
-        for event in event_stream:
-            scanner.write(event['PayloadPart']['Bytes'])
-            for line in scanner.readlines():
-                try:
-                    resp = json.loads(line)
-                    word_slice = resp.get("outputs")['outputs']
-                    total_response += word_slice
-                except Exception as e:
-                    import traceback
-                    print(traceback.format_exc())
-                    continue
-        return total_response
-
-    def call_baichuan2_stream(self, prompt="写一篇500字的科幻小说，背景关于宇宙战争", history=[]):
-        endpoint_name = 'bc2-13b-stream-2023-10-22-11-39-50-913-endpoint'
-        start = time.time()
-        response_model = self.smr_client.invoke_endpoint_with_response_stream(
-            EndpointName=endpoint_name,
-            Body=json.dumps(
-                {
-                    "inputs": prompt,
-                    "parameters": self.parameters,
-                    "history": history,
-                    "stream": True
-                }
-            ),
-            ContentType="application/json",
-        )
-
-        event_stream = response_model['Body']
-        scanner = self.stream_scanner
-        total_response = ""
-        for event in event_stream:
-            scanner.write(event['PayloadPart']['Bytes'])
-            for line in scanner.readlines():
-                try:
-                    resp = json.loads(line)
-                    word_slice = resp.get("outputs")['outputs']
-                    total_response += word_slice
-                    # 如果是stream模式，那么返回一个迭代器
-                    yield word_slice
-                except Exception as e:
-                    import traceback
-                    print(traceback.format_exc())
-                    continue
-        return total_response
-
-    def call_baichuan2(self, prompt="写一篇500字的科幻小说，背景关于宇宙战争", history=[], stream=False):
-        if stream:
-            return self.call_baichuan2_stream(prompt, history)
-        return self.call_baichuan_no_stream(prompt, history)
 
 class OPENAI:
     def __init__(self, model_name, project_root_path):
-        # 从llm配置中读取key
-        self.PROJECT_ROOT_PATH = project_root_path  # 用户输入的项目根目录
+        self.PROJECT_ROOT_PATH = Path(project_root_path)
         self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
         # 读取LLM_CONFIG
-        OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
+        OPENAI_CONFIG_PATH = self.CONFIG_PATH / "llm_config.json"
         openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
-        OPENAI_CONFIG_PATH = self.PROJECT_ROOT_PATH / "config" / "llm_config.json"
-        openai_config_data = json.load(open(OPENAI_CONFIG_PATH, "r"))
-        OPENAI_KEY = openai_config_data["OPENAI_KEY"]
-        OPENAI_BASE = openai_config_data["OPENAI_BASE"]
-        GENERAL_MODEL = openai_config_data[
-            "GENERAL_MODEL"]  # general model实际上只能选择openai的model 应为目前conversation的model是自己实现的openai请求 没有走model_api
-        ACTION_MODEL = openai_config_data["ACTION_MODEL"]
-        self.api_base = OPENAI_BASE
-        self.api_key =  OPENAI_KEY
+        self.keys_bases = openai_config_data["OPENAI_CONFIG"]["OPENAI_KEYS_BASES"]
+        self.current_key_index = 0  # 初始索引
+        self.api_key, self.api_base = self.keys_bases[self.current_key_index]["OPENAI_KEY"], \
+        self.keys_bases[self.current_key_index]["OPENAI_BASE"]
+
         self.model_name = model_name
-        self.max_tokens = 1024
-        self.temperature = 0.5
+        self.max_tokens = openai_config_data["OPENAI_CONFIG"]["OPENAI_MAX_TOKENS"]
+        self.temperature = openai_config_data["OPENAI_CONFIG"]["OPENAI_TEMPERATURE"]
         self.stop = None
         self.load_model()
 
@@ -290,51 +109,115 @@ class OPENAI:
         openai.api_key = self.api_key
         openai.api_base = self.api_base
 
+    def switch_api_key(self):
+        self.current_key_index = (self.current_key_index + 1) % len(self.keys_bases)
+        new_key_base = self.keys_bases[self.current_key_index]
+        self.api_key, self.api_base = new_key_base["OPENAI_KEY"], new_key_base["OPENAI_BASE"]
+        self.load_model()
+        print(f"Switched to new API key and base: {self.api_key}, {self.api_base}")
+
+    def get_response(self, inputs_list, stream=False, max_retries=3):
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                if stream:
+                    print("----- Streaming Request -----")
+                    stream_response = openai.ChatCompletion.create(
+                        model=self.model_name,
+                        messages=inputs_list,
+                        stream=True,
+                    )
+                    return stream_response
+                else:
+                    response = openai.ChatCompletion.create(
+                        model=self.model_name,
+                        messages=inputs_list,
+                        max_tokens=self.max_tokens,
+                        temperature=self.temperature,
+                        stop=self.stop
+                    )
+                    return response.choices[0].message["content"].strip()
+            except Exception as e:
+                attempt += 1
+                print(f"Attempt {attempt} failed with error: {e}")
+                if attempt < max_retries:
+                    wait_time = (2 ** attempt) + random.uniform(0, 1)  # Exponential backoff with jitter
+                    print(f"Waiting {wait_time:.2f} seconds before retrying...")
+                    time.sleep(wait_time)
+                    self.switch_api_key()  # Optionally switch API key before retrying
+                else:
+                    return "An error occurred, and the request could not be completed after retries."
+
+
+class GEMINI:
+    def __init__(self, model_name, project_root_path):
+        self.PROJECT_ROOT_PATH = Path(project_root_path)
+        self.CONFIG_PATH = self.PROJECT_ROOT_PATH / "config"
+        # 读取配置
+        GEMINI_CONFIG_PATH = self.CONFIG_PATH / "llm_config.json"
+        gemini_config_data = json.load(open(GEMINI_CONFIG_PATH, "r"))
+        self.api_keys = gemini_config_data["GEMINI_CONFIG"]["GEMINI_KEYS"]
+        self.api_usage_limit = gemini_config_data["GEMINI_CONFIG"].get("API_USAGE_LIMIT", 1000)
+        self.api_usage = {key: 0 for key in self.api_keys}  # 初始化每个key的使用次数
+        self.temperature = gemini_config_data["GEMINI_CONFIG"]["GEMINI_TEMPERATURE"]
+        self.model_name = model_name
+        self.model = genai.GenerativeModel(self.model_name)
+        self.proxy = gemini_config_data["GEMINI_CONFIG"].get("PROXY", {"http": "", "https": ""})
+        self.current_api_key_index = 0  # 初始索引
+        self.configure_api(self.api_keys[self.current_api_key_index])
+        self.max_tokens = gemini_config_data["GEMINI_CONFIG"]["GEMINI_MAX_TOKENS"]
+
+    def configure_api(self, api_key):
+        os.environ["HTTP_PROXY"] = self.proxy["http"]
+        os.environ["HTTPS_PROXY"] = self.proxy["https"]
+        genai.configure(api_key=api_key)
+
+    def switch_api_key(self):
+        self.current_api_key_index = (self.current_api_key_index + 1) % len(self.api_keys)
+        self.configure_api(self.api_keys[self.current_api_key_index])
+        print(f"Switched to new API key: {self.api_keys[self.current_api_key_index]}")
+
     def get_response(self, inputs_list):
-        response = openai.ChatCompletion.create(model=self.model_name, messages=inputs_list)
-        for re in response["choices"]:
-            # succ, answer = re["message"]["content"].strip()
-            # if succ:
-            #     return answer
-            return re["message"]["content"].strip()
-        return ''
+        messages = []
+
+        # 分别处理用户和模型的部分，确保不会添加空的内容到parts中
+        user_parts = [input["content"] for input in inputs_list if
+                      input["role"] in ["system", "user"] and input["content"]]
+        if user_parts:  # 只有当有用户部分时才添加
+            messages.append({'role': 'user', 'parts': user_parts})
+
+        model_parts = [input["content"] for input in inputs_list if input["role"] == "assistant" and input["content"]]
+        for part in model_parts:  # 对于模型的每一部分，分别添加
+            messages.append({'role': 'model', 'parts': [part]})
+
+        for retries in range(5):
+            try:
+                response = self.model.generate_content(messages, generation_config=genai.types.GenerationConfig(
+                    temperature=self.temperature, max_output_tokens=self.max_tokens))
+                answer = response.text
+
+                # 更新API key使用次数并检查是否需要切换
+                self.api_usage[self.api_keys[self.current_api_key_index]] += 1
+                if self.api_usage[self.api_keys[self.current_api_key_index]] >= self.api_usage_limit:
+                    self.switch_api_key()
+
+                return answer
+            except Exception as e:
+                print(f"Error when calling the GEMINI API: {e}")
+                if retries < 4:
+                    print("Attempting to switch API key and retry...")
+                    self.switch_api_key()
+                else:
+                    print("Maximum number of retries reached. The GEMINI API is not responding.")
+                    return "I'm sorry, but I am unable to provide a response at this time due to technical difficulties."
+                sleep_time = (2 ** retries) + random.random()
+                print(f"Waiting for {sleep_time} seconds before retrying...")
+                time.sleep(sleep_time)
 
 
 if __name__ == '__main__':
-    inputs_list_cpm = [
-        {
-            "input": """
-            <用户>请你扮演李大爷，特性是：李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜，心情是开心，正在李大爷家，现在时间是2021-01-01 12:00:00,
-            你的最近记忆:
-                8年前李大爷的两个徒弟在工厂表现优异都获得表彰。6年前从工厂辞职并过上普通的生活。4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。，
-            你脑海中相关记忆: 
-                15年前在工厂收了两个徒弟。，
-            你当前的目的是:
-                李大爷想去村口卖瓜，因为李大爷希望能够卖出新鲜的西瓜给村里的居民，让大家都能品尝到甜美可口的水果。
-            请你根据mov执行以下步骤:
-                1.根据以下[动作定义]选择出当前想执行的动作
-                [动作定义]:
-                'mov', 'definition': '某个位置移动'
-                'get', 'definition': '获取某个物品'
-                'put', 'definition': '将物品放置到某个物品或位置上'
-                'chat', 'definition': '对某个人物说话'
-                2.根据以下[动作可选参数以及例子]对第1步选择的动作选择参数
-                [动作可选参数以及例子]:
-                'mov', '参数1': ['李大爷家大门', '李大爷家后门', '李大爷家院子'],  '例子': '<mov|李大爷家门口|>'
-                'get', '参数1': ['椅子#1', '椅子#2', '椅子#3[李大爷占用]', '床', '冰箱'], '例子': '<get|椅子#1|>'
-                'put', '参数1': ['椅子#1', '椅子#2', '椅子#3[李大爷占用]', '床', '冰箱'], '参数2': ['西瓜'], '例子': '<put|冰箱|西瓜>'
-                'chat', '参数1': ['王大妈', '村长', '隐形李飞飞'],'参数2': '你生成的对话', '例子': '<chat|王大妈|王大妈你吃了吗>'
-                3.根据前两步选择的参数组合出<动作|参数1|参数2>的行为三元组，其中参数2可以省略
-                举例:
-                '例子': '<mov|李大爷家门口|>'
-                '例子': '<get|椅子#1|>'
-                '例子': '<put|冰箱|西瓜>'
-                '例子': '<chat|王大妈|王大妈你吃了吗>'
-            """.replace("<", "<<").replace(">", ">>"),
-            "<ans>":""
-        }
-    ]
-
+    PROJECT_ROOT_PATH = Path(os.path.abspath(__file__)).parents[3] / "example_project"
+    # path: C:\python_code\npc_engine-main\example_project
     inputs_list_openai = [{
         "role": "system",
         "content": """
@@ -364,41 +247,6 @@ if __name__ == '__main__':
             """},
     ]
 
-    inputs_list_cpm = [
-        {"role": "system",
-        "content": """
-            请你扮演李大爷，特性是：李大爷是一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，平常最爱吃烤烧鸡喝乌龙茶；上午他喜欢呆在家里喝茶，下午他会在村口卖瓜，晚上他会去瓜田护理自己的西瓜，心情是开心，正在李大爷家，现在时间是2021-01-01 12:00:00,
-            你的最近记忆:
-                8年前李大爷的两个徒弟在工厂表现优异都获得表彰。6年前从工厂辞职并过上普通的生活。4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。，
-            你脑海中相关记忆: 
-                15年前在工厂收了两个徒弟。，
-            你当前的目的是:
-                李大爷想去村口卖瓜，因为李大爷希望能够卖出新鲜的西瓜给村里的居民，让大家都能品尝到甜美可口的水果。
-        """},
-        {"role": "user",
-         "content": """
-         请你根据记忆以及目的执行以下步骤来生成完整的行为:
-        1.根据以下[动作定义]选择出当前想执行的动作
-            [动作定义]:
-            'mov', 'definition': '某个位置移动'
-            'get', 'definition': '获取某个物品'
-            'put', 'definition': '将物品放置到某个物品或位置上'
-            'chat', 'definition': '对某个人物说话'
-        2.根据以下[动作可选参数以及例子]对第1步选择的动作选择参数
-            [动作可选参数以及例子]:
-            'mov', '参数1': ['李大爷家大门', '李大爷家后门', '李大爷家院子'],  '例子': '<mov|李大爷家门口|>'
-            'get', '参数1': ['椅子#1', '椅子#2', '椅子#3[李大爷占用]', '床', '冰箱'], '例子': '<get|椅子#1|>'
-            'put', '参数1': ['椅子#1', '椅子#2', '椅子#3[李大爷占用]', '床', '冰箱'], '参数2': ['西瓜'], '例子': '<put|冰箱|西瓜>'
-            'chat', '参数1': ['王大妈', '村长', '隐形李飞飞'],'参数2': '你生成的对话', '例子': '<chat|王大妈|王大妈你吃了吗>'
-        3.根据前两步选择的参数组合出<动作|参数1|参数2>的行为三元组，其中参数2可以省略
-            举例:
-            '例子': '<mov|李大爷家门口|>'
-            '例子': '<get|椅子#1|>'
-            '例子': '<put|冰箱|西瓜>'
-            '例子': '<chat|王大妈|王大妈你吃了吗>'
-        """.replace("<", "<<").replace(">", ">>"),
-        }]
-
-    print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list_openai))
-    # print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list3))
-
+    # print(get_model_answer(model_name='gemini-pro', inputs_list=inputs_list_openai,project_root_path=PROJECT_ROOT_PATH))
+    print(get_model_answer(model_name='gpt-3.5-turbo-16k', inputs_list=inputs_list_openai,
+                           project_root_path=PROJECT_ROOT_PATH))

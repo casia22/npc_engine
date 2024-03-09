@@ -9,8 +9,8 @@ import queue
 from pathlib import Path
 from typing import Any, Dict, List
 import numpy as np
-import logging,os
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
+import logging, os
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from nuwa.src.config.config import NPC_MEMORY_CONFIG
 from nuwa.src.utils.database import PickleDB
@@ -45,59 +45,44 @@ class MemoryItem:
 
 
 class NPCMemory:
-    """
-    NPC的记忆类，提供本地队列latest_k记忆的存储、向量数据库记忆的查询。
-    处理逻辑:
-        1.记忆会优先被放入本地队列，当队列满了之后，会将队列中的记忆放入向量数据库中。
-        2.检索时，根据相关性从向量数据库中检索top_p
-        3.返回检索结果和latest_k的记忆字典
-    """
-
     def __init__(
             self,
             npc_name: str,
             k: int,
             EmbeddingModel: BaseEmbeddingModel,
-            project_root_path: Path = Path(os.getcwd()),
+            project_root_path: Path = Path(os.getcwd()),  # 确保这是一个Path对象
             the_npc_memory_config: Dict[str, Any] = NPC_MEMORY_CONFIG,
-
     ):
-        """
-        npc_name: NPC的名字
-        k: latest_k队列的长度
-        pinecone_api_key: Pinecone的API密钥
-        pinecone_index_name: Pinecone的索引名称
-        embeding_model: embedding模型的引用，需要提供embed_text(text)方法
-        """
-        # NPC_MEMORY模块LOGGER配置 
         self.logger = logging.getLogger("NPC_MEMORY")
-        # npc_memory设置
         self.npc_name = npc_name
         self.latest_k = queue.Queue(maxsize=k)
         self.project_root_path = project_root_path
-        self.MEMORY_DB_PATH = project_root_path / "data" / "npc_memory.db"
-        self.base_path = os.path.join(project_root_path, "data")
-        self.vdb_path = os.path.join(self.base_path, f"{self.npc_name}.pkl")
+
+        # 确保这里处理的是Path对象，而不是字符串
+        self.MEMORY_DB_PATH = self.project_root_path / "data" / npc_name / "npc_memory.db"
+        self.base_path = self.project_root_path / "data"  # 确保这是Path对象
+        self.vdb_path = self.base_path / f"{npc_name}"  # 使用/运算符拼接路径
         print("vdb_path", self.vdb_path)
-        """embedding model设置"""
-        # ‼️huggingface local embedding model config. AlreadyDone in config.py
+
+        # embedding model设置
         self.embedding_model = EmbeddingModel
-        if os.path.exists(self.vdb_path):
+
+        if self.vdb_path.exists():
             print(f"'{self.vdb_path}' exists.")
         else:
             print(f"'{self.vdb_path}' does not exist.")
-        # openai embedding model
-        # TODO
 
-        """vector database设置"""
-        self.vector_database = VectorDatabase(dim=NPC_MEMORY_CONFIG["hf_dim"], vdb_file_path=self.vdb_path)
-        
+        # vector database设置
+        self.vector_database = VectorDatabase(dim=the_npc_memory_config["hf_dim"], npc_name=npc_name,
+                                              base_path=self.base_path)
+
         # 如果向量数据库文件不存在，立即保存新创建的数据库
-        if not os.path.exists(self.vdb_path):
+        if not self.vdb_path.exists():
             self.vector_database.save()
+
         self.logger.debug(f"{self.npc_name} memory init done, k={k}, model_name=sbert-base-chinese-nli")
 
-        """数据库设置"""
+        # 数据库设置
         self.memory_db = PickleDB(self.MEMORY_DB_PATH)
 
     def embed_text(self, text: str) -> list:
@@ -122,17 +107,15 @@ class NPCMemory:
         # 构造记忆对象
         new_memory_item = MemoryItem(text, game_time)
         if direct_upload:
-            # 直接上传语义向量,存入数据库
-            self.add_memory(new_memory_item)
+            self.add_memory(new_memory_item)  # add_memory方法内部已经包含save调用
             return
 
-        # 如果满了就将最老的记忆上传到向量数据库,放入数据库
         if self.latest_k.full():
             old_memory_item = self.latest_k.get()
-            # embed最老的记忆并上传到向量数据库
-            self.add_memory(old_memory_item)
-        # 将新的记忆加入到latest_k队列中
+            self.add_memory(old_memory_item)  # add_memory方法内部已经包含save调用
+
         self.latest_k.put(new_memory_item)
+        # 注意：这里不需要调用save，因为这里只是将记忆加入到队列中
 
     def add_memory(self, memory_item: MemoryItem):
         """
@@ -148,36 +131,7 @@ class NPCMemory:
 
         self.memory_db.set(key=memory_item.md5_hash, value=memory_item.to_json_str())
         self.logger.debug(f"add memory {memory_item.md5_hash} done")
-
-    # def add_memory_file(self, file_path: str, game_time: str, chunk_size: int = 50, chunk_overlap: int = 10):
-    #     """
-    #     将一个文本txt文件中的记忆，分片split长传到向量数据库作为记忆
-    #     game_time 是上传文本的记忆时间戳，用于计算记忆的时效性。(可能没有什么意义)
-    #
-    #     :param file_path: .txt结尾的文件
-    #     :param game_time: 上传记忆文件对应的游戏时间戳
-    #     """
-    #     # 读取文本并进行拆分
-    #     with open(file_path, "r", encoding="utf-8") as file:
-    #         input_text_file = file.read()
-    #     text_splitter = RecursiveCharacterTextSplitter(
-    #         # Set a tiny chunk size, just to show.
-    #         chunk_size=chunk_size,
-    #         chunk_overlap=chunk_overlap,
-    #         length_function=len,
-    #         add_start_index=True,
-    #     )
-    #     texts: List = text_splitter.create_documents([input_text_file])
-    #     text_chunks: List[str] = [doc.page_content for doc in texts]
-    #     # 构造记忆对象
-    #     memory_items: List[MemoryItem] = [MemoryItem(text, game_time) for text in text_chunks]
-    #     self.logger.info(
-    #         f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[len(each.text) for each in memory_items]}, 为{len(text_chunks)}个片段，每个片段长度为{chunk_size}，重叠长度为{chunk_overlap}")
-    #     self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
-    #     # 将记忆上传到向量数据库，存入KV数据库
-    #     for memory_item in memory_items:
-    #         self.add_memory(memory_item)
-    #         self.logger.debug(f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
+        self.vector_database.save()  # 保存数据库更改
 
     def time_score(self, game_time: str, memory_game_time: str) -> float:
         """
@@ -198,7 +152,7 @@ class NPCMemory:
 
         # 对query_text进行embedding
         query_embedding = self.embed_text(query_text)
-        #self.logger.debug(f"Query embedding: {query_embedding}")
+        # self.logger.debug(f"Query embedding: {query_embedding}")
 
         # 从pinecone中搜索与query_text最相似的2k条记忆
         response = self.vector_database.search(vector=query_embedding, k=2 * k, thresh=0.8)
@@ -274,6 +228,38 @@ class NPCMemory:
         # TODO: 抽取pincone数据库中最老的记忆进行摘要然后变为一条信息上传到pinecone
         pass
 
+    def add_memory_file(self, file_path: Path, game_time: str, chunk_size: int = 50, chunk_overlap: int = 10):
+        """
+        将一个文本txt文件中的记忆，分片split长传到向量数据库作为记忆
+        game_time 是上传文本的记忆时间戳，用于计算记忆的时效性。(可能没有什么意义)
+
+        :param file_path: .txt结尾的文件
+        :param game_time: 上传记忆文件对应的游戏时间戳
+        """
+        # 读取文本并进行拆分
+        with open(file_path, "r", encoding="utf-8") as file:
+            input_text_file = file.read()
+        text_splitter = RecursiveCharacterTextSplitter(
+            # Set a tiny chunk size, just to show.
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            add_start_index=True,
+        )
+        texts: List = text_splitter.create_documents([input_text_file])
+        text_chunks: List[str] = [doc.page_content for doc in texts]
+        # 构造记忆对象
+        memory_items: List[MemoryItem] = [MemoryItem(text, game_time) for text in text_chunks]
+        self.logger.info(
+            f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[len(each.text) for each in memory_items]}, 为{len(text_chunks)}个片段，每个片段长度为{chunk_size}，重叠长度为{chunk_overlap}")
+        self.logger.debug(
+            f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 拆分为{[each.text for each in memory_items]}")
+        # 将记忆上传到向量数据库，存入KV数据库
+        for memory_item in memory_items:
+            self.add_memory(memory_item)
+            self.logger.debug(
+                f"NPC:{self.npc_name} 的文本记忆文件 {file_path} 的片段 {memory_item.text} 上传到向量数据库")
+
     def clear_memory(self):
         """
         清空向量数据库中的记忆
@@ -293,13 +279,13 @@ class NPCMemory:
 
 
 def main():
-    # logger设置
+    # # logger设置
     logger = logging.getLogger(__name__)
     PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent.parent / "example_project"
-
-    """NPC测试"""
+    #
+    # """NPC测试"""
     embedder = LocalEmbedding()
-    npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH,npc_name="stone9111", k=3, EmbeddingModel=embedder)
+    npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH, npc_name="weiyu", k=3, EmbeddingModel=embedder)
     """
     NPC 文件检索测试
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
@@ -323,6 +309,30 @@ def main():
     npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     npcM.add_memory_text("喜羊羊说一定要给我烤羊肉串吃", "2021-08-01 12:00:00")
     print(npcM.search_memory("AK有多少发子弹？", "2021-08-01 12:00:00", k=3))
+    # npcM.shutdown()  # 必须要关闭第一个NPC，否则第二个NPC无法正常运行
+    """
+    NPC2
+    """
+
+    npcM2 = NPCMemory(project_root_path=PROJECT_ROOT_PATH, npc_name="lintao", k=3, EmbeddingModel=embedder)
+    """
+    NPC 文件检索测试
+    stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
+    """
+    npcM2.add_memory_file(file_path=PROJECT_ROOT_PATH / 'data' / 'reinforcement_learning.txt',
+                              game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
+    print(npcM2.search_memory("深入理解多智能体环境", "2021-08-01 12:00:00", k=3))
+
+    """
+    NPC问句检索测试
+    回复应当是关于强化学习
+    """
+
+    npcM2.add_memory_text("引入新的学习框架", "2021-08-01 12:00:00")
+    npcM2.add_memory_text("注重算法的稳定性和鲁棒性", "2021-08-01 12:00:00")
+    npcM2.add_memory_text("进行充分的实验验证", "2021-08-01 12:00:00")
+    print(npcM2.search_memory("奖励", "2021-08-01 12:00:00", k=3))
+    # npcM2.shutdown()
 
 
 if __name__ == "__main__":
