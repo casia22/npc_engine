@@ -1,0 +1,28 @@
+{
+    "LLM_MODEL_SELECTION": {
+        "GENERAL_MODEL": "gpt-3.5-turbo-16k",
+        "ACTION_MODEL": "gemini-pro"
+    },
+    "OPENAI_CONFIG": {
+        "OPENAI_KEYS_BASES": [
+            {
+                "OPENAI_KEY": "sk-sygJA3hjo2jnvQy4301c3f5110E347Da8554374121965aB9",
+                "OPENAI_BASE": "https://api.qaqgpt.com/v1"
+            }
+        ],
+        "OPENAI_TEMPERATURE": 0.5,
+        "OPENAI_MAX_TOKENS": 100
+    },
+    "GEMINI_CONFIG": {
+        "GEMINI_KEYS": [
+            "AIzaSyCTQc_clukOcpkQ64gXUb4oSuxz6ZHXXL4",
+            "AIzaSyBhEAwg--z17jBWqHYGNI6icLA1sybLef8"
+        ],
+        "GEMINI_TEMPERATURE": 0.5,
+        "PROXY": {
+            "http": "http://127.0.0.1:7890",
+            "https": "http://127.0.0.1:7890"
+        },
+        "GEMINI_MAX_TOKENS": 100
+    }
+}

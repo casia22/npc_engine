@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.meta
+*.egg
+*.egg-info/
+build/
+npc_memory/*
+
+# material 存储模型文件
+nuwa/material/models/embedding/*
+
+# distribution and packaging
+dist/mac_intel/project/
+dist/*
+dist/mac_intel/dist/
+!dist/mac_intel/
+!dist/mac_intel/nuwa.spec
+!dist/win/
+!dist/win/nuwa.spec
+!dist/linux/
+!dist/linux/nuwa.spec
+!dist/s3_website
+
+# documentation
+nuwa/doc/site
+yzj*
+*.log
+*.zip
+!nuwa/material/templates/template.zip
+
+# example_project
+example_project/data/*.log
+example_project/data/*.pkl
+example_project/data/*.db
+example_project/data/npc_memory.db
+# pypi
+*.egg-info
+*.egg-info/
+*.dist-info/
+*.dist-info
+*.cache
+*.log
+*.swp
+*.swo
+
+.pytest_cache/
+.pyarmor
+.idea
+test/.pytest_cache/
+
+.DS_Store
+# Poetry
+__pypackages__/
+/nuwa/material/models/
+/example_project/data/lintao/
+/example_project/data/weiyu/

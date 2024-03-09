@@ -1,0 +1,11 @@
+{
+  "name": "stand",
+  "definition": "空动作/静止，调用action失败时使用",
+  "multi_param": false,
+  "example": "<stand||>",
+  "log_template":{
+    "success": "{npc_name}保持静止",
+    "fail": "{npc_name}试图保持静止，但是失败了. 原因是{reason}"
+  }
+
+}

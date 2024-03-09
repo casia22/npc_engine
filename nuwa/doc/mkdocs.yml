@@ -1,0 +1,22 @@
+site_name: CogniMatrix NPC Engine
+repo_url: https://github.com/casia22/npc_engine.github.io/
+# repo_name: casia22/npc_engine.github.io
+nav:
+  - Home: index.md
+  - Tutorial:
+    - Quickstart: tutorials/quickstart.md
+    - 0 - Engine Configuration: tutorials/engine.md
+    - 1 - NPC Configuration: tutorials/npc.md
+    - 2 - Scenario Configuration: tutorials/scenario.md
+    - 3 - Action Configuration: tutorials/action.md
+    - 4 - Debugging: tutorials/debug.md
+  - Modules:
+     - Conversation Module: modules/conversation.md
+     - Action Module: modules/action.md
+     - Talk Module: modules/talk.md
+  - Download:
+      - Windows: https://nuwa-release.s3.us-west-2.amazonaws.com/index.html
+      - Mac(intel): https://nuwa-release.s3.us-west-2.amazonaws.com/index.html
+      - Mac(apple silicon): https://nuwa-release.s3.us-west-2.amazonaws.com/index.html
+      - linux: https://nuwa-release.s3.us-west-2.amazonaws.com/index.html
+  - Feedback: feedback.md

@@ -1,0 +1,10 @@
+{
+  "name": "get",
+  "definition": "<get|object1|object2>，从[object2]中获得[object1]，[object2]可以是人物或者存储器皿；你只可以get'看到的/身上的'物品；",
+  "multi_param": true,
+  "example": "<get|冰箱|西瓜>或<get|西瓜|冰箱>等",
+  "log_template":{
+    "success": "{npc_name}成功地从{object}获得了{parameters}",
+    "fail": "{npc_name}试图从{object}里获得{parameters}，但是失败了. 原因是{reason}"
+  }
+}

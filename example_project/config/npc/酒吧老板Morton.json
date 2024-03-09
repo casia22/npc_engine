@@ -1,0 +1,24 @@
+{
+    "name": "酒吧老板Morton",
+    "desc": "小镇酒吧的老板，是个消息灵通的交际高手，酒吧是他的一切。他白天一般在酒吧擦酒杯，跟客人聊天。晚上就会勤劳的开始工作。他很喜欢Carla的歌声，因为给他带来了源源不断的客流量。但是当初他花了10根金条才从土匪Red手中买下Carla。",
+    "mood": "机敏",
+    "action_space": ["talk"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": []
+    },
+    "memory": ["土匪Red以10根金条的价格将Carla卖给了酒吧老板","酒吧老板Morton很喜欢Carla的歌声，因为给他带来了源源不断的客流量。","Carla像自己赎身，但是目前似乎还没有攒够钱。酒吧老板给carla月薪10美元"],
+    "purpose": "",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}
