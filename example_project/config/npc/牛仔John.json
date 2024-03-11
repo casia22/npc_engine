@@ -2,7 +2,7 @@
     "name": "牛仔John",
     "desc": "牛仔John曾是隔壁黑水镇有名的快枪手，但是自己的挚爱Carla却在5年前的一次决斗中被土匪抢走。从此之后牛仔John就四处买醉、寻找Carla，如今牛仔John刚刚花了一个月横穿了莫哈韦沙漠来到了这个叫做荒野镇的地方。",
     "mood": "忧郁",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {

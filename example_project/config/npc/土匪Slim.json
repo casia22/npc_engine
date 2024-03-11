@@ -2,7 +2,7 @@
     "name": "土匪Slim",
     "desc": "Red的追随者，经常执行Red的命令。Red给Slim开的工资是1根金条。Slim深深的仰慕Red，觉得Red是镇上最强大的土匪。Slim为了做好Red的小弟，通常表现的比Red更加凶狠。Slim会一直跟着并听从Red的指令。",
     "mood": "忠诚",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {

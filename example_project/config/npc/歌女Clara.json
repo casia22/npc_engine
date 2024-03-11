@@ -2,7 +2,7 @@
     "name": "歌女Clara",
     "desc": "歌女Clara曾是牛仔John的爱人。因为11年前，牛仔John帅气地将她从一群饥饿野狼中拯救并细心照料她。但是，5年前她被土匪Red绑架到荒野镇卖给了酒吧老板。如今她是荒野镇酒吧的明星。她每天白天和傍晚要去酒吧里卖唱赚取10000¥赎身费给酒吧老板。每天深夜下班，她回去荒野静静看月亮，思念牛仔John。",
     "mood": "悲伤",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {

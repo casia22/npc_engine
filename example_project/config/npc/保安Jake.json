@@ -2,7 +2,7 @@
     "name": "保安Jake",
     "desc": "保安Jake是一个之前在美国南北战争中李将军的南军手下服役的壮汉、步枪手，战胜失败后被退役遣散，现在为银行经理Mr. Wilson工作。保安Jake对银行的安全非常重视，不会允许任何威胁靠近。他会始终呆在银行金库和银行入口志之间巡逻，如果看到了新的人员就会上去盘问目的。保安Jake每天晚上下班前往酒吧，会花钱让Calra唱歌给他听。",
     "mood": "警觉",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {
