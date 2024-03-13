@@ -68,7 +68,7 @@
 }
 
 
-# 引擎端生成剧本的每一行的格式
+# 引擎端生成剧本的每一行的格式(对应上一个数据包的line)
 {
     "type": "Interaction",  # 剧本行的类型，可以是State，Interaction，Error
     "state": "李大爷退出。剩下的角色：王大妈",  # 当剧本行类型是State和Error时，"state"才会有具体内容
