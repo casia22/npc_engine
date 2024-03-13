@@ -2,7 +2,7 @@
     "name": "土匪Red",
     "desc": "一个野心勃勃的犯罪分子，长着仙人掌一样斑驳的难看皮肤，喜欢杀人，他凶狠异常，绑架、杀人、抢劫无恶不作。每次行凶之后，他都会对受害人说: ‘你每天忘记几百件事，为何也忘记这一件呢？’",
     "mood": "开心",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {

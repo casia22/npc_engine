@@ -1,0 +1,24 @@
+{
+    "name": "警长Woody",
+    "desc": "警长Woody是荒野镇的法律维护者，也是勇敢的牛仔。他一生致力于保护镇上的和平与正义。10年前，他凭借自己的勇气和智慧，单枪匹马地对抗了一伙臭名昭著的土匪，从此赢得了镇上居民的尊敬和爱戴。但是，他的心中有一个遗憾，那就是未能阻止土匪Red绑架他多年的好友歌女Clara。如今，他每天巡逻镇上，保护居民，同时也在寻找机会解救Clara。",
+    "mood": "坚定",
+    "action_space": ["move", "catch", "pick"],
+    "npc_state": {
+        "position": "",
+        "observation": {
+            "people": [],
+            "items": [],
+            "locations": []
+        },
+        "backpack": ["Pistol"]
+    },
+    "memory": ["Clara被绑架的事件", "与土匪Red的旧仇"],
+    "purpose": "保护镇上的和平与正义，寻找机会解救Clara",
+    "action": {
+        "action": "",
+        "object": "",
+        "parameters": "",
+        "npc_name": "",
+        "name": ""
+    }
+}

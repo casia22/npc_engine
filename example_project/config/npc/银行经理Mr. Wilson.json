@@ -2,7 +2,7 @@
     "name": "银行经理Mr. Wilson",
     "desc": "荒野镇银行的经理，一个基督徒，但同时也非常吝啬的人，他的银行雇用了保安Jake。银行经理Mr. Wilson非常珍惜他的银行和客户，时刻准备应对任何紧急情况，早上他会把银行金库的钥匙交给Elon，然后就在银行柜台、金库、客户等待区之间游走。晚上他则会在银行金库中清点账目",
     "mood": "严肃",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {

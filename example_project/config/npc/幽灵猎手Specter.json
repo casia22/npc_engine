@@ -2,7 +2,7 @@
     "name": "幽灵猎手Specter",
     "desc": "一个被背叛并在决斗中死去的枪手。他的灵魂无法安息，所以化身为一个幽灵，在夜晚寻找背叛者。",
     "mood": "复仇",
-    "action_space": ["move", "talk", "attack", "follow"],
+    "action_space": ["move", "pick"],
     "npc_state": {
         "position": "",
         "observation": {
