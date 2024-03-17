@@ -331,7 +331,7 @@ class NPC:
             {action_prompt}
         """
         prompt = f"""
-        请你根据`行为定义`，`看到的事物`，`当前目的`等返回动作、对象、参数的三元组以及行为描述，即："<动作|对象|参数>, 行为的描述"
+        请你根据`行为定义`，看到的事物，当前目的等返回动作、对象、参数的三元组以及行为描述，即：`<action|target|parameters>`和行为的描述
         """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
@@ -422,9 +422,8 @@ class NPC:
                                             place != self.state.position]
         instruct = f"""
         请你扮演{self.name}，设定是：{self.desc}。
-        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，采用特定格式：`@[情绪]<角色目的>@<动作|对象|参数>@回答内容@`。
-        这个格式帮助保持对话的游戏性和沉浸感。确保你的回答简短，同时紧密符合角色设定。
-        <动作|对象|参数>部分需要限定在以下[行为定义]中：
+        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.角色行为，4.回答内容，采用特定格式：`@[情绪]<角色目的>@<动作|对象|参数>@回答内容@`。
+        这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
         {action_prompt}
         你的心情是{self.mood}，现在时间是{time},
         {self.name}当前位置是:{self.state.position}，
@@ -439,10 +438,9 @@ class NPC:
         """
         # 目的(包含情绪)，动作，回答
         prompt = f"""
-                一个叫{player_name}的人在跟你对话，
-                    其描述为: {player_state_desc},
-                    其身上有{items_visible},
-                    {player_name}说: “{player_speech}”，
+                    {player_name}对你说：“{player_speech}”，
+                    他的背景：{player_state_desc}，
+                    他身上有：{items_visible}。
                 """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
@@ -452,6 +450,8 @@ class NPC:
         # 抽取 "目的情绪"、"动作"、"回答" 三个部分
         try:
             [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
+            # 格式化回答，去掉两边的引号
+            answer_prompt = answer_prompt.strip('"').strip("“").strip("”")
         except ValueError:
             self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
         except Exception as e:
@@ -462,14 +462,13 @@ class NPC:
 
         # 检查抽取到的动作
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
-        # 检查action合法性，如不合法那就返回默认动作
+        # 检查action合法性，如不合法那就返回空动作
         action_name = self.action_result["action"]
         if action_name not in self.action_dict.keys():
             illegal_action = self.action_result
-            self.action_result = {"name": "stand", "object": "", "parameters": []}
-            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
-        # 格式化回答，去掉两边的引号
-        answer_prompt = answer_prompt.strip('"')
+            self.action_result = {"name": "", "object": "", "parameters": []}
+            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
+
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
             if not self.action_dict[action_name].multi_param:

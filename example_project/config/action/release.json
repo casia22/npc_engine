@@ -1,10 +1,10 @@
 {
-  "name": "catch",
-  "definition": "<catch|person_full_name|>，抓捕[person_name]并将其锁在警察局牢房中，只可以抓捕当前看到的人",
+  "name": "release",
+  "definition": "<release|person_full_name|>，释放某个角色",
   "multi_param": false,
-  "example": "<catch|person_full_name|>",
+  "example": "<release|person_full_name|>",
   "log_template":{
-    "success": "{npc_name}成功抓捕了{object}并将其锁在了警察局牢房",
-    "fail": "{npc_name}试图抓捕{object}，但是失败了. 原因是{reason}"
+    "success": "{npc_name}成功释放了{object}",
+    "fail": "{npc_name}试图释放{object}，但是失败了. 原因是{reason}"
   }
 }

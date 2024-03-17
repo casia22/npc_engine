@@ -1,10 +1,10 @@
 {
-  "name": "pick",
-  "definition": "<pick|obj_name|>，将观察到的物品放入自己的物品栏中，物品需要带有item标签才可以，例如 item:obj_name ",
+  "name": "give",
+  "definition": "<give|person_full_name|obj_name>，将自己身上的某个物品交给角色，物品必须是自己拥有的",
   "multi_param": false,
-  "example": "<pick|item:手枪|>或<pick|item:子弹|>等",
+  "example": "<give|牛仔John|小纸条>",
   "log_template":{
-    "success": "{npc_name}将捡起{object}并放入了背包中",
-    "fail": "{npc_name}试图捡起{object}，但是失败了. 原因是{reason}"
+    "success": "{npc_name}将{parameters}交给 {object}",
+    "fail": "{npc_name}试图将{parameters}交给 {object}，但是失败了，原因是{reason}"
   }
 }
