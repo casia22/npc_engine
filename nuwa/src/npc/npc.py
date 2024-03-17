@@ -306,7 +306,9 @@ class NPC:
         allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
                                       action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
-        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in allowed_actions_dict.items()]
+        action_prompt = ""
+        for action_name, action_item in allowed_actions_dict.items():
+            action_prompt += f"-`{action_item.example}`：{action_item.definition}\n"
 
         # 设置允许位置
         scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
@@ -324,17 +326,12 @@ class NPC:
             你现在身上的物品:{self.state.backpack}，
             你可去的地方:{scene_allowed_places}，
             你现在看到的地点:{self.state.observation.locations}，
-            你当前的目的是:{self.purpose}
+            你当前目的:{self.purpose}
+            行为定义：
+            {action_prompt}
         """
         prompt = f"""
-        请你根据[行为定义]以及你现在看到的事物生成一个完整的行为，并且按照<动作|对象|参数>的结构返回：
-        行为定义：
-            {action_prompt}
-        要求:
-            1.请务必按照以下形式返回动作、对象、参数的三元组以及行为描述："<动作|对象|参数>, 行为的描述"
-            2.动作和参数要在20字以内。
-            3.动作的对象必须要属于看到的范围！
-            4.三元组两侧必须要有尖括号<>
+        请你根据`行为定义`，`看到的事物`，`当前目的`等返回动作、对象、参数的三元组以及行为描述，即："<动作|对象|参数>, 行为的描述"
         """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
@@ -396,7 +393,7 @@ class NPC:
         :param k:
         :return:
         """
-        """        
+        """
             1.按照玩家问题、当前NPC目的，检索NPC的记忆                        
         """
         query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
@@ -417,70 +414,35 @@ class NPC:
         allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
                                       action_name in self.action_space]  # 场景action和人物action取交集
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
-        action_prompt = [{'name': item.name, 'definition': item.definition, 'example': item.example} for key, item in
-                         allowed_actions_dict.items()]
+        action_prompt = ""
+        for key, item in allowed_actions_dict.items():
+            action_prompt += f"-`{item.example}`：{item.definition}\n"
         # 根据当前位置构造可去的位置(排除当前位置
         scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
                                             place != self.state.position]
-        # 构造prompt请求
         instruct = f"""
-                    请你扮演{self.name}，特性是：{self.desc}，心情是{self.mood}，
-                    现在时间是{time},
-                    {self.name}当前位置是:{self.state.position}，
-                    你之前的目的是:{self.purpose},
-                    你的最近记忆:{memory_latest_text},
-                    你脑海中相关记忆:{memory_related_text_purpose+memory_related_text_player}，
-                    你现在看到的人:{self.state.observation.people}，
-                    你现在看到的物品:{self.state.observation.items}，
-                    你现在身上的物品:{self.state.backpack}，
-                    你可去的地方:{scene_allowed_places}，
-                    你现在看到的地点:{self.state.observation.locations}，
-                    
-                    一个叫{player_name}的人在跟你对话，
+        请你扮演{self.name}，设定是：{self.desc}。
+        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，采用特定格式：`@[情绪]<角色目的>@<动作|对象|参数>@回答内容@`。
+        这个格式帮助保持对话的游戏性和沉浸感。确保你的回答简短，同时紧密符合角色设定。
+        <动作|对象|参数>部分需要限定在以下[行为定义]中：
+        {action_prompt}
+        你的心情是{self.mood}，现在时间是{time},
+        {self.name}当前位置是:{self.state.position}，
+        你之前的目的是:{self.purpose},
+        你的最近记忆:{memory_latest_text},
+        你脑海中相关记忆:{memory_related_text_purpose+memory_related_text_player}，
+        你现在看到的人:{self.state.observation.people}，
+        你现在看到的物品:{self.state.observation.items}，
+        你现在身上的物品:{self.state.backpack}，
+        你可去的地方:{scene_allowed_places}，
+        你现在看到的地点:{self.state.observation.locations}，
+        """
+        # 目的(包含情绪)，动作，回答
+        prompt = f"""
+                一个叫{player_name}的人在跟你对话，
                     其描述为: {player_state_desc},
                     其身上有{items_visible},
                     {player_name}说: “{player_speech}”，
-                """
-        # 目的(包含情绪)，动作，回答
-        prompt = f"""
-                请你扮演上面角色，
-                严格遵循标点符号的格式要求， 
-                以 
-                    @[情绪]<角色目的>@<动作|对象|参数>@角色对{player_name}的语言回答@
-                的方式返回结果.
-                
-                (1) [情绪]<角色目的> 部分要求:
-                请你为{self.name}生成一个目的，以下是例子：
-                    例1：[{self.scene_knowledge.all_moods[0]}]<{self.name}想去XXX，因为{self.name}想和XX聊聊天，关于{self.name}XXX>
-                    例2：[{self.scene_knowledge.all_moods[1]}]<{self.name}想买一条趁手的扳手，这样就可以修理{self.name}家中损坏的椅子。>
-                    例3：[{self.scene_knowledge.all_moods[1]}]<{self.name}想去XXX的家，因为{self.name}想跟XXX搞好关系。>
-                    要求：
-                    1.按照[情绪]<目的>的方式来返回内容
-                    2.尽量使用第三人称来描述
-                    3.目的要在20字以内。
-                    4.目的要从最近记忆中出发。
-                    
-                (2) <动作|对象|参数> 部分要求:
-                    按照[行为定义]生成动作
-                    [行为定义]：
-                        {action_prompt}
-                    要求:
-                        1.请务必按照以下形式返回动作、对象、参数的三元组："<动作|对象|参数>"
-                        2.动作和参数要在20字以内。
-                        3.动作的对象必须要属于看到的范围！
-                        4.三元组两侧必须要有尖括号<>
-                        
-                (3) 角色对{player_name}的语言回答 部分要求:
-                     1.要符合{self.name}当前的情绪、目的、状态、记忆等
-                     2.回复要符合口语习惯
-                     3.要以{self.name}第一人称回复
-                
-                整体要求:
-                    (1)(2)(3)部分生成的内容要以%包裹，以下是多个例子:
-                        @[开心]<XXX想要购买一个西瓜，因为他喜欢吃>@<动作|对象|参数>@你的这个瓜多少钱一斤呀？@
-                        @[紧张]<ZZZ需要预订一张飞机票，因为他要去出差>@<动作|对象|>@我需要预订一张明天飞往纽约的经济舱机票，你能帮我处理吗？@
-                        @[好奇]<YYY想要了解一下天文学，因为他对宇宙很感兴趣>@<动作|对象|>@你能告诉我关于黑洞的一些基本知识吗？@
-
                 """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
@@ -506,6 +468,8 @@ class NPC:
             illegal_action = self.action_result
             self.action_result = {"name": "stand", "object": "", "parameters": []}
             self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+        # 格式化回答，去掉两边的引号
+        answer_prompt = answer_prompt.strip('"')
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
             if not self.action_dict[action_name].multi_param:

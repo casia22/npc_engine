@@ -31,8 +31,14 @@ class ActionItem:
             obj = match.group(2).strip()
             params = [param.strip() for param in match.group(3).split(',')]
             return {'action': action, 'object': obj, 'parameters': params}
-        else:
-            return {'action': "", 'object': "", 'parameters': ""}
+
+        pattern = r'<(.*?)\|(.*?)>'
+        match = re.search(pattern, string)
+        if match:
+            action = match.group(1).strip()
+            obj = match.group(2).strip()
+            return {'action': action, 'object': obj, 'parameters': ""}
+        return {'action': "", 'object': "", 'parameters': ""}
 
 
     def get_log(self, action_status:str, npc_name:str, obj:str, parameters:List[str], reason:str)->str:
