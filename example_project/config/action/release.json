@@ -1,0 +1,10 @@
+{
+  "name": "release",
+  "definition": "<release|person_full_name|>，释放某个角色",
+  "multi_param": false,
+  "example": "<release|person_full_name|>",
+  "log_template":{
+    "success": "{npc_name}成功释放了{object}",
+    "fail": "{npc_name}试图释放{object}，但是失败了. 原因是{reason}"
+  }
+}

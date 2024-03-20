@@ -1,0 +1,10 @@
+{
+  "name": "give",
+  "definition": "<give|person_full_name|obj_name>，将自己身上的某个物品交给角色，物品必须是自己拥有的",
+  "multi_param": false,
+  "example": "<give|牛仔John|小纸条>",
+  "log_template":{
+    "success": "{npc_name}将{parameters}交给 {object}",
+    "fail": "{npc_name}试图将{parameters}交给 {object}，但是失败了，原因是{reason}"
+  }
+}

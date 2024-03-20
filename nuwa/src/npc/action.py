@@ -4,7 +4,8 @@ import re
 
 
 class ActionItem:
-    def __init__(self, name: str, definition: str, example: str, log_template:Dict[str, str], multi_param:bool=False):
+    def __init__(self, name: str, definition: str, example: str, log_template: Dict[str, str],
+                 multi_param: bool = False):
         self.name = name
         self.definition = definition
         self.multi_param = multi_param
@@ -17,25 +18,37 @@ class ActionItem:
         """
 
     @staticmethod
-    def str2json(string:str)->Dict[str, Any]:
+    def str2json(string: str) -> Dict[str, Any]:
         """
         从字符串中提取动作和参数
         :param string:
         :return: Dict[str, Any]
         """
         string = string.replace('｜', '|').replace('，', ',')
-        pattern = r'<(.*?)\|(.*?)\|(.*?)>'
-        match = re.search(pattern, string)
-        if match:
-            action = match.group(1).strip()
-            obj = match.group(2).strip()
-            params = [param.strip() for param in match.group(3).split(',')]
-            return {'action': action, 'object': obj, 'parameters': params}
-        else:
-            return {'action': "", 'object': "", 'parameters': ""}
+        string = string.strip("<").strip(">")
+        contents = string.split("|")
+        if len(contents) == 3:
+            return {'action': contents[0], 'object': contents[1], 'parameters': contents[2].split(',')}
+        if len(contents) == 2:
+            return {'action': contents[0], 'object': contents[1], 'parameters': ""}
+        return {'action': "", 'object': "", 'parameters': ""}
+        # pattern = r'<(.*?)\|(.*?)\|(.*?)>'
+        # match = re.search(pattern, string)
+        # if match:
+        #     action = match.group(1).strip()
+        #     obj = match.group(2).strip()
+        #     params = [param.strip() for param in match.group(3).split(',')]
+        #     return {'action': action, 'object': obj, 'parameters': params}
+        #
+        # pattern = r'<(.*?)\|(.*?)>'
+        # match = re.search(pattern, string)
+        # if match:
+        #     action = match.group(1).strip()
+        #     obj = match.group(2).strip()
+        #     return {'action': action, 'object': obj, 'parameters': ""}
+        # return {'action': "", 'object': "", 'parameters': ""}
 
-
-    def get_log(self, action_status:str, npc_name:str, obj:str, parameters:List[str], reason:str)->str:
+    def get_log(self, action_status: str, npc_name: str, obj: str, parameters: List[str], reason: str) -> str:
         """
         使用其日志模版，转换为自然语言记录在记忆中，方便语义检索
         输出例：
@@ -54,7 +67,7 @@ class ActionItem:
         # 若动作处理成功就不加载reason
         if action_status == "success":
             return self.log_template['success'].format(npc_name=npc_name, object=obj,
-                                                parameters=','.join(parameters))
+                                                       parameters=','.join(parameters))
 
         return self.log_template['fail'].format(npc_name=npc_name, object=obj,
                                                 parameters=','.join(parameters), reason=reason)
