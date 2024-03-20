@@ -452,8 +452,6 @@ class NPC:
             [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
             # 格式化回答，去掉两边的引号
             answer_prompt = answer_prompt.strip('"').strip("“").strip("”")
-        except ValueError:
-            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
         except Exception as e:
             mood_purpose = "[正常]<>"
             action_prompt = "<||>"
