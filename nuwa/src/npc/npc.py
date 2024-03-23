@@ -279,7 +279,7 @@ class NPC:
         return purpose
 
     # 生成行为
-    def get_action(self, time: str, k: int = 3) -> Dict[str, Any]:
+    def get_action(self, time: str, fail_safe:"FailSafe", k: int = 3) -> Dict[str, Any]:
         # TODO: 将返回的action做成类似conversation一样的list，然后返回游戏执行错误/成功，作为一个memoryitem
         """
         结合NPC的记忆、目的、情绪、位置、时间等信息来生成动作和参数
@@ -340,9 +340,17 @@ class NPC:
         # 检查action合法性，如不合法那就返回默认动作
         action_name = self.action_result["action"]
         if not action_name or action_name not in self.action_dict.keys():
-            illegal_action = self.action_result
-            self.action_result = {"name": "stand", "object": "", "parameters": []}
-            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+            # failSafe
+            fail_safe_action: "ActionItem" = fail_safe.action_fail_safe(action_name, list(self.action_dict.values()))
+            if not fail_safe_action:
+                illegal_action = self.action_result
+                self.action_result = {"name": "", "object": "", "parameters": []}
+                self.logger.error(
+                    f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
+            else:
+                # 如果匹配到了fail_safe_action则替代
+                action_name = fail_safe_action
+
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
             if not self.action_dict[action_name].multi_param:
@@ -362,7 +370,7 @@ class NPC:
     # 生成单人2NPC对话
     def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
                                player_state_desc:str,
-                               time: str, k: int = 3) -> Dict[str, Any]:
+                               time: str, fail_safe:"FailSafe", k: int = 3) -> Dict[str, Any]:
         """
         接受玩家的状态，根据NPC的记忆和目的返回NPC的动作，回答，更新目的
             1.按照玩家问题、当前NPC目的，检索NPC的记忆
@@ -464,10 +472,17 @@ class NPC:
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
         # 检查action合法性，如不合法那就返回空动作
         action_name = self.action_result["action"]
+        # 如果没有找到匹配的action那么就在NPC的动作空间中搜索
         if action_name not in self.action_dict.keys():
-            illegal_action = self.action_result
-            self.action_result = {"name": "", "object": "", "parameters": []}
-            self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
+            # failSafe
+            fail_safe_action :"ActionItem"= fail_safe.action_fail_safe(action_name, list(self.action_dict.values()))
+            if not fail_safe_action:
+                illegal_action = self.action_result
+                self.action_result = {"name": "", "object": "", "parameters": []}
+                self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
+            else:
+                # 如果匹配到了fail_safe_action则替代
+                action_name = fail_safe_action
 
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
@@ -535,9 +550,16 @@ class NPC:
             # 使用openai
             answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list, project_root_path=self.PROJECT_ROOT_PATH)
             self.logger.debug(f"<ACTION> 使用openai模型{self.ACTION_MODEL}")
+        elif self.ACTION_MODEL.startswith("gemini"):
+            # 使用google Gemini
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list,
+                                      project_root_path=self.PROJECT_ROOT_PATH)
+            self.logger.debug(f"<ACTION> 使用Google模型{self.ACTION_MODEL}")
         else:
-            self.logger.error(f"未知的ACTION_MODEL:{self.ACTION_MODEL}")
-            answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt], project_root_path=self.PROJECT_ROOT_PATH)
+            self.logger.debug(f"<ACTION> 使用自定模型{self.ACTION_MODEL}")
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list,
+                                      project_root_path=self.PROJECT_ROOT_PATH)
+            # answer = get_model_answer(model_name='baichuan2-13b-4bit', inputs_list=[prompt], project_root_path=self.PROJECT_ROOT_PATH)
         return answer
 
     def save_memory(self):

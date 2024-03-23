@@ -284,8 +284,8 @@ def main():
     PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent.parent / "example_project"
     #
     # """NPC测试"""
-    embedder = LocalEmbedding()
-    npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH, npc_name="weiyu", k=3, EmbeddingModel=embedder)
+    embedder = LocalEmbedding(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", vector_width=384)
+    npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH, npc_name="memory_test", k=3, EmbeddingModel=embedder)
     """
     NPC 文件检索测试
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的

@@ -1,7 +1,7 @@
 {
     "LLM_MODEL_SELECTION": {
         "GENERAL_MODEL": "gpt-3.5-turbo-16k",
-        "ACTION_MODEL": "gemini-pro"
+        "ACTION_MODEL": "gpt-3.5-turbo-16k"
     },
     "OPENAI_CONFIG": {
         "OPENAI_KEYS_BASES": [

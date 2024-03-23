@@ -11,6 +11,7 @@ class ActionItem:
         self.multi_param = multi_param
         self.example = example
         self.log_template = log_template
+        self.vec = ""
         """
         log_template的例子：
         {npc_name} 成功地从{object}获得{parameters}
