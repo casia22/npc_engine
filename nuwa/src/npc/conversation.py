@@ -61,6 +61,7 @@ class Conversation:
         scenario_name: str,
         topic: str,
         model: str,
+        share_observations: Dict[str, List[str]],
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
         project_root=Path(os.getcwd()),
@@ -81,6 +82,7 @@ class Conversation:
         self.location: str = location
         self.scenario_name: str = scenario_name
         self.topic: str = topic
+        self.share_observations = share_observations
         self.language: str = language
         self.model: str = model
         self.stream = stream

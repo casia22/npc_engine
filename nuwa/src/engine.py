@@ -329,6 +329,7 @@ class NPCEngine:
             location=location,
             scenario_name=scenario_name,
             topic=topic,
+            share_observations=share_observations,
             system_prompt=system_prompt,
             query_prompt=query_prompt,
             language=self.language,
@@ -404,6 +405,7 @@ class NPCEngine:
                 memories.append(memory_content)
 
             history = convo.script_perform
+            share_observations = convo.share_observations
 
             self.engine_prompt.reset_knowledge(knowledge=self.public_knowledge, scenario_name=convo.scenario_name)
             system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
@@ -413,6 +415,7 @@ class NPCEngine:
                                                                                     mood = mood,
                                                                                     descs = descs,
                                                                                     memories = memories,
+                                                                                    share_observations = share_observations,
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
