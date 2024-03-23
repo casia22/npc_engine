@@ -23,15 +23,20 @@ def get_model_answer(model_name, inputs_list, project_root_path,  stream=False):
     # 读取LLM_CONFIG
 
     answer = 'no answer'
-    if model_name == 'gpt-3.5-turbo-16k':
+    if 'gpt' in model_name:
         model = OPENAI(model_name, project_root_path=project_root_path)
         answer = model.get_response(inputs_list, stream=stream)
-    elif model_name == 'baidu-wxyy':
+    elif 'baidu' in model_name:
         model = BAIDU_API()
         answer = model.get_response(inputs_list=inputs_list)
-    elif model_name == 'gemini-pro':
-        model = GEMINI(model_name, project_root_path=project_root_path)
-        answer = model.get_response(inputs_list)
+    elif 'gemini' in model_name:
+        # # gemini在配置文件中配置时，需要配置好代理和Google相关信息
+        # model = GEMINI(model_name, project_root_path=project_root_path)
+        # answer = model.get_response(inputs_list)
+        answer = "NOT GEMINI"
+    else:
+        model = OPENAI(model_name, project_root_path=project_root_path) # 代理站中一般可以访问多种OPENAI接口形式的自定义模型，这里作为保底。
+        answer = model.get_response(inputs_list, stream=stream)
     return answer
 
 
@@ -125,6 +130,7 @@ class OPENAI:
                     stream_response = openai.ChatCompletion.create(
                         model=self.model_name,
                         messages=inputs_list,
+                        temperature=self.temperature,  # 对话系统需要启动随机性
                         stream=True,
                     )
                     return stream_response

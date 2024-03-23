@@ -537,7 +537,7 @@ class NPCEngine:
                     mood=npc_json["mood"],
                     memory=npc_json["memory"],
                     action_space=npc_json["action_space"],
-                    model=self.model,
+                    model=self.action_model,
                     embedding_model=self.embedding_model,
                     project_root_path=self.PROJECT_ROOT_PATH
                 )
@@ -566,7 +566,7 @@ class NPCEngine:
                         mood=npc_data["mood"],
                         action_space=npc_data["action_space"],
                         memory=npc_data["memory"],
-                        model=self.model,
+                        model=self.action_model,
                         embedding_model=self.embedding_model,
                         project_root_path=self.PROJECT_ROOT_PATH
                     )
