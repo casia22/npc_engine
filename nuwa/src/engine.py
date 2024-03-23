@@ -14,6 +14,9 @@ import traceback
 import uuid
 from typing import List, Dict, Any, Tuple
 from functools import partial
+
+from nuwa.src.utils.fail_safe import FailSafe
+
 nest_asyncio.apply()
 import colorama
 import openai
@@ -128,6 +131,7 @@ class NPCEngine:
             self.logger.info("using local embedding model")
             self.embedding_model = LocalEmbedding(model_name=NPC_MEMORY_CONFIG["hf_model_id"], vector_width=NPC_MEMORY_CONFIG["hf_dim"])
         self.public_knowledge = PublicKnowledge(project_root_path=self.PROJECT_ROOT_PATH)
+        self.fail_safe = FailSafe(self.embedding_model)
 
         self.logger.info("using local embedding model")
         self.logger.info("initialized NPC-ENGINE")
@@ -482,6 +486,8 @@ class NPCEngine:
                     log_template=action_json["log_template"],
                     multi_param=action_json["multi_param"],
                 )
+                # 设置语义向量
+                action_item.vec = self.embedding_model.embed_text(action_item.name)
                 self.action_dict[action_item.name] = action_item
                 self.logger.debug(f"<DISK ACT INIT> action:{action_item.name}")
 
@@ -680,7 +686,7 @@ class NPCEngine:
             # 更新purpose
             npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
             # 生成新的action
-            new_action: Dict[str, Any] = npc.get_action(time=json_data["time"], k=3)
+            new_action: Dict[str, Any] = npc.get_action(time=json_data["time"], fail_safe=self.fail_safe, k=3)
             action_packet = new_action
             action_packet["name"] = "action"
             # 发送新的action到环境
@@ -737,7 +743,7 @@ class NPCEngine:
             # 更新NPC的purpose
             npc.purpose = npc.get_purpose(time=json_data["time"], k=3)
             # 生成新的action
-            new_action = npc.get_action(time=json_data["time"], k=3)
+            new_action = npc.get_action(time=json_data["time"], fail_safe=self.fail_safe, k=3)
             action_packet = new_action
             action_packet["name"] = "action"
             # 发送新的action到环境
@@ -820,7 +826,7 @@ class NPCEngine:
             # 生成新的response
             response = npc.get_npc_response(player_name=player_name, player_speech=speech_content,
                                                     items_visible=items_visible, player_state_desc=player_state,
-                                                    time=json_data["time"], k=3)
+                                                    time=json_data["time"], fail_safe=self.fail_safe, k=3)
 
             response["name"] = "talk_result"
             # 发送新的action到环境

@@ -40,12 +40,19 @@ HF_EMBEDDING_MINILM = {
     "dim": 384,
     "hf_url": "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
 }
+HF_EMBEDDING_MULTIMINILM = {
+    # https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    "model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dim": 384,
+    "hf_url": "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+}
+
 
 PINECONE_CONFIG = {
     "pinecone_api_key": "c977466b-6661-4caf-b281-81655366d149",
     "pinecone_environment": "us-west1-gcp-free",
     "pinecone_index_name": "npc-engine",
-    "pinecone_index_dim": 768,
+    "pinecone_index_dim": 384,
 }
 
 NPC_MEMORY_CONFIG = {
@@ -56,9 +63,9 @@ NPC_MEMORY_CONFIG = {
     "pinecone_index_dim": PINECONE_CONFIG["pinecone_index_dim"],
     # huggingface
     "hf_token": HF_TOKEN,
-    "hf_model_id": HF_EMBEDDING_SBERT_CHINESE["model_id"],
-    "hf_dim": HF_EMBEDDING_SBERT_CHINESE["dim"],
-    "hf_api_url": HF_EMBEDDING_SBERT_CHINESE["hf_url"],
+    "hf_model_id": HF_EMBEDDING_MULTIMINILM["model_id"],
+    "hf_dim": HF_EMBEDDING_MULTIMINILM["dim"],
+    "hf_api_url": HF_EMBEDDING_MULTIMINILM["hf_url"],
     "hf_headers": {"Authorization": f"Bearer {HF_TOKEN}"},
     "hf_embedding_online": False,  # 默认离线推理模型
     # db
