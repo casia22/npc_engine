@@ -4,18 +4,18 @@ import faiss
 import pickle
 from pathlib import Path
 
-
 class VectorDatabase:
-    def __init__(self, npc_name: str, dim: int, base_path: Path = Path("npc_vector_databases")):
+    def __init__(self, npc_name: str, npc_name_hash: str, dim: int, vdb_path: Path = Path("npc_vector_databases")):
         self.dim = dim
         self.npc_name = npc_name
-        self.base_path = base_path / npc_name  # 每个NPC的基础路径
-        self.index_path = self.base_path / f"{npc_name}.db"  # FAISS数据库文件路径
-        self.pkl_path = self.base_path / f"{npc_name}.pkl"  # key到向量映射的Pickle文件路径
+        self.npc_name_nash = npc_name_hash
+        self.vdb_path = vdb_path
+        self.index_path = self.vdb_path / f"{npc_name_hash}.db"  # FAISS数据库文件路径
+        self.pkl_path = self.vdb_path / f"{npc_name_hash}.pkl"  # key到向量映射的Pickle文件路径
         self.index = None
         self.key2vector = {}
 
-        self.base_path.mkdir(parents=True, exist_ok=True)  # 确保NPC的目录存在
+        self.vdb_path.mkdir(parents=True, exist_ok=True)  # 确保NPC的目录存在
 
         # 加载或初始化数据库
         if self.index_path.exists():

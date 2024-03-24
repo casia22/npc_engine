@@ -17,7 +17,6 @@ from nuwa.src.utils.database import PickleDB
 from nuwa.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from nuwa.src.utils.faissdatabase import VectorDatabase
 
-
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):
         self.text = text
@@ -43,38 +42,38 @@ class MemoryItem:
         self.score = score
         return self
 
-
 class NPCMemory:
     def __init__(
             self,
             npc_name: str,
+            name_index: int,
             k: int,
             EmbeddingModel: BaseEmbeddingModel,
             project_root_path: Path = Path(os.getcwd()),  # 确保这是一个Path对象
             the_npc_memory_config: Dict[str, Any] = NPC_MEMORY_CONFIG,
     ):
         self.logger = logging.getLogger("NPC_MEMORY")
-        self.npc_name = npc_name
+        self.npc_name = f"{npc_name}_{str(name_index)}"
+        self.npc_name_hash = hashlib.md5(self.npc_name.encode('utf-8')).hexdigest()
         self.latest_k = queue.Queue(maxsize=k)
         self.project_root_path = project_root_path
 
         # 确保这里处理的是Path对象，而不是字符串
-        self.MEMORY_DB_PATH = self.project_root_path / "data" / npc_name / "npc_memory.db"
         self.base_path = self.project_root_path / "data"  # 确保这是Path对象
-        self.vdb_path = self.base_path / f"{npc_name}"  # 使用/运算符拼接路径
+        self.vdb_path = self.base_path / self.npc_name_hash
         print("vdb_path", self.vdb_path)
-
-        # embedding model设置
-        self.embedding_model = EmbeddingModel
-
         if self.vdb_path.exists():
             print(f"'{self.vdb_path}' exists.")
         else:
             print(f"'{self.vdb_path}' does not exist.")
+        self.MEMORY_DB_PATH = self.vdb_path / "npc_memory.db"        
+
+        # embedding model设置
+        self.embedding_model = EmbeddingModel
 
         # vector database设置
-        self.vector_database = VectorDatabase(dim=the_npc_memory_config["hf_dim"], npc_name=npc_name,
-                                              base_path=self.base_path)
+        self.vector_database = VectorDatabase(dim=the_npc_memory_config["hf_dim"], npc_name=npc_name, npc_name_hash=self.npc_name_hash,
+                                              vdb_path=self.vdb_path)
 
         # 如果向量数据库文件不存在，立即保存新创建的数据库
         if not self.vdb_path.exists():
@@ -276,7 +275,6 @@ class NPCMemory:
             self.add_memory(memory_item)
             self.logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
         self.logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
-
 
 def main():
     # # logger设置

@@ -81,6 +81,7 @@ class NPC:
     def __init__(
             self,
             name: str,
+            name_index: int,
             desc: str,
             public_knowledge: PublicKnowledge,
             scenario_name: str,
@@ -103,6 +104,7 @@ class NPC:
         self.ACTION_MODEL: str = model
         # NPC固定参数
         self.name: str = name
+        self.name_index: int = name_index
         self.desc: str = desc
         self.action_space: List[str] = action_space
         # NPC的常识
@@ -125,7 +127,7 @@ class NPC:
         self.purpose: str = ""
         # NPC的记忆
         self.embedding_model = embedding_model
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, k=memory_k,EmbeddingModel=self.embedding_model,
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, name_index=self.name_index, k=memory_k,EmbeddingModel=self.embedding_model,
                                            project_root_path=self.PROJECT_ROOT_PATH)
 
         ####################### 先清空现有VB #######################
