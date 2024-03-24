@@ -527,7 +527,7 @@ class NPC:
             "npc_name": self.name,
             "answer": answer_prompt,
             "actions": [self.action_result]
-        }d
+        }
 
         self.logger.debug(f"""
                     <TALK2NPC请求>

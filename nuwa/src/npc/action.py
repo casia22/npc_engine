@@ -27,22 +27,12 @@ class ActionItem:
         """
         string = string.replace('｜', '|').replace('，', ',')
         print(string)
-        # 使用两种正则表达式，一种匹配带 <> 的形式，一种匹配无 <> 的形式
-        pattern_with_angle_brackets = r'<(\w+)\|([^|]+)\|?([^|>]*)>'
-        pattern_without_angle_brackets = r'(\w+)\|([^|]+)\|?([^|]*)'
-
-        # 尝试匹配带 <> 的形式
-        matches_with_angle_brackets = re.findall(pattern_with_angle_brackets, string)
-        if matches_with_angle_brackets:
-            function_name, obj, param = matches_with_angle_brackets[0]
+        # string = string.strip("<").strip(">")
+        pattern = r'<(\w+)\|([^|]+)\|?([^|>]*)>'
+        matches = re.findall(pattern, string)
+        if matches:
+            function_name, obj, param = matches[0]
             return {'action': function_name, 'object': obj, 'parameters': param.split(',')}
-
-        # 如果带 <> 的形式没有匹配到，则尝试匹配无 <> 的形式
-        matches_without_angle_brackets = re.findall(pattern_without_angle_brackets, string)
-        if matches_without_angle_brackets:
-            function_name, obj, param = matches_without_angle_brackets[0]
-            return {'action': function_name, 'object': obj, 'parameters': param.split(',')}
-
         return {'action': "", 'object': "", 'parameters': ""}
 
     def get_log(self, action_status: str, npc_name: str, obj: str, parameters: List[str], reason: str) -> str:
