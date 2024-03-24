@@ -6,9 +6,6 @@ import pathlib
 import sys
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
-from nuwa.src.config.config import PROJECT_ROOT_PATH
-import threading
-
 engine_url = "::1"
 engine_port = 8199
 game_url = "::1"
