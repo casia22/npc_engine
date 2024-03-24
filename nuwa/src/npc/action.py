@@ -26,28 +26,14 @@ class ActionItem:
         :return: Dict[str, Any]
         """
         string = string.replace('｜', '|').replace('，', ',')
-        string = string.strip("<").strip(">")
-        contents = string.split("|")
-        if len(contents) == 3:
-            return {'action': contents[0], 'object': contents[1], 'parameters': contents[2].split(',')}
-        if len(contents) == 2:
-            return {'action': contents[0], 'object': contents[1], 'parameters': ""}
+        print(string)
+        # string = string.strip("<").strip(">")
+        pattern = r'<(\w+)\|([^|]+)\|?([^|>]*)>'
+        matches = re.findall(pattern, string)
+        if matches:
+            function_name, obj, param = matches[0]
+            return {'action': function_name, 'object': obj, 'parameters': param.split(',')}
         return {'action': "", 'object': "", 'parameters': ""}
-        # pattern = r'<(.*?)\|(.*?)\|(.*?)>'
-        # match = re.search(pattern, string)
-        # if match:
-        #     action = match.group(1).strip()
-        #     obj = match.group(2).strip()
-        #     params = [param.strip() for param in match.group(3).split(',')]
-        #     return {'action': action, 'object': obj, 'parameters': params}
-        #
-        # pattern = r'<(.*?)\|(.*?)>'
-        # match = re.search(pattern, string)
-        # if match:
-        #     action = match.group(1).strip()
-        #     obj = match.group(2).strip()
-        #     return {'action': action, 'object': obj, 'parameters': ""}
-        # return {'action': "", 'object': "", 'parameters': ""}
 
     def get_log(self, action_status: str, npc_name: str, obj: str, parameters: List[str], reason: str) -> str:
         """

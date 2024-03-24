@@ -2,7 +2,7 @@
   "name": "attack",
   "definition": "<attack|person_name|>，对[person_name]发起攻击，[person_name]必须出现在'观测到的人物'中，并且[person_name]应该是敌对的",
   "multi_param": false,
-  "example": "<attack|人名A|> <attack|人名B|>",
+  "example": "攻击",
   "log_template":{
     "success": "{npc_name}对{object}进行了攻击，并成功杀死了{object}",
     "fail": "{npc_name}试图攻击{object}并试图杀死{object}，但是失败了. 原因是{reason}"
