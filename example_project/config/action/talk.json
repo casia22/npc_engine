@@ -2,7 +2,7 @@
   "name": "talk",
   "definition": "<talk|person|content>，以扮演的角色身份对[person]说话，内容是[content]",
   "multi_param": false,
-  "example": "<talk|人名A|早上好！>或<talk|人名B|好久不见，最近你去哪里了>等",
+  "example": "交流",
   "log_template":{
     "success": "{npc_name}对{object}说：{parameters}",
     "fail": "{npc_name}试图与{object}对话，但是失败了. 原因是{reason}"

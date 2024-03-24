@@ -26,28 +26,24 @@ class ActionItem:
         :return: Dict[str, Any]
         """
         string = string.replace('｜', '|').replace('，', ',')
-        string = string.strip("<").strip(">")
-        contents = string.split("|")
-        if len(contents) == 3:
-            return {'action': contents[0], 'object': contents[1], 'parameters': contents[2].split(',')}
-        if len(contents) == 2:
-            return {'action': contents[0], 'object': contents[1], 'parameters': ""}
+        print(string)
+        # 使用两种正则表达式，一种匹配带 <> 的形式，一种匹配无 <> 的形式
+        pattern_with_angle_brackets = r'<(\w+)\|([^|]+)\|?([^|>]*)>'
+        pattern_without_angle_brackets = r'(\w+)\|([^|]+)\|?([^|]*)'
+
+        # 尝试匹配带 <> 的形式
+        matches_with_angle_brackets = re.findall(pattern_with_angle_brackets, string)
+        if matches_with_angle_brackets:
+            function_name, obj, param = matches_with_angle_brackets[0]
+            return {'action': function_name, 'object': obj, 'parameters': param.split(',')}
+
+        # 如果带 <> 的形式没有匹配到，则尝试匹配无 <> 的形式
+        matches_without_angle_brackets = re.findall(pattern_without_angle_brackets, string)
+        if matches_without_angle_brackets:
+            function_name, obj, param = matches_without_angle_brackets[0]
+            return {'action': function_name, 'object': obj, 'parameters': param.split(',')}
+
         return {'action': "", 'object': "", 'parameters': ""}
-        # pattern = r'<(.*?)\|(.*?)\|(.*?)>'
-        # match = re.search(pattern, string)
-        # if match:
-        #     action = match.group(1).strip()
-        #     obj = match.group(2).strip()
-        #     params = [param.strip() for param in match.group(3).split(',')]
-        #     return {'action': action, 'object': obj, 'parameters': params}
-        #
-        # pattern = r'<(.*?)\|(.*?)>'
-        # match = re.search(pattern, string)
-        # if match:
-        #     action = match.group(1).strip()
-        #     obj = match.group(2).strip()
-        #     return {'action': action, 'object': obj, 'parameters': ""}
-        # return {'action': "", 'object': "", 'parameters': ""}
 
     def get_log(self, action_status: str, npc_name: str, obj: str, parameters: List[str], reason: str) -> str:
         """

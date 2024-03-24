@@ -349,7 +349,8 @@ class NPC:
                     f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回默认行为:{self.action_result}")
             else:
                 # 如果匹配到了fail_safe_action则替代
-                action_name = fail_safe_action
+                action_name = fail_safe_action.name
+                self.action_result["action"] = action_name
 
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
@@ -430,9 +431,6 @@ class NPC:
                                             place != self.state.position]
         instruct = f"""
         请你扮演{self.name}，设定是：{self.desc}。
-        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.角色行为，4.回答内容，采用特定格式：`@[情绪]<角色目的>@<动作|对象|参数>@回答内容@`。
-        这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
-        {action_prompt}
         你的心情是{self.mood}，现在时间是{time},
         {self.name}当前位置是:{self.state.position}，
         你之前的目的是:{self.purpose},
@@ -443,12 +441,20 @@ class NPC:
         你现在身上的物品:{self.state.backpack}，
         你可去的地方:{scene_allowed_places}，
         你现在看到的地点:{self.state.observation.locations}，
+        {player_name}对你说：“{player_speech}”，
+        他的背景：{player_state_desc}，
+        他身上有：{items_visible}。
         """
         # 目的(包含情绪)，动作，回答
-        prompt = f"""
-                    {player_name}对你说：“{player_speech}”，
-                    他的背景：{player_state_desc}，
-                    他身上有：{items_visible}。
+        prompt = f"""   
+                        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.回答内容，4.角色行为，采用特定格式：`@[情绪]<角色目的>@回答内容@<动作|对象|参数>@`。
+                        这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
+                        {action_prompt}
+                    要求：
+                        1.一次仅返回一个行为，而不是多个行为
+                        2.行为中的动作必须是[行为定义]出现的动作，格式为<action_name|obj|param>
+                        3.角色的行为必须和角色的回答内容、目的有逻辑关系。
+                        4.角色目的应该为10-30字。
                 """
         # 发起请求
         response: str = self.call_llm(instruct=instruct, prompt=prompt)
@@ -457,19 +463,19 @@ class NPC:
         """
         # 抽取 "目的情绪"、"动作"、"回答" 三个部分
         try:
-            [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
+            [mood_purpose, answer_prompt, action_text] = response.strip("@").split("@")
             # 格式化回答，去掉两边的引号
             answer_prompt = answer_prompt.strip('"').strip("“").strip("”")
         except ValueError:
             self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
         except Exception as e:
             mood_purpose = "[正常]<>"
-            action_prompt = "<||>"
+            action_text = "<||>"
             answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
-            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_prompt:{action_prompt} answer_prompt:{answer_prompt}")
+            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_text:{action_text} answer_prompt:{answer_prompt}")
 
         # 检查抽取到的动作
-        self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
+        self.action_result: Dict[str, Any] = ActionItem.str2json(action_text)
         # 检查action合法性，如不合法那就返回空动作
         action_name = self.action_result["action"]
         # 如果没有找到匹配的action那么就在NPC的动作空间中搜索
@@ -482,7 +488,8 @@ class NPC:
                 self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
             else:
                 # 如果匹配到了fail_safe_action则替代
-                action_name = fail_safe_action
+                action_name = fail_safe_action.name
+                self.action_result["action"] = action_name
 
         # 按照配置文件决定是否分割参数
         if action_name in self.action_dict.keys():
@@ -510,7 +517,7 @@ class NPC:
             {player_name} 的状态是{player_state_desc}，
             {player_name} 说: {player_speech}
             {self.name} 回答{player_name}: {answer_prompt}
-            然后 采取了动作: {action_prompt}
+            然后 采取了动作: {action_text}
             时间在：{time}
         """
         self.memory.add_memory_text(text=memory_text, game_time=time)
@@ -520,7 +527,7 @@ class NPC:
             "npc_name": self.name,
             "answer": answer_prompt,
             "actions": [self.action_result]
-        }
+        }d
 
         self.logger.debug(f"""
                     <TALK2NPC请求>
