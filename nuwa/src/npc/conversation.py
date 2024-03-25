@@ -210,7 +210,7 @@ class Conversation:
 
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
-            self.logger.debug(f"get a new sentence of script : {sent}")
+            # self.logger.debug(f"get a new sentence of script : {sent}")
             line = self.parse_one_sent(sent=sent)
             if line is not None:
                 self.lines.append(line)
