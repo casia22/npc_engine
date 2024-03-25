@@ -268,7 +268,7 @@ class Conversation:
                 "mood": "",
                 "words": "",
                 "action": None}
-        self.logger.debug(f"parser out a new line of script : {line}")
+        # self.logger.debug(f"parser out a new line of script : {line}")
         return line
         
     def generate_script(
@@ -327,6 +327,8 @@ class Conversation:
         # 接着将打包好的提示词输入到LLM中生成文本剧本
         response = self.call_llm(messages = messages)
 
+        self.logger.debug(f"First script of conversation {self.convo_id} is generated as follows")
+
         if self.stream:
             one_sent = ""
             for chunk in response:
@@ -336,7 +338,8 @@ class Conversation:
                     chunk_content = chunk_message['content']
                 # 如果不在则表示没有内容可以提取了
                 else:
-                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    print(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -353,7 +356,8 @@ class Conversation:
                 # 如果内容中有回车符，则按照回车做截取
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
-                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    print(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -369,7 +373,6 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
-                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
@@ -422,6 +425,8 @@ class Conversation:
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
         response = self.call_llm(messages = messages)
+        
+        self.logger.debug(f"New script of conversation {self.convo_id} is re-generated as follows")
 
         if self.stream:
             # 将动态维护剧本的变量进行清空
@@ -437,7 +442,8 @@ class Conversation:
                     chunk_content = chunk_message['content']
                 # 如果不在则表示没有内容可以提取了
                 else:
-                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    print(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -454,7 +460,8 @@ class Conversation:
                 # 如果内容中有回车符，则按照回车做截取
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
-                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    print(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -470,14 +477,11 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
-                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
-
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            print(conv)
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -573,14 +577,15 @@ class Conversation:
         :return:
         """
         # print item with appropriate color
-        print(
-            "[Conversation] sending script:",
-            Fore.GREEN,
-            json.dumps(script).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
+        # print(f"[Conversation] sending script:\n{script}")
+        # print(
+        #     "[Conversation] sending script:",
+        #     Fore.GREEN,
+        #     json.dumps(script).encode(),
+        #     Style.RESET_ALL,
+        #     "to",
+        #     (self.game_url, self.game_port),
+        # )
         send_data(sock = self.engine_sock, target_url = self.game_url, 
                   target_port = self.game_port, data = script)
 
@@ -591,14 +596,15 @@ class Conversation:
         :return:
         """
         # print item with appropriate color
-        print(
-            "[Conversation] sending one line of script:",
-            Fore.GREEN,
-            json.dumps(line).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
+        # print(f"[Conversation] sending one line of script:{line}")
+        # print(
+        #     "[Conversation] sending one line of script:",
+        #     Fore.GREEN,
+        #     json.dumps(line).encode(),
+        #     Style.RESET_ALL,
+        #     "to",
+        #     (self.game_url, self.game_port),
+        # )
         send_data(sock = self.engine_sock, target_url = self.game_url, 
                   target_port = self.game_port, data = line)
     

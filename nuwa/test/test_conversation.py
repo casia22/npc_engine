@@ -82,7 +82,7 @@ def test_conversation():
     # 初始化包
     pack1 = {
             "func":"create_conversation",
-            "npc":["土匪Red","土匪Slim"],   # 参与对话的NPC
+            "npc":["土匪Red","土匪Slim","牛仔John"],   # 参与对话的NPC
             "scenario_name": "荒野小镇",
             "location":"荒野小镇",                # 对话地点
             "topic":"土匪Red的经历",           # 对话主题,可以留空,gpt会自发选择一个主题。
@@ -106,8 +106,8 @@ def test_conversation():
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                 }],
             # 下面是为了解决玩家/npc插入对话的问题
-            "starting": "",  # 玩家插入发言,可以留空
-            "player_desc": "",
+            "starting": "嘿你们在干什么呢",  # 玩家插入发言,可以留空
+            "player_desc": "是一位来自未来世界的枪手，有非常精湛的射击技术。",
             "memory_k": 3,
             "length": "S",
             "stream": True
