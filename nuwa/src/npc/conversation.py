@@ -73,6 +73,7 @@ class Conversation:
     ) -> None:
         # Conversation模块logger设置
         self.logger = logging.getLogger("CONVERSATION")
+        self.logger.setLevel(logging.INFO)
 
         # 系统时间戳
         self.start_time = datetime.datetime.now()
@@ -210,7 +211,7 @@ class Conversation:
 
         # 逐行分析并依据四个剧本内容类型分类
         for sent in self.sentences:
-            # self.logger.debug(f"get a new sentence of script : {sent}")
+            self.logger.debug(f"get a new sentence of script : {sent}")
             line = self.parse_one_sent(sent=sent)
             if line is not None:
                 self.lines.append(line)
@@ -268,7 +269,7 @@ class Conversation:
                 "mood": "",
                 "words": "",
                 "action": None}
-        # self.logger.debug(f"parser out a new line of script : {line}")
+        self.logger.debug(f"parser out a new line of script : {line}")
         return line
         
     def generate_script(
@@ -327,9 +328,8 @@ class Conversation:
         # 接着将打包好的提示词输入到LLM中生成文本剧本
         response = self.call_llm(messages = messages)
 
-        self.logger.debug(f"First script of conversation {self.convo_id} is generated as follows")
-
         if self.stream:
+            self.logger.info(f"First script of conversation {self.convo_id} in stream form is generated as follows:")
             one_sent = ""
             for chunk in response:
                 chunk_message = chunk['choices'][0]['delta']
@@ -338,8 +338,8 @@ class Conversation:
                     chunk_content = chunk_message['content']
                 # 如果不在则表示没有内容可以提取了
                 else:
-                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    print(one_sent)
+                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -356,8 +356,8 @@ class Conversation:
                 # 如果内容中有回车符，则按照回车做截取
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
-                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    print(one_sent)
+                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -375,11 +375,11 @@ class Conversation:
                     one_sent += chunk_content
                 if self.active_session != local_session:
                     break
-            self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
+            self.logger.info(f"All script lines of conversation {self.convo_id} in stream form is generated.")
 
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            print(conv)
+            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -390,7 +390,7 @@ class Conversation:
                 "location": self.location,
                 "lines": self.lines,
             }
-            self.logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated.")
+            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated.")
             # 发送整个剧本
             self.send_script(script)
     
@@ -414,7 +414,7 @@ class Conversation:
         self.reset_session(local_session)
         # 如果添加的新角色已经在角色列表中，则报错并返回空
         if new_name in self.names:
-            self.logger.debug(f"{new_name} is already in this conversation. Re-creation fails.")
+            self.logger.info(f"{new_name} is already in this conversation. Re-creation fails.")
             return None
         # 如果新角色信息不为空，则加入更新对话对象的角色列表、temp_memory序列以及对话记忆起始索引值字典
         if new_name != "":
@@ -425,10 +425,9 @@ class Conversation:
         messages = [system_prompt, query_prompt]
         # 接着将打包好的提示词输入到LLM中继续生成文本剧本
         response = self.call_llm(messages = messages)
-        
-        self.logger.debug(f"New script of conversation {self.convo_id} is re-generated as follows")
 
         if self.stream:
+            self.logger.info(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:")
             # 将动态维护剧本的变量进行清空
             self.index = -1
             self.lines.clear()
@@ -442,8 +441,8 @@ class Conversation:
                     chunk_content = chunk_message['content']
                 # 如果不在则表示没有内容可以提取了
                 else:
-                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    print(one_sent)
+                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -460,8 +459,8 @@ class Conversation:
                 # 如果内容中有回车符，则按照回车做截取
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
-                    # self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    print(one_sent)
+                    self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
+                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -479,9 +478,10 @@ class Conversation:
                     one_sent += chunk_content
                 if self.active_session != local_session:
                     break
-            self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
+            self.logger.info(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
         else:
             conv = response["choices"][0]["message"]["content"].strip()
+            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -492,7 +492,7 @@ class Conversation:
                 "location": self.location,
                 "lines": self.lines,
             }
-            self.logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
+            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
             # 发送整个剧本
             self.send_script(script)
 
@@ -538,7 +538,7 @@ class Conversation:
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
                     self.script_perform.append(self.sentences[i])
-                    self.logger.debug(f"No.{i} Interaction line, added into temp_conversation done")
+                    self.logger.info(f"No.{i} Interaction line, added into temp_conversation done")
                 # 如果是非结束符的会话状态类型的剧本行
                 elif line["type"] == "State" and line["state"] != "结束":
                     # 提取出退出的角色
@@ -553,7 +553,7 @@ class Conversation:
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
-                    self.logger.debug(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
+                    self.logger.info(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     self.script_perform.append(self.sentences[i])
