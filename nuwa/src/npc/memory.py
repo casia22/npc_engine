@@ -68,6 +68,11 @@ class NPCMemory:
             print(f"'{self.vdb_path}' does not exist.")
         self.MEMORY_DB_PATH = self.vdb_path / "npc_memory.db"        
 
+        # 将NPC姓名以及序号写入hash文件夹内的一个文件中
+        self.npc_name_file = self.vdb_path / "npc_name.json"
+        with open(self.npc_name_file, "w", encoding="utf-8") as f:
+            json.dump({"npc_name": npc_name, "name_index": name_index}, f, ensure_ascii=False)
+
         # embedding model设置
         self.embedding_model = EmbeddingModel
 

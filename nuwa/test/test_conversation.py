@@ -117,8 +117,8 @@ def test_conversation():
     print("sending for conversation")
     send_data(pack1)
 
-test_conversation()
-time.sleep(9)
+# test_conversation()
+# time.sleep(9)
 
 def send_pack_create():
     pack1 = {        
