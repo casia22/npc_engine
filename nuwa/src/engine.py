@@ -36,13 +36,11 @@ from nuwa.src.config.config import NPC_MEMORY_CONFIG
 from nuwa.src.utils.engine_logger import EngineLogger
 from nuwa.src.utils.embedding import LocalEmbedding, HuggingFaceEmbedding, BaseEmbeddingModel
 
-
 class NPCEngine:
     """
     项目的核心入口类，扮演着一个Router的角色，负责接受相应的包并出发对应函数返回结果给游戏。
     engine的实现是基于socket UDP的，并发处理主要靠coroutine实现。
     """
-
     def __init__(
         self,
         project_root_path: Path,
@@ -113,6 +111,7 @@ class NPCEngine:
         self.game_port = game_port
         self.conversation_dict = {}
         self.npc_dict = {}
+        self.npc_index_dict = {}
         self.action_dict = {}
         self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)  # 使用IPv6地址
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 添加这一行
@@ -142,6 +141,7 @@ class NPCEngine:
             self.logger.info("Detected Ctrl+C, exiting...")
             self.logger.info("Exiting...")
             self.sock.close()
+
     async def listen(self, buffer_size=400000):
         """
         监听端口，接收游戏发送的数据,并根据数据调用相应的函数
@@ -333,6 +333,7 @@ class NPCEngine:
             location=location,
             scenario_name=scenario_name,
             topic=topic,
+            share_observations=share_observations,
             system_prompt=system_prompt,
             query_prompt=query_prompt,
             language=self.language,
@@ -408,6 +409,7 @@ class NPCEngine:
                 memories.append(memory_content)
 
             history = convo.script_perform
+            share_observations = convo.share_observations
 
             self.engine_prompt.reset_knowledge(knowledge=self.public_knowledge, scenario_name=convo.scenario_name)
             system_prompt, query_prompt = self.engine_prompt.prompt_for_re_creation(names = names,
@@ -417,6 +419,7 @@ class NPCEngine:
                                                                                     mood = mood,
                                                                                     descs = descs,
                                                                                     memories = memories,
+                                                                                    share_observations = share_observations,
                                                                                     interruption = interruption,
                                                                                     length = length,
                                                                                     history = history)
@@ -521,13 +524,20 @@ class NPCEngine:
                 }
                 """
                 # 如果已经存在NPC在内存中，则不再config从加载覆盖
-                if npc_json["name"] in self.npc_dict.keys():
-                    npc_name = npc_json["name"]
+                npc_name = npc_json["name"]
+                if npc_name in self.npc_dict.keys():
                     self.logger.debug(f"NPC {npc_name} 已经被初始化，跳过")
                     continue
+                
+                # 根据名字生成姓名序号，以便在后续生成每个NPC的唯一hash值
+                if npc_name in self.npc_index_dict:
+                    self.npc_index_dict[npc_name] += 1
+                elif npc_name not in self.npc_index_dict:
+                    self.npc_index_dict[npc_name] = 1
 
                 npc = NPC(
-                    name=npc_json["name"],
+                    name=npc_name,
+                    name_index=self.npc_index_dict[npc_name],
                     desc=npc_json["desc"],
                     public_knowledge=self.public_knowledge,
                     scenario_name=scene_name,

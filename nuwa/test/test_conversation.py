@@ -6,7 +6,7 @@ import pathlib
 import sys
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
-from nuwa.src.config.config import PROJECT_ROOT_PATH
+PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.parent / "example_project"
 import threading
 
 engine_url = "::1"
@@ -43,7 +43,7 @@ def test_engine_init_memory():
     # 初始化包
     pack1 = {"func":"init",
                 # 必填字段，代表在什么场景初始化
-                "scene_name": "李大爷家",
+                "scene_name": "荒野小镇",
                 "language": "C",
                 # 下面是🉑️选
                 "npc": []}
@@ -82,32 +82,32 @@ def test_conversation():
     # 初始化包
     pack1 = {
             "func":"create_conversation",
-            "npc":["李大爷","王大妈"],   # 参与对话的NPC
-            "scenario_name": "李大爷家",
-            "location":"花园",                # 对话地点
-            "topic":"李大爷的人生经历",           # 对话主题,可以留空,gpt会自发选择一个主题。
+            "npc":["土匪Red","土匪Slim","牛仔John"],   # 参与对话的NPC
+            "scenario_name": "荒野小镇",
+            "location":"荒野小镇",                # 对话地点
+            "topic":"土匪Red的经历",           # 对话主题,可以留空,gpt会自发选择一个主题。
             "npc_states": [
                 {
-                  "position": "李大爷家",
+                  "position": "荒野小镇",
                   "observation": {
-                          "people": ["王大妈", "村长", "警长"],
+                          "people": ["警长Woody", "土匪Slim"],
                           "items": ["椅子1","椅子2","椅子3","床"],
-                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": []
                                 },
                   "backpack":["黄瓜", "1000元", "老报纸"]
                 },
                 {
                   "position": "李大爷家",
                   "observation": {
-                          "people": ["李大爷", "村长", "警长"],
+                          "people": ["警长Woody", "土匪Red"],
                           "items": ["椅子1","椅子2","椅子3","床"],
-                          "locations": ["李大爷家大门","李大爷家后门","李大爷家院子"]
+                          "locations": []
                                 },
                   "backpack":["优质西瓜", "大砍刀", "黄金首饰"]
                 }],
             # 下面是为了解决玩家/npc插入对话的问题
-            "starting": "",  # 玩家插入发言,可以留空
-            "player_desc": "",
+            "starting": "嘿你们在干什么呢",  # 玩家插入发言,可以留空
+            "player_desc": "是一位来自未来世界的枪手，有非常精湛的射击技术。",
             "memory_k": 3,
             "length": "S",
             "stream": True
@@ -117,7 +117,7 @@ def test_conversation():
     print("sending for conversation")
     send_data(pack1)
 
-test_conversation()
+# test_conversation()
 # time.sleep(9)
 
 def send_pack_create():

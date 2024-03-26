@@ -61,6 +61,7 @@ class Conversation:
         scenario_name: str,
         topic: str,
         model: str,
+        share_observations: Dict[str, List[str]],
         system_prompt: Dict[str, str],
         query_prompt: Dict[str, str],
         project_root=Path(os.getcwd()),
@@ -72,6 +73,7 @@ class Conversation:
     ) -> None:
         # Conversation模块logger设置
         self.logger = logging.getLogger("CONVERSATION")
+        self.logger.setLevel(logging.INFO)
 
         # 系统时间戳
         self.start_time = datetime.datetime.now()
@@ -81,6 +83,7 @@ class Conversation:
         self.location: str = location
         self.scenario_name: str = scenario_name
         self.topic: str = topic
+        self.share_observations = share_observations
         self.language: str = language
         self.model: str = model
         self.stream = stream
@@ -326,6 +329,7 @@ class Conversation:
         response = self.call_llm(messages = messages)
 
         if self.stream:
+            self.logger.debug(f"First script of conversation {self.convo_id} in stream form is generated as follows:")
             one_sent = ""
             for chunk in response:
                 chunk_message = chunk['choices'][0]['delta']
@@ -367,14 +371,14 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
-                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
-
+            sentence_str = '\n'.join(self.sentences)
+            self.logger.info(f"First script of conversation {self.convo_id} in stream form is generated as follows:\n{sentence_str}")
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            print(conv)
+            self.logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -386,6 +390,7 @@ class Conversation:
                 "lines": self.lines,
             }
             self.logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated.")
+            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
             # 发送整个剧本
             self.send_script(script)
     
@@ -409,7 +414,7 @@ class Conversation:
         self.reset_session(local_session)
         # 如果添加的新角色已经在角色列表中，则报错并返回空
         if new_name in self.names:
-            self.logger.debug(f"{new_name} is already in this conversation. Re-creation fails.")
+            self.logger.info(f"{new_name} is already in conversation {self.convo_id}. Re-creation fails.")
             return None
         # 如果新角色信息不为空，则加入更新对话对象的角色列表、temp_memory序列以及对话记忆起始索引值字典
         if new_name != "":
@@ -422,6 +427,7 @@ class Conversation:
         response = self.call_llm(messages = messages)
 
         if self.stream:
+            self.logger.debug(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:")
             # 将动态维护剧本的变量进行清空
             self.index = -1
             self.lines.clear()
@@ -468,14 +474,14 @@ class Conversation:
                 # 如果没有回车符，则直接将内容右添加到one_sent中
                 else:
                     one_sent += chunk_content
-                #print(self.active_session)
                 if self.active_session != local_session:
                     break
             self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
-
+            sentence_str = '\n'.join(self.sentences)
+            self.logger.info(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:\n{sentence_str}")
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            print(conv)
+            self.logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -487,6 +493,7 @@ class Conversation:
                 "lines": self.lines,
             }
             self.logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
+            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
             # 发送整个剧本
             self.send_script(script)
 
@@ -547,7 +554,8 @@ class Conversation:
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
-                    self.logger.debug(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
+                    memory_add_str = '\n'.join(memory_add[exit_character])
+                    self.logger.info(f"Conversation {self.convo_id} successfully adds memory into NPC {exit_character} with contents:\n{memory_add_str}")
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     self.script_perform.append(self.sentences[i])
@@ -571,14 +579,15 @@ class Conversation:
         :return:
         """
         # print item with appropriate color
-        print(
-            "[Conversation] sending script:",
-            Fore.GREEN,
-            json.dumps(script).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
+        # print(f"[Conversation] sending script:\n{script}")
+        # print(
+        #     "[Conversation] sending script:",
+        #     Fore.GREEN,
+        #     json.dumps(script).encode(),
+        #     Style.RESET_ALL,
+        #     "to",
+        #     (self.game_url, self.game_port),
+        # )
         send_data(sock = self.engine_sock, target_url = self.game_url, 
                   target_port = self.game_port, data = script)
 
@@ -589,14 +598,15 @@ class Conversation:
         :return:
         """
         # print item with appropriate color
-        print(
-            "[Conversation] sending one line of script:",
-            Fore.GREEN,
-            json.dumps(line).encode(),
-            Style.RESET_ALL,
-            "to",
-            (self.game_url, self.game_port),
-        )
+        # print(f"[Conversation] sending one line of script:{line}")
+        # print(
+        #     "[Conversation] sending one line of script:",
+        #     Fore.GREEN,
+        #     json.dumps(line).encode(),
+        #     Style.RESET_ALL,
+        #     "to",
+        #     (self.game_url, self.game_port),
+        # )
         send_data(sock = self.engine_sock, target_url = self.game_url, 
                   target_port = self.game_port, data = line)
     
