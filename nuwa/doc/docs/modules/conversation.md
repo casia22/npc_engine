@@ -13,15 +13,15 @@
 
 ## Conversation模块UDP包
 ```python
-# create_conversation游戏端发给引擎的包
+# “对话创建”时引擎接收的数据包格式
 {
     "func": "create_conversation",
-    "npc": ["王大妈","李大爷"],   # npc列表
+    "npc": ["王大妈","李大爷"],   # 当没有玩家时，value是所有NPC角色名称组成的列表；当有玩家时，value列表最后一个需要是玩家名称
 
     "scenario_name": "李大爷家",        
     "location": "李大爷家卧室",
     "topic": "王大妈想要切了自己的西瓜给李大爷吃，并收钱", # 可以留空，会自动生成topic
-    "npc_states": [   # 该列表中的每个状态对应于npc列表的相应角色名称
+    "npc_states": [   # 该列表中的每个状态对应于NPC名称列表中的每一个角色
                 {
                   "position": "李大爷家",
                   "observation": {
@@ -41,14 +41,14 @@
                   "backpack":["黄瓜", "1000元", "老报纸"]
                 },
                 ],
-    "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，可选留空
-    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+    "starting": "你好，嫩们在干啥腻？",  # 玩家说的话，当且仅当有玩家时才不为空，没有玩家时为空
+    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，当且仅当有玩家时才不为空，没有玩家时为空
     "memory_k": 3,  # npc的记忆检索条数，必须填写
     "length": "P"  # 可以选择的剧本长度模式，S M L X P 可选，分别是短剧本、中剧本、长剧本、超长剧本、精简剧本（短≠精简）
     "stream": True  # 是否采用流式响应
 }
 
-# 引擎端生成完整剧本传给游戏端的数据包
+# 引擎端生成非流式对话内容传给用户端的数据包
 {
     "name": "conversation",
     "mode": "script",  # 对话传输剧本模式的数据包
@@ -57,7 +57,7 @@
     "lines": [line1, line2, line3, line4, ...]  # 剧本信息，由若干行对话组成的序列
 }
 
-# 引擎端生成流式剧本传给游戏端的单个数据包
+# 引擎端生成流式对话内容传给用户端的数据包
 {
     "name": "conversation",
     "mode": "line",   # 对话传输剧本行模式的数据包
@@ -68,7 +68,7 @@
 }
 
 
-# 引擎端生成剧本的每一行的格式(对应上一个数据包的line)
+# 流式对话内容数据包中的line格式
 {
     "type": "Interaction",  # 剧本行的类型，可以是State，Interaction，Error
     "state": "李大爷退出。剩下的角色：王大妈",  # 当剧本行类型是State和Error时，"state"才会有具体内容
@@ -80,20 +80,20 @@
               "args": "王大妈"}  # 剧本行对应角色的动作，当剧本行类型是Interaction时不为空
 }
 
-# 游戏端传给引擎端的剧本演示确认包
+# 用户端传给引擎端的对话展演确认包
 {
     "func": "confirm_conversation_line",
     "conversation_id": "123456789",  # conversation对象的索引号
     "index": 2,  # 游戏端展示完成的剧本行索引号
 }
 
-# re_create_conversation游戏端发给引擎的包
+# “对话再创建”时引擎接收的数据包格式
 {
     "func": "re_create_conversation",
-    "id": "123456789",  # conversation对象的索引号
-    "character": "警长",  # 新加入角色的名称
-    "interruption": "大家好呀，你们刚刚在说什么",  # 玩家插入的说话内容
-    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，可选留空
+    "id": "123456789",  # conversation对象的ID
+    "character": "警长",  # 新加入NPC角色的名称 / 玩家名称
+    "interruption": "大家好呀，你们刚刚在说什么",  # 玩家插入的说话内容，当且仅当有玩家时才不为空，没有玩家时为空
+    "player_desc": "玩家是一个疯狂的冒险者，喜欢吃圆圆的东西",  # 玩家的描述，当且仅当有玩家时才不为空，没有玩家时为空
     "length": "P"  # 可以选择的剧本长度模式，S M L X P 可选，分别是短剧本、中剧本、长剧本、超长剧本、精简剧本（短≠精简）
     "stream": True  # 是否采用流式响应
 }
