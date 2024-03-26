@@ -329,7 +329,7 @@ class Conversation:
         response = self.call_llm(messages = messages)
 
         if self.stream:
-            self.logger.info(f"First script of conversation {self.convo_id} in stream form is generated as follows:")
+            self.logger.debug(f"First script of conversation {self.convo_id} in stream form is generated as follows:")
             one_sent = ""
             for chunk in response:
                 chunk_message = chunk['choices'][0]['delta']
@@ -339,7 +339,6 @@ class Conversation:
                 # 如果不在则表示没有内容可以提取了
                 else:
                     self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -357,7 +356,6 @@ class Conversation:
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
                     self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -375,11 +373,12 @@ class Conversation:
                     one_sent += chunk_content
                 if self.active_session != local_session:
                     break
-            self.logger.info(f"All script lines of conversation {self.convo_id} in stream form is generated.")
-
+            self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is generated.")
+            sentence_str = '\n'.join(self.sentences)
+            self.logger.info(f"First script of conversation {self.convo_id} in stream form is generated as follows:\n{sentence_str}")
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
+            self.logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -390,7 +389,8 @@ class Conversation:
                 "location": self.location,
                 "lines": self.lines,
             }
-            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated.")
+            self.logger.debug(f"First script of conversation {self.convo_id} in non-stream form is generated.")
+            self.logger.info(f"First script of conversation {self.convo_id} in non-stream form is generated as follows:\n{conv}")
             # 发送整个剧本
             self.send_script(script)
     
@@ -414,7 +414,7 @@ class Conversation:
         self.reset_session(local_session)
         # 如果添加的新角色已经在角色列表中，则报错并返回空
         if new_name in self.names:
-            self.logger.info(f"{new_name} is already in this conversation. Re-creation fails.")
+            self.logger.info(f"{new_name} is already in conversation {self.convo_id}. Re-creation fails.")
             return None
         # 如果新角色信息不为空，则加入更新对话对象的角色列表、temp_memory序列以及对话记忆起始索引值字典
         if new_name != "":
@@ -427,7 +427,7 @@ class Conversation:
         response = self.call_llm(messages = messages)
 
         if self.stream:
-            self.logger.info(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:")
+            self.logger.debug(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:")
             # 将动态维护剧本的变量进行清空
             self.index = -1
             self.lines.clear()
@@ -442,7 +442,6 @@ class Conversation:
                 # 如果不在则表示没有内容可以提取了
                 else:
                     self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -460,7 +459,6 @@ class Conversation:
                 if "\n" in chunk_content:
                     one_sent += chunk_content.split('\n')[0]
                     self.logger.debug(f"Generate new line in conversation {self.convo_id}: {one_sent}")
-                    self.logger.info(one_sent)
                     self.sentences.append(one_sent)
                     one_line = self.parse_one_sent(one_sent)
                     self.lines.append(one_line)
@@ -478,10 +476,12 @@ class Conversation:
                     one_sent += chunk_content
                 if self.active_session != local_session:
                     break
-            self.logger.info(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
+            self.logger.debug(f"All script lines of conversation {self.convo_id} in stream form is re-generated.")
+            sentence_str = '\n'.join(self.sentences)
+            self.logger.info(f"New script of conversation {self.convo_id} in stream form is re-generated as follows:\n{sentence_str}")
         else:
             conv = response["choices"][0]["message"]["content"].strip()
-            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
+            self.logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
             # 使用解析器将文本剧本映射成字典格式
             self.parser(conv)
             # 将剧本信息按照配置标准整理并返回
@@ -492,7 +492,8 @@ class Conversation:
                 "location": self.location,
                 "lines": self.lines,
             }
-            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
+            self.logger.debug(f"New script of conversation {self.convo_id} in non-stream form is re-generated.")
+            self.logger.info(f"New script of conversation {self.convo_id} in non-stream form is re-generated as follows:\n{conv}")
             # 发送整个剧本
             self.send_script(script)
 
@@ -538,7 +539,7 @@ class Conversation:
                 if line["type"] == "Interaction":
                     self.temp_memory.append(self.sentences[i])
                     self.script_perform.append(self.sentences[i])
-                    self.logger.info(f"No.{i} Interaction line, added into temp_conversation done")
+                    self.logger.debug(f"No.{i} Interaction line, added into temp_conversation done")
                 # 如果是非结束符的会话状态类型的剧本行
                 elif line["type"] == "State" and line["state"] != "结束":
                     # 提取出退出的角色
@@ -553,7 +554,8 @@ class Conversation:
                     # 提取退出角色在退出时的心情作为最新的心情
                     mood_change[exit_character] = self.lines[i-1]["mood"]
                     #显示退出角色添加记忆的信息
-                    self.logger.info(f"{exit_character} adds memory. Conversation id: {self.convo_id}. Time: {datetime.datetime.now()}")
+                    memory_add_str = '\n'.join(memory_add[exit_character])
+                    self.logger.info(f"Conversation {self.convo_id} successfully adds memory into NPC {exit_character} with contents:\n{memory_add_str}")
                     # 将角色退出作为客观事实写入temp_memory中
                     self.temp_memory.append(rf"""{exit_character}退出了对话。""")
                     self.script_perform.append(self.sentences[i])
