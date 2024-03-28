@@ -17,6 +17,7 @@ from nuwa.src.utils.database import PickleDB
 from nuwa.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from nuwa.src.utils.faissdatabase import VectorDatabase
 
+
 class MemoryItem:
     def __init__(self, text: str, game_time: str, score: float = 0.0, **kwargs):
         self.text = text
@@ -42,6 +43,7 @@ class MemoryItem:
         self.score = score
         return self
 
+
 class NPCMemory:
     def __init__(
             self,
@@ -61,12 +63,17 @@ class NPCMemory:
         # 确保这里处理的是Path对象，而不是字符串
         self.base_path = self.project_root_path / "data"  # 确保这是Path对象
         self.vdb_path = self.base_path / self.npc_name_hash
+
+        # 检查路径是否存在，没有则创建
+        if not self.vdb_path.exists():
+            self.vdb_path.mkdir(parents=True)
+
         print("vdb_path", self.vdb_path)
         if self.vdb_path.exists():
             print(f"'{self.vdb_path}' exists.")
         else:
             print(f"'{self.vdb_path}' does not exist.")
-        self.MEMORY_DB_PATH = self.vdb_path / "npc_memory.db"        
+        self.MEMORY_DB_PATH = self.vdb_path / "npc_memory.db"
 
         # 将NPC姓名以及序号写入hash文件夹内的一个文件中
         self.npc_name_file = self.vdb_path / "npc_name.json"
@@ -77,7 +84,8 @@ class NPCMemory:
         self.embedding_model = EmbeddingModel
 
         # vector database设置
-        self.vector_database = VectorDatabase(dim=the_npc_memory_config["hf_dim"], npc_name=npc_name, npc_name_hash=self.npc_name_hash,
+        self.vector_database = VectorDatabase(dim=the_npc_memory_config["hf_dim"], npc_name=npc_name,
+                                              npc_name_hash=self.npc_name_hash,
                                               vdb_path=self.vdb_path)
 
         # 如果向量数据库文件不存在，立即保存新创建的数据库
@@ -281,13 +289,15 @@ class NPCMemory:
             self.logger.debug(f"NPC{self.npc_name} 记忆 {memory_item.text} 的向量库记忆已上传")
         self.logger.debug("NPC: {} 的向量库记忆上传完成".format(self.npc_name))
 
+
 def main():
     # # logger设置
     logger = logging.getLogger(__name__)
     PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent.parent / "example_project"
     #
     # """NPC测试"""
-    embedder = LocalEmbedding(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", vector_width=384)
+    embedder = LocalEmbedding(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                              vector_width=384)
     npcM = NPCMemory(project_root_path=PROJECT_ROOT_PATH, npc_name="memory_test", k=3, EmbeddingModel=embedder)
     """
     NPC 文件检索测试
@@ -323,7 +333,7 @@ def main():
     stone91_mem.txt 中包含AK武器介绍、喜羊羊的介绍,检索回复应该都是关于武器的而不是喜羊羊的
     """
     npcM2.add_memory_file(file_path=PROJECT_ROOT_PATH / 'data' / 'reinforcement_learning.txt',
-                              game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
+                          game_time="2021-08-01 12:00:00", chunk_size=100, chunk_overlap=10)
     print(npcM2.search_memory("深入理解多智能体环境", "2021-08-01 12:00:00", k=3))
 
     """
