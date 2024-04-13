@@ -4,6 +4,7 @@ import json
 openai.api_key = 'sk-qvpKnoiDugYFOJbLC48e68E26a9e4510Ad779096Fd2019Fd'
 openai.api_base = 'https://apic3.a1r.cc/v1'
 
+
 # Example dummy function hard coded to return the same weather
 # In production, this could be your backend API or an external API
 def get_current_weather(location, unit="fahrenheit"):
@@ -89,4 +90,129 @@ def run_conversation():
         return second_response
 
 
-print(run_conversation())
+import requests
+import json
+import requests
+
+
+def get_stable_access_token(appid, secret):
+    url = "https://api.weixin.qq.com/cgi-bin/stable_token"
+    payload = {
+        "grant_type": "client_credential",
+        "appid": appid,
+        "secret": secret
+    }
+    response = requests.post(url, json=payload)
+    if response.status_code == 200:
+        print(response.json()['access_token'])
+        return response.json()['access_token']
+    else:
+        print('Failed to retrieve stable access token')
+        return None
+
+
+def post_wechat_api(access_token, service, api, data, client_msg_id):
+    url = f"https://api.weixin.qq.com/wxa/servicemarket?access_token={access_token}"
+    payload = {
+        "service": service,
+        "api": api,
+        "data": data,
+        "client_msg_id": client_msg_id,
+        "async": False
+    }
+    response = requests.post(url, json=payload)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {'error': 'Failed to post data to WeChat API', 'status_code': response.status_code}
+
+
+# Parameters
+appid = "wxb87e628eaf9e5937"
+secret = "ef109bcad4dcc0c83cada824e2b202d9"
+service = "wx617ea32f889ba259"
+api = "BaichuanNPCTurbo"
+data = {
+    "character_profile": {
+        "character_name": "孙悟空",
+        "character_info": "孙悟空",
+        "user_name": "孙悟空",
+        "user_info": "孙悟空"
+    },
+    "messages": [
+        {
+            "role": "user",
+            "content": "霁云，你可以空手接白刃吗？"
+        }
+    ],
+    "temperature": 0.8,
+    "top_k": 10,
+    "max_tokens": 512
+}
+client_msg_id = "id42379554"
+
+# Execution
+access_token = get_stable_access_token(appid, secret)
+if access_token:
+    response = post_wechat_api(access_token, service, api, data, client_msg_id)
+    print(response)
+else:
+    print("Error retrieving the access token.")
+
+import requests
+
+# 定义您的appid和secret
+appid = 'wxb87e628eaf9e5937'
+secret = 'ef109bcad4dcc0c83cada824e2b202d9'
+
+# 获取access_token的URL
+token_url = 'https://api.weixin.qq.com/cgi-bin/token'
+
+# 发送GET请求获取access_token
+response = requests.get(token_url, params={'grant_type': 'client_credential', 'appid': appid, 'secret': secret})
+if response.status_code == 200:
+    token_data = response.json()
+    if 'access_token' in token_data:
+        access_token = token_data['access_token']
+        print("获取到的access_token:", access_token)
+    else:
+        print("获取access_token失败:", token_data)
+        exit()
+
+# 发送POST请求到服务市场的URL
+service_market_url = f'https://api.weixin.qq.com/wxa/servicemarket?access_token={access_token}'
+
+# 构建要发送到服务市场的数据
+service_data = {
+    "service": "wx617ea32f889ba259",  # Service ID
+    "api": "BaichuanNPCTurbo",  # API名称
+    "data": {
+        "character_profile": {
+            "character_name": "孙悟空",
+            "character_info": "孙悟空",
+            "user_name": "孙悟空",
+            "user_info": "孙悟空"
+        },
+        "messages": [
+            {
+                "role": "user",
+                "content": "霁云，你可以空手接白刃吗？"
+            }
+        ],
+        "temperature": 0.8,
+        "top_k": 10,
+        "max_tokens": 512
+    },
+    "client_msg_id": "id123"
+}
+
+# 发送POST请求到服务市场
+service_response = requests.post(service_market_url, json=service_data)
+
+# 检查响应状态码
+if service_response.status_code == 200:
+    print("服务市场请求成功！")
+    print("响应内容:", service_response.json())
+else:
+    print("服务市场请求失败，状态码：", service_response.status_code)
+    print("错误信息：", service_response.text)

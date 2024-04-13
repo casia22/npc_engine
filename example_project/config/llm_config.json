@@ -11,14 +11,14 @@
             }
         ],
         "OPENAI_TEMPERATURE": 0.5,
-        "OPENAI_MAX_TOKENS": 100
+        "OPENAI_MAX_TOKENS": 10000
     },
     "GEMINI_CONFIG": {
         "GEMINI_KEYS": [
             "AIzaSyCTQc_clukOcpkQ64gXUb4oSuxz6ZHXXL4",
             "AIzaSyBhEAwg--z17jBWqHYGNI6icLA1sybLef8"
         ],
-        "GEMINI_TEMPERATURE": 0.5,
+        "GEMINI_TEMPERATURE": 0.9,
         "PROXY": {
             "http": "http://127.0.0.1:7890",
             "https": "http://127.0.0.1:7890"
