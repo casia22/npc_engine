@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,7 @@ from nuwa.src.utils.model_api import get_model_answer
 
 class TalkBox:
     def __init__(self, model, project_root_path, **kwargs):
+        self.logger = logging.getLogger("NPC")
         self.history = []
         self.ACTION_MODEL = model
         self.PROJECT_ROOT_PATH = project_root_path
@@ -20,40 +22,60 @@ class TalkBox:
         self.memory_latest_text = kwargs.get("memory_latest_text", "")
         self.memory_related_text_purpose = kwargs.get("memory_related_text_purpose", "")
         self.memory_related_text_player = kwargs.get("memory_related_text_player", "")
-        self.scene_allowed_places = kwargs.get("scene_allowed_places", [])
-        self.player_name = kwargs.get("player_name", "")
-        self.player_state_desc = kwargs.get("player_state_desc", "")
-        self.items_visible = kwargs.get("items_visible", [])
         self.action_prompt = kwargs.get("action_prompt", "")
         self.state_position = kwargs.get("state", {}).get("position", "")
         self.state_observation_people = kwargs.get("state", {}).get("people", [])
         self.state_observation_items = kwargs.get("state", {}).get("items", [])
         self.state_backpack = kwargs.get("state", {}).get("backpack", [])
         self.state_observation_locations = kwargs.get("state", {}).get("locations", [])
+        self.scene_allowed_places = kwargs.get("scene_allowed_places", [])
+        self.player_name = kwargs.get("player_name", "")
+        self.player_state_desc = kwargs.get("player_state_desc", "")
+        self.items_visible = kwargs.get("items_visible", [])
+
+        prompts = []
+        if not self.scene_allowed_places:
+            prompts.append("你现在去不了任何地方")
+        else:
+            self.scene_allowed_places = "你现在可以去" + "、".join(self.scene_allowed_places)
+        if not self.state_observation_people:
+            prompts.append("你现在看不到什么人")
+        else:
+            self.state_observation_people = "你现在看到的人有" + "、".join(self.state_observation_people)
+        if not self.state_observation_items:
+            prompts.append("你现在看不到什么东西")
+        else:
+            self.state_observation_items = "你现在看到的东西有" + "、".join(self.state_observation_items)
+        if not self.state_observation_locations:
+            prompts.append("周围看不到什么地方")
+        else:
+            self.state_observation_locations = "你现在看到的地方有" + "、".join(self.state_observation_locations)
+        if not self.state_backpack:
+            prompts.append("你现在身上空无一物")
+        else:
+            self.state_backpack = "你现在身上有" + "、".join(self.state_backpack)
+        if not self.player_state_desc:
+            prompts.append(f"{self.player_name}正在和你说话，你对他一无所知")
+        else:
+            prompts.append(f"{self.player_name}正在和你说话，你知道一些关于他的信息，{self.player_state_desc}")
+        if not self.items_visible:
+            prompts.append(f"{self.player_name}身上没有任何东西")
+        else:
+            prompts.append(f"{self.player_name}身上有{self.items_visible}")
+        prompt_text = "。".join(prompts)
 
         instruct = f"""
-                请你扮演{self.name}，设定是：{self.desc}。
-                你的心情是{self.mood}，现在时间是{self.time},
-                {self.name}当前位置是:{self.state_position}，
-                你之前的目的是:{self.purpose},
-                你的最近记忆:{self.memory_latest_text},
-                你脑海中相关记忆:{self.memory_related_text_purpose + self.memory_related_text_player}，
-                你现在看到的人:{self.state_observation_people}，
-                你现在看到的物品:{self.state_observation_items}，
-                你现在身上的物品:{self.state_backpack}，
-                你可去的地方:{self.scene_allowed_places}，
-                你现在看到的地点:{self.state_observation_locations}，
-                他的背景：{self.player_state_desc}，
-                他身上有：{self.items_visible}。
-                每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.回答内容，4.角色行为，采用特定格式：`@[情绪]<角色目的>@回答内容@<动作|对象|参数>@`。
-                这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
+                你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。你的目的是:{self.purpose}，你记得{self.memory_latest_text}，{self.memory_related_text_purpose}， {self.memory_related_text_player}。{prompt_text}
+                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你接下来的目的，3.你想说的话，4.你想做出的行动。你的回应要采用特定格式：`@[你当前的情绪]<你接下来的目的>@你想说的话@<你想做出的行动>@`。`<你想做出的行动>`部分需要限定在以下定义中：
                 {self.action_prompt}
                 要求：
-                    1.一次仅返回一个行为，而不是多个行为
-                    2.行为中的动作必须是[行为定义]出现的动作，格式为<action_name|obj|param>
-                    3.角色的行为必须和角色的回答内容、目的有逻辑关系。
-                    4.角色目的应该为10-30字。
+                - 你想做出的行为格式应为<动作|对象|参数>。
+                - 行为必须与你的回答内容、情绪和目的逻辑上相关。
+                - 你的目的描述应在10-30字之间。
                 """
+        # 删掉instruct中多余的空格和换行符
+        instruct = '\n'.join([line.strip() for line in instruct.strip().split('\n')])
+        # print(instruct)
         self.history.append({"role": "system", "content": instruct})
 
     def get_response(self, input_text, **kwargs):
@@ -84,7 +106,11 @@ class TalkBox:
         answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=self.history,
                                   project_root_path=self.PROJECT_ROOT_PATH)
         self.history.append({"role": "assistant", "content": answer})
-        print(self.history)
+        # print(self.history)
+        self.logger.debug(f"""
+                    <TalkBox of {self.name}>
+                    <对话列表>:{self.history}
+                            """)
         return answer
 
     def get_history(self):
@@ -94,23 +120,23 @@ class TalkBox:
 if __name__ == "__main__":
     # Example of how to initialize TalkBox with specified parameters
     tb = TalkBox(
-        name="李大爷",
-        desc="一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，最爱吃烤烧鸡喝乌龙茶。",
-        mood="开心",
-        time=datetime.strptime("2021-01-01 12:00:00", "%Y-%m-%d %H:%M:%S"),
-        position="李大爷家",
-        purpose="李大爷想去村口卖瓜，希望能够卖出新鲜的西瓜给村里的居民。",
-        memory_latest_text="8年前李大爷的两个徒弟在工厂表现优异都获得表彰。6年前从工厂辞职并过上普通的生活。4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。",
-        memory_related_text_purpose="15年前在工厂收了两个徒弟。",
+        name="草泥马",
+        desc="一匹很凶的马，对人非常无理粗暴，喜欢说草泥马",
+        mood="烦躁",
+        time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
+        position="沙漠中",
+        purpose="草泥马现在又渴又饿，想找到吃的",
+        memory_latest_text="做马真是太讨厌了，草泥马，我真的受够了！",
+        memory_related_text_purpose="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
         memory_related_text_player="",
-        scene_allowed_places=["李大爷家大门", "李大爷家后门", "李大爷家院子"],
-        player_name="王大妈",
-        player_state_desc="正在李大爷家",
-        items_visible=["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
-        action_prompt="行为定义列表及要求",
-        state={'position': "李大爷家", 'people': ["王大妈", "村长", "隐形李飞飞"],
-               'items': ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
-               'locations': ["李大爷家大门", "李大爷家后门", "李大爷家院子"], 'backpack': ["西瓜"]},
+        scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
+        action_prompt="[{'name': 'mov', 'definition': ('<mov|location|>，向[location]移动',), 'example': ('<mov|绿洲|>',)}, {'name': 'get', 'definition': ('<get|object1|object2>，从[object2]中获得[object1]，[object2]处可为空',), 'example': ('<get|水|水壶>',)}, {'name': 'put', 'definition': ('<put|object1|object2>，把[object2]放入[object1]',), 'example': ('<put|帐篷|沙漠中心>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}]",
+        state={'position': "沙漠中", 'people': ["沙漠商人"],
+               'items': [],
+               'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': ["遮阳帽"]},
+        player_name="杨泽君",
+        player_state_desc="杨泽君是一位年轻的法师，他看起来很帅气，穿着一身灰色的袍子，拿着一根法杖。看起来十分威风",
+        items_visible=["法杖", "望远镜", "水", "饼干"],
         model="gpt-3.5-turbo-16k",
         project_root_path=Path(__file__).parents[3] / "example_project"
     )

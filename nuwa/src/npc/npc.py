@@ -451,11 +451,11 @@ class NPC:
                                     scene_allowed_places=scene_allowed_places,
                                     player_name=player_name, player_state_desc=player_state_desc,
                                     items_visible=items_visible, action_prompt=action_prompt,
-                                    state=self.state, project_root_path=self.PROJECT_ROOT_PATH, model=self.ACTION_MODEL)
+                                    state=self.state.to_dict(), project_root_path=self.PROJECT_ROOT_PATH, model=self.ACTION_MODEL)
         response: str = self.talk_box.get_response(input_text=player_speech, mood=self.mood,
                                                    memory_related_text_player=memory_related_text_player,
                                                    items_visible=items_visible,
-                                                   state=self.state)
+                                                   state=self.state.to_dict())
         # response: str = self.call_llm(instruct=instruct, prompt=prompt)
         """
             3.更新目的和情绪，返回动作和回答组成的数据包
@@ -532,9 +532,6 @@ class NPC:
 
         self.logger.debug(f"""
                     <TALK2NPC请求>
-                    <请求内容>:{instruct}
-                    <请求提示>:{prompt}
-                    <返回内容>:{response}
                     <返回行为>:{self.action_result}
                     <返回回答>:{answer_prompt}
                     <心情和目的>:{self.mood} {self.purpose}
