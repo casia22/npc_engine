@@ -1,134 +1,123 @@
-def get_npc_response(self, player_name: str, player_speech: str, items_visible: List[str],
-                     player_state_desc: str,
-                     time: str, fail_safe: "FailSafe", k: int = 3) -> Dict[str, Any]:
-    query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
-        self.state.observation.people) + ",".join(
-        self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
-    memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
-    memory_related_text_purpose = [each.text for each in memory_dict["related_memories"]]
-    memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
-    # 按照玩家的问句检索记忆
-    query_text_player: str = player_speech
-    memory_dict_player: Dict[str, Any] = self.memory.search_memory(query_text=query_text_player, query_game_time=time,
-                                                                   k=k)
-    memory_related_text_player = [each.text for each in memory_dict_player["related_memories"]]
-    """
-        2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
-    """
-    # 根据允许动作的预定义模版设置prompt
-    scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
-    allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
-                                  action_name in self.action_space]  # 场景action和人物action取交集
-    allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
-    action_prompt = ""
-    for key, item in allowed_actions_dict.items():
-        action_prompt += f"-`{item.example}`：{item.definition}\n"
-    # 根据当前位置构造可去的位置(排除当前位置
-    scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
-                                       place != self.state.position]
-    instruct = f"""
-    请你扮演{self.name}，设定是：{self.desc}。
-    每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.角色行为，4.回答内容，采用特定格式：`@[情绪]<角色目的>@<动作|对象|参数>@回答内容@`。
-    这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
-    {action_prompt}
-    你的心情是{self.mood}，现在时间是{time},
-    {self.name}当前位置是:{self.state.position}，
-    你之前的目的是:{self.purpose},
-    你的最近记忆:{memory_latest_text},
-    你脑海中相关记忆:{memory_related_text_purpose + memory_related_text_player}，
-    你现在看到的人:{self.state.observation.people}，
-    你现在看到的物品:{self.state.observation.items}，
-    你现在身上的物品:{self.state.backpack}，
-    你可去的地方:{scene_allowed_places}，
-    你现在看到的地点:{self.state.observation.locations}，
-    """
-    # 目的(包含情绪)，动作，回答
-    prompt = f"""
-                {player_name}对你说：“{player_speech}”，
-                他的背景：{player_state_desc}，
-                他身上有：{items_visible}。
-            """
-    # 发起请求
-    response: str = self.call_llm(instruct=instruct, prompt=prompt)
-    """
-        3.更新目的和情绪，返回动作和回答组成的数据包
-    """
-    # 抽取 "目的情绪"、"动作"、"回答" 三个部分
-    try:
-        [mood_purpose, action_prompt, answer_prompt] = response.strip("@").split("@")
-        # 格式化回答，去掉两边的引号
-        answer_prompt = answer_prompt.strip('"').strip("“").strip("”")
-    except ValueError:
-        self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
-    except Exception as e:
-        mood_purpose = "[正常]<>"
-        action_prompt = "<||>"
-        answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
-        self.logger.error(
-            f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_prompt:{action_prompt} answer_prompt:{answer_prompt}")
+import os
+from datetime import datetime
+from pathlib import Path
 
-    # 检查抽取到的动作
-    self.action_result: Dict[str, Any] = ActionItem.str2json(action_prompt)
-    # 检查action合法性，如不合法那就返回空动作
-    action_name = self.action_result["action"]
-    # 如果没有找到匹配的action那么就在NPC的动作空间中搜索
-    if action_name not in self.action_dict.keys():
-        # failSafe
-        fail_safe_action: "ActionItem" = fail_safe.action_fail_safe(action_name, list(self.action_dict.values()))
-        if not fail_safe_action:
-            illegal_action = self.action_result
-            self.action_result = {"name": "", "object": "", "parameters": []}
-            self.logger.error(
-                f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
-        else:
-            # 如果匹配到了fail_safe_action则替代
-            action_name = fail_safe_action
+from nuwa.src.utils.model_api import get_model_answer
 
-    # 按照配置文件决定是否分割参数
-    if action_name in self.action_dict.keys():
-        if not self.action_dict[action_name].multi_param:
-            # 如果非多参数，比如对话，那就把参数合并成一个字符串
-            self.action_result["parameters"] = ",".join(self.action_result["parameters"])
-    self.action_result["npc_name"] = self.name
-    # 更新NPC的情绪和purpose
-    try:
-        purpose: str = mood_purpose.split("]<")[1].replace(">", "")
-        mood: str = mood_purpose.split("]<")[0].replace("[", "")
-    except IndexError:
-        self.logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
-        purpose = ""  # NULL
-        mood = self.mood
-    self.purpose = purpose
-    self.mood = mood
 
-    """
-        4.添加本次交互的记忆元素
-    """
-    memory_text = f"""
-        {self.name}在{self.state.position}和{player_name}相遇，
-        {self.name}的目的是{purpose}，
-        {player_name} 的状态是{player_state_desc}，
-        {player_name} 说: {player_speech}
-        {self.name} 回答{player_name}: {answer_prompt}
-        然后 采取了动作: {action_prompt}
-        时间在：{time}
-    """
-    self.memory.add_memory_text(text=memory_text, game_time=time)
+class TalkBox:
+    def __init__(self, model, project_root_path, **kwargs):
+        self.history = []
+        self.ACTION_MODEL = model
+        self.PROJECT_ROOT_PATH = project_root_path
 
-    response_package = {
-        "name": "talk_result",
-        "npc_name": self.name,
-        "answer": answer_prompt,
-        "actions": [self.action_result]
-    }
+        # 根据各种参数初始化npc的系统指令
+        self.name = kwargs.get("name", "")
+        self.desc = kwargs.get("desc", "")
+        self.mood = kwargs.get("mood", "")
+        self.time = kwargs.get("time", "")
+        self.purpose = kwargs.get("purpose", "")
+        self.memory_latest_text = kwargs.get("memory_latest_text", "")
+        self.memory_related_text_purpose = kwargs.get("memory_related_text_purpose", "")
+        self.memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        self.scene_allowed_places = kwargs.get("scene_allowed_places", [])
+        self.player_name = kwargs.get("player_name", "")
+        self.player_state_desc = kwargs.get("player_state_desc", "")
+        self.items_visible = kwargs.get("items_visible", [])
+        self.action_prompt = kwargs.get("action_prompt", "")
+        self.state_position = kwargs.get("state", {}).get("position", "")
+        self.state_observation_people = kwargs.get("state", {}).get("people", [])
+        self.state_observation_items = kwargs.get("state", {}).get("items", [])
+        self.state_backpack = kwargs.get("state", {}).get("backpack", [])
+        self.state_observation_locations = kwargs.get("state", {}).get("locations", [])
 
-    self.logger.debug(f"""
-                <TALK2NPC请求>
-                <请求内容>:{instruct}
-                <请求提示>:{prompt}
-                <返回内容>:{response}
-                <返回行为>:{self.action_result}
-                <返回回答>:{answer_prompt}
-                <心情和目的>:{self.mood} {self.purpose}
-                        """)
-    return response_package
+        instruct = f"""
+                请你扮演{self.name}，设定是：{self.desc}。
+                你的心情是{self.mood}，现在时间是{self.time},
+                {self.name}当前位置是:{self.state_position}，
+                你之前的目的是:{self.purpose},
+                你的最近记忆:{self.memory_latest_text},
+                你脑海中相关记忆:{self.memory_related_text_purpose + self.memory_related_text_player}，
+                你现在看到的人:{self.state_observation_people}，
+                你现在看到的物品:{self.state_observation_items}，
+                你现在身上的物品:{self.state_backpack}，
+                你可去的地方:{self.scene_allowed_places}，
+                你现在看到的地点:{self.state_observation_locations}，
+                他的背景：{self.player_state_desc}，
+                他身上有：{self.items_visible}。
+                每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.回答内容，4.角色行为，采用特定格式：`@[情绪]<角色目的>@回答内容@<动作|对象|参数>@`。
+                这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
+                {self.action_prompt}
+                要求：
+                    1.一次仅返回一个行为，而不是多个行为
+                    2.行为中的动作必须是[行为定义]出现的动作，格式为<action_name|obj|param>
+                    3.角色的行为必须和角色的回答内容、目的有逻辑关系。
+                    4.角色目的应该为10-30字。
+                """
+        self.history.append({"role": "system", "content": instruct})
+
+    def get_response(self, input_text, **kwargs):
+        # 获取新的输入参数，对比是否和原先一致，不一致则更新，并且加入指令中
+        instruct = []
+        mood = kwargs.get("mood", "")
+        memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        items_visible = kwargs.get("items_visible", [])
+        state_backpack = kwargs.get("state", {}).get("backpack", [])
+
+        if mood != self.mood and mood != "":
+            instruct.append(f"{self.name}的心情是{mood}。")
+            self.mood = mood
+        if memory_related_text_player != self.memory_related_text_player and memory_related_text_player != "":
+            instruct.append(f"{self.name}脑海中相关记忆:{memory_related_text_player}。")
+            self.memory_related_text_player = memory_related_text_player
+        if items_visible != self.items_visible and items_visible != []:
+            instruct.append(f"{self.player_name}身上有：{items_visible}。")
+            self.items_visible = items_visible
+        if state_backpack != self.state_backpack and state_backpack != "":
+            instruct.append(f"{self.name}现在身上的物品:{state_backpack}。")
+            self.state_backpack = state_backpack
+
+        if instruct:
+            instruct = "，".join(instruct)
+            self.history.append({"role": "system", "content": instruct})
+        self.history.append({"role": "user", "content": input_text})
+        answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=self.history,
+                                  project_root_path=self.PROJECT_ROOT_PATH)
+        self.history.append({"role": "assistant", "content": answer})
+        print(self.history)
+        return answer
+
+    def get_history(self):
+        return self.history
+
+
+if __name__ == "__main__":
+    # Example of how to initialize TalkBox with specified parameters
+    tb = TalkBox(
+        name="李大爷",
+        desc="一个普通的种瓜老头，戴着文邹邹的金丝眼镜，喜欢喝茶，最爱吃烤烧鸡喝乌龙茶。",
+        mood="开心",
+        time=datetime.strptime("2021-01-01 12:00:00", "%Y-%m-%d %H:%M:%S"),
+        position="李大爷家",
+        purpose="李大爷想去村口卖瓜，希望能够卖出新鲜的西瓜给村里的居民。",
+        memory_latest_text="8年前李大爷的两个徒弟在工厂表现优异都获得表彰。6年前从工厂辞职并过上普通的生活。4年前孩子看望李大爷并带上大爷最爱喝的乌龙茶。",
+        memory_related_text_purpose="15年前在工厂收了两个徒弟。",
+        memory_related_text_player="",
+        scene_allowed_places=["李大爷家大门", "李大爷家后门", "李大爷家院子"],
+        player_name="王大妈",
+        player_state_desc="正在李大爷家",
+        items_visible=["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+        action_prompt="行为定义列表及要求",
+        state={'position': "李大爷家", 'people': ["王大妈", "村长", "隐形李飞飞"],
+               'items': ["椅子#1", "椅子#2", "椅子#3[李大爷占用]", "床"],
+               'locations': ["李大爷家大门", "李大爷家后门", "李大爷家院子"], 'backpack': ["西瓜"]},
+        model="gpt-3.5-turbo-16k",
+        project_root_path=Path(__file__).parents[3] / "example_project"
+    )
+    input("Press Enter to start the conversation")
+    while True:
+        user_input = input("User: ")
+        response = tb.get_response(user_input)
+        print(f"Assistant: {response}")
+        if response == "Goodbye!":
+            break

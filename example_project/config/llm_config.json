@@ -11,7 +11,7 @@
             }
         ],
         "OPENAI_TEMPERATURE": 0.5,
-        "OPENAI_MAX_TOKENS": 10000
+        "OPENAI_MAX_TOKENS": 4096
     },
     "GEMINI_CONFIG": {
         "GEMINI_KEYS": [
