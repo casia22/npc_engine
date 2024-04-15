@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from nuwa.src.npc.action import ActionItem
 from nuwa.src.utils.model_api import get_model_answer
 
 
@@ -33,36 +34,32 @@ class TalkBox:
         self.player_state_desc = kwargs.get("player_state_desc", "")
         self.items_visible = kwargs.get("items_visible", [])
 
-        prompts = []
-        if not self.scene_allowed_places:
-            prompts.append("你现在去不了任何地方")
-        else:
-            self.scene_allowed_places = "你现在可以去" + "、".join(self.scene_allowed_places)
-        if not self.state_observation_people:
-            prompts.append("你现在看不到什么人")
-        else:
-            self.state_observation_people = "你现在看到的人有" + "、".join(self.state_observation_people)
-        if not self.state_observation_items:
-            prompts.append("你现在看不到什么东西")
-        else:
-            self.state_observation_items = "你现在看到的东西有" + "、".join(self.state_observation_items)
-        if not self.state_observation_locations:
-            prompts.append("周围看不到什么地方")
-        else:
-            self.state_observation_locations = "你现在看到的地方有" + "、".join(self.state_observation_locations)
-        if not self.state_backpack:
-            prompts.append("你现在身上空无一物")
-        else:
-            self.state_backpack = "你现在身上有" + "、".join(self.state_backpack)
-        if not self.player_state_desc:
-            prompts.append(f"{self.player_name}正在和你说话，你对他一无所知")
-        else:
-            prompts.append(f"{self.player_name}正在和你说话，你知道一些关于他的信息，{self.player_state_desc}")
-        if not self.items_visible:
-            prompts.append(f"{self.player_name}身上没有任何东西")
-        else:
-            prompts.append(f"{self.player_name}身上有{self.items_visible}")
+        def generate_prompt(description, items, empty_msg, non_empty_msg):
+            """
+            简化重复代码，根据信息生成指令
+            """
+            if not items:
+                return empty_msg
+            return non_empty_msg.format('、'.join(items))
+
+        prompts = [
+            generate_prompt("地点", self.scene_allowed_places, "你现在去不了任何地方", "你现在可以去{}"),
+            generate_prompt("人", self.state_observation_people, "你现在看不到什么人", "你现在看到的人有{}"),
+            generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西", "周围能捡的东西有{}"),
+            generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方", "周围能看到的地方有{}"),
+            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}")
+        ]
+
+        player_info_prompt = f"{self.player_name}正在和你说话，"
+        player_info_prompt += "你对他一无所知" if not self.player_state_desc else f"你知道一些关于他的信息，{self.player_state_desc}"
+        prompts.append(player_info_prompt)
+
+        player_items_prompt = f"{self.player_name}身上"
+        player_items_prompt += "没有任何东西" if not self.items_visible else f"有{self.items_visible}"
+        prompts.append(player_items_prompt)
+
         prompt_text = "。".join(prompts)
+        # print(prompts)
 
         instruct = f"""
                 你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。你的目的是:{self.purpose}，你记得{self.memory_latest_text}，{self.memory_related_text_purpose}， {self.memory_related_text_player}。{prompt_text}
@@ -79,6 +76,12 @@ class TalkBox:
         self.history.append({"role": "system", "content": instruct})
 
     def get_response(self, input_text, **kwargs):
+        """
+        生成回答
+        :param input_text:
+        :param kwargs:
+        :return:
+        """
         # 获取新的输入参数，对比是否和原先一致，不一致则更新，并且加入指令中
         instruct = []
         mood = kwargs.get("mood", "")
@@ -113,8 +116,38 @@ class TalkBox:
                             """)
         return answer
 
-    def get_history(self):
-        return self.history
+    def get_history_content(self) -> str:
+        """
+        获取对话历史，只保留对话内容和最后的动作，整合成字符串
+        """
+        history = [f'{self.name}与{self.player_name}在{self.time}，{self.state_position}，发生了一次对话：']
+        for item in self.history:
+            if item["role"] == "user":
+                history.append(f"{self.player_name}: {item['content']}")
+            elif item["role"] == "assistant":
+                assistant_content = self.parse_response(item['content'])
+                history.append(f"{self.name}[{assistant_content.get('mood', '')}]: {assistant_content['answer']}")
+        last_assistant_content = self.parse_response(self.history[-1]['content'])
+        history.append(
+            f"对话过后，{self.name}的心情很{last_assistant_content.get('mood', '')}，接下来的行动是{last_assistant_content.get('action', '')}。")
+        history_content = "\n".join(history)
+        return history_content
+
+    def parse_response(self, content):
+        # 抽取 "目的情绪"、"动作"、"回答" 三个部分
+        try:
+            [mood_purpose, answer, action] = content.strip("@").split("@")
+            # 格式化回答，去掉两边的引号
+            mood = mood_purpose.split("<")[0]
+            purpose = mood_purpose.split(">")[-1]
+            answer = answer.strip('"').strip("“").strip("”")
+        except Exception as e:
+            mood = ""
+            purpose = ""
+            action = "<||>"
+            answer = [x for x in content.strip("@").split("@") if x][-1]
+        dict_response = {'mood': mood, 'purpose': purpose, 'answer': answer, 'action': action}
+        return dict_response
 
 
 if __name__ == "__main__":
@@ -143,7 +176,8 @@ if __name__ == "__main__":
     input("Press Enter to start the conversation")
     while True:
         user_input = input("User: ")
+        if user_input == "exit":
+            print(tb.get_history_content())
+            break
         response = tb.get_response(user_input)
         print(f"Assistant: {response}")
-        if response == "Goodbye!":
-            break

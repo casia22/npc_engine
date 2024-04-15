@@ -456,7 +456,6 @@ class NPC:
                                                    memory_related_text_player=memory_related_text_player,
                                                    items_visible=items_visible,
                                                    state=self.state.to_dict())
-        # response: str = self.call_llm(instruct=instruct, prompt=prompt)
         """
             3.更新目的和情绪，返回动作和回答组成的数据包
         """
@@ -537,6 +536,18 @@ class NPC:
                     <心情和目的>:{self.mood} {self.purpose}
                             """)
         return response_package
+
+    def end_talk(self):
+        """
+        结束对话，进行三件事：1）提取talk_box内容；2）进行记忆整合；3）删除talk_box。
+        """
+        # 提取talk_box内容
+        talk_content = self.talk_box.get_history_content()
+        # todo 进行记忆整合
+        print(talk_content)
+        # self.memory.add_memory_text(text=talk_content, game_time=self.talk_box.time)
+        # 删除talk_box
+        self.talk_box = None
 
     def call_llm(self, instruct: str, prompt: str) -> str:
         llm_prompt_list = [{
