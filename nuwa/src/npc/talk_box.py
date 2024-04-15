@@ -11,6 +11,7 @@ class TalkBox:
     def __init__(self, model, project_root_path, **kwargs):
         self.logger = logging.getLogger("NPC")
         self.history = []
+        self.response = ""
         self.ACTION_MODEL = model
         self.PROJECT_ROOT_PATH = project_root_path
 
@@ -72,10 +73,10 @@ class TalkBox:
                 """
         # 删掉instruct中多余的空格和换行符
         instruct = '\n'.join([line.strip() for line in instruct.strip().split('\n')])
-        # print(instruct)
+        print(instruct)
         self.history.append({"role": "system", "content": instruct})
 
-    def get_response(self, input_text, **kwargs):
+    def generate_response(self, input_text, **kwargs):
         """
         生成回答
         :param input_text:
@@ -114,6 +115,7 @@ class TalkBox:
                     <TalkBox of {self.name}>
                     <对话列表>:{self.history}
                             """)
+        self.response = answer
         return answer
 
     def get_history_content(self) -> str:
@@ -134,14 +136,25 @@ class TalkBox:
         return history_content
 
     def parse_response(self, content):
+        if not content:
+            content = self.response
         # 抽取 "目的情绪"、"动作"、"回答" 三个部分
         try:
-            [mood_purpose, answer, action] = content.strip("@").split("@")
+            res1 = content.strip("@").split("@")
+            if len(res1) == 3:
+                mood_purpose, answer, action = res1
+            else:
+                mood_purpose, res2 = res1
+                answer, action = res2.split("<")
+                action = "<" + action
             # 格式化回答，去掉两边的引号
-            mood = mood_purpose.split("<")[0]
-            purpose = mood_purpose.split(">")[-1]
+            mood, purpose = mood_purpose.split("<")
+            # 去掉两边的"“”"|[]<>@等符号
+            mood = mood.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
+            purpose = purpose.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
             answer = answer.strip('"').strip("“").strip("”")
         except Exception as e:
+            self.logger.error(f"解析回答时出错：{e}, {content}")
             mood = ""
             purpose = ""
             action = "<||>"
@@ -179,5 +192,5 @@ if __name__ == "__main__":
         if user_input == "exit":
             print(tb.get_history_content())
             break
-        response = tb.get_response(user_input)
+        response = tb.generate_response(user_input)
         print(f"Assistant: {response}")

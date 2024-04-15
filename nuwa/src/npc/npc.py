@@ -442,6 +442,8 @@ class NPC:
         # 根据当前位置构造可去的位置(排除当前位置
         scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
                                            place != self.state.position]
+
+        # 创建talk_box
         if self.talk_box is None:
             self.talk_box = TalkBox(name=self.name, desc=self.desc, mood=self.mood, time=time,
                                     position=self.state.position, purpose=self.purpose,
@@ -452,26 +454,19 @@ class NPC:
                                     player_name=player_name, player_state_desc=player_state_desc,
                                     items_visible=items_visible, action_prompt=action_prompt,
                                     state=self.state.to_dict(), project_root_path=self.PROJECT_ROOT_PATH, model=self.ACTION_MODEL)
-        response: str = self.talk_box.get_response(input_text=player_speech, mood=self.mood,
-                                                   memory_related_text_player=memory_related_text_player,
-                                                   items_visible=items_visible,
-                                                   state=self.state.to_dict())
+        response: str = self.talk_box.generate_response(input_text=player_speech, mood=self.mood,
+                                                        memory_related_text_player=memory_related_text_player,
+                                                        items_visible=items_visible,
+                                                        state=self.state.to_dict())
         """
             3.更新目的和情绪，返回动作和回答组成的数据包
         """
-        # 抽取 "目的情绪"、"动作"、"回答" 三个部分
-        try:
-            [mood_purpose, answer_prompt, action_text] = response.strip("@").split("@")
-            # 格式化回答，去掉两边的引号
-            answer_prompt = answer_prompt.strip('"').strip("“").strip("”")
-        except ValueError:
-            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}")
-        except Exception as e:
-            mood_purpose = "[正常]<>"
-            action_text = "<||>"
-            answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
-            self.logger.error(
-                f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_text:{action_text} answer_prompt:{answer_prompt}")
+        # 解析返回
+        results = self.talk_box.parse_response(response)
+        mood = results["mood"]
+        purpose = results["purpose"]
+        answer_text = results["answer"]
+        action_text = results["action"]
 
         # 检查抽取到的动作
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_text)
@@ -498,15 +493,11 @@ class NPC:
                 self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         self.action_result["npc_name"] = self.name
         # 更新NPC的情绪和purpose
-        try:
-            purpose: str = mood_purpose.split("]<")[1].replace(">", "")
-            mood: str = mood_purpose.split("]<")[0].replace("[", "")
-        except IndexError:
-            self.logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
-            purpose = ""  # NULL
+        if not mood:
             mood = self.mood
+        else:
+            self.mood = mood
         self.purpose = purpose
-        self.mood = mood
 
         """
             4.添加本次交互的记忆元素
@@ -516,7 +507,7 @@ class NPC:
             {self.name}的目的是{purpose}，
             {player_name} 的状态是{player_state_desc}，
             {player_name} 说: {player_speech}
-            {self.name} 回答{player_name}: {answer_prompt}
+            {self.name} 回答{player_name}: {answer_text}
             然后 采取了动作: {action_text}
             时间在：{time}
         """
@@ -525,14 +516,14 @@ class NPC:
         response_package = {
             "name": "talk_result",
             "npc_name": self.name,
-            "answer": answer_prompt,
+            "answer": answer_text,
             "actions": [self.action_result]
         }
 
         self.logger.debug(f"""
                     <TALK2NPC请求>
                     <返回行为>:{self.action_result}
-                    <返回回答>:{answer_prompt}
+                    <返回回答>:{answer_text}
                     <心情和目的>:{self.mood} {self.purpose}
                             """)
         return response_package
