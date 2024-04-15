@@ -136,6 +136,7 @@ class TalkBox:
         return history_content
 
     def parse_response(self, content):
+        # todo: 优化解析逻辑
         if not content:
             content = self.response
         # 抽取 "目的情绪"、"动作"、"回答" 三个部分
