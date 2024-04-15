@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Tuple
 from nuwa.src.npc.memory import NPCMemory
 from nuwa.src.npc.knowledge import PublicKnowledge, SceneConfig
 from nuwa.src.npc.action import ActionItem
+from nuwa.src.npc.talk_box import TalkBox
 from nuwa.src.utils.embedding import LocalEmbedding, SingletonEmbeddingModel, BaseEmbeddingModel
 from nuwa.src.utils.model_api import get_model_answer
 
@@ -16,18 +17,22 @@ class PersonalKnowledge:
     """
     本质只是存储当前的个体的认知记忆，和public区分开
     """
+
     def __init__(self, actions: List[str], places: List[str], people: List[str], moods: List[str]):
         self.actions = actions
         self.places = places
         self.people = people
         self.moods = moods
 
+
 # npc的状态
 class State:
     """
     游戏提供给NPC的状态
     """
-    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str], ob_locations: List[str]):
+
+    def __init__(self, position: str, backpack: List[str], ob_people: List[str], ob_items: List[str],
+                 ob_locations: List[str]):
         self.position = position
         self.backpack = backpack
         self.observation = self.Observation(ob_people, ob_items, ob_locations)
@@ -43,12 +48,10 @@ class State:
 
         def to_dict(self):
             return {
-                    "people": self.people,
-                    "items": self.items,
-                    "locations": self.locations
-                }
-
-
+                "people": self.people,
+                "items": self.items,
+                "locations": self.locations
+            }
 
     def __str__(self):
         return f'{{\n\t"position": "{self.position}",\n\t"observation": {{\n\t\t"people": {self.observation.people},\n\t\t"items": {self.observation.items},\n\t\t"locations": {self.observation.locations}\n\t}},\n\t"backpack": {self.backpack}\n}}'
@@ -64,6 +67,7 @@ class State:
             "backpack": self.backpack
         }
 
+
 # NPC类
 class NPC:
     """
@@ -78,6 +82,7 @@ class NPC:
         memory_k (int, optional): NPC记忆的长度，默认为3
         model (str, optional): 使用的语言模型，默认为OPENAI_MODEL
     """
+
     def __init__(
             self,
             name: str,
@@ -93,7 +98,7 @@ class NPC:
             mood: str = "正常",
             action_space: List[str] = [],
             memory: List[str] = [],
-            memory_k: int = 3
+            memory_k: int = 3,
     ) -> None:
         # NPC模块LOGGER
         self.logger = logging.getLogger("NPC")
@@ -127,13 +132,16 @@ class NPC:
         self.purpose: str = ""
         # NPC的记忆
         self.embedding_model = embedding_model
-        self.memory: NPCMemory = NPCMemory(npc_name=self.name, name_index=self.name_index, k=memory_k,EmbeddingModel=self.embedding_model,
+        self.memory: NPCMemory = NPCMemory(npc_name=self.name, name_index=self.name_index, k=memory_k,
+                                           EmbeddingModel=self.embedding_model,
                                            project_root_path=self.PROJECT_ROOT_PATH)
 
         ####################### 先清空现有VB #######################
         self.memory.clear_memory()
         self.initial_memory = memory
         ################# 等到记忆添加实现闭环时删除 #################
+        # 实现多轮对话
+        self.talk_box = None
 
     def _init(self):
         for piece in self.initial_memory:
@@ -260,7 +268,7 @@ class NPC:
             mood: str = purpose_response.split("]<")[0].replace("[", "")
         except IndexError:
             self.logger.error(f"返回的目的格式不正确，返回内容为：{purpose_response}, 设定purpose为''")
-            purpose = "" # NULL
+            purpose = ""  # NULL
             mood = self.mood
 
         self.logger.debug(f"""
@@ -281,7 +289,7 @@ class NPC:
         return purpose
 
     # 生成行为
-    def get_action(self, time: str, fail_safe:"FailSafe", k: int = 3) -> Dict[str, Any]:
+    def get_action(self, time: str, fail_safe: "FailSafe", k: int = 3) -> Dict[str, Any]:
         # TODO: 将返回的action做成类似conversation一样的list，然后返回游戏执行错误/成功，作为一个memoryitem
         """
         结合NPC的记忆、目的、情绪、位置、时间等信息来生成动作和参数
@@ -297,7 +305,9 @@ class NPC:
         :return: Dict[str, Any]
         """
         # 按照NPC目的和NPC观察检索记忆
-        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(self.state.observation.people) + ",".join(self.state.observation.locations) # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
+        query_text: str = self.purpose + ",".join(self.state.observation.items) + ",".join(
+            self.state.observation.people) + ",".join(
+            self.state.observation.locations)  # 这里暴力相加，感觉这不会影响提取的记忆相关性[或检索两次？]
         memory_dict: Dict[str, Any] = self.memory.search_memory(query_text=query_text, query_game_time=time, k=k)
         memory_related_text = [each.text for each in memory_dict["related_memories"]]
         memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
@@ -371,9 +381,9 @@ class NPC:
         return self.action_result
 
     # 生成单人2NPC对话
-    def get_npc_response(self, player_name:str, player_speech:str,items_visible:List[str],
-                               player_state_desc:str,
-                               time: str, fail_safe:"FailSafe", k: int = 3) -> Dict[str, Any]:
+    def get_npc_response(self, player_name: str, player_speech: str, items_visible: List[str],
+                         player_state_desc: str,
+                         time: str, fail_safe: "FailSafe", k: int = 3) -> Dict[str, Any]:
         """
         接受玩家的状态，根据NPC的记忆和目的返回NPC的动作，回答，更新目的
             1.按照玩家问题、当前NPC目的，检索NPC的记忆
@@ -415,7 +425,8 @@ class NPC:
         memory_latest_text = [each.text for each in memory_dict["latest_memories"]]
         # 按照玩家的问句检索记忆
         query_text_player: str = player_speech
-        memory_dict_player: Dict[str, Any] = self.memory.search_memory(query_text=query_text_player, query_game_time=time, k=k)
+        memory_dict_player: Dict[str, Any] = self.memory.search_memory(query_text=query_text_player,
+                                                                       query_game_time=time, k=k)
         memory_related_text_player = [each.text for each in memory_dict_player["related_memories"]]
         """
             2.按照记忆、之前的目的、当前状态、观察等，生成目的(包含情绪)，动作，回答
@@ -430,36 +441,21 @@ class NPC:
             action_prompt += f"-`{item.example}`：{item.definition}\n"
         # 根据当前位置构造可去的位置(排除当前位置
         scene_allowed_places: list[str] = [place for place in self.scene_knowledge.all_places if
-                                            place != self.state.position]
-        instruct = f"""
-        请你扮演{self.name}，设定是：{self.desc}。
-        你的心情是{self.mood}，现在时间是{time},
-        {self.name}当前位置是:{self.state.position}，
-        你之前的目的是:{self.purpose},
-        你的最近记忆:{memory_latest_text},
-        你脑海中相关记忆:{memory_related_text_purpose+memory_related_text_player}，
-        你现在看到的人:{self.state.observation.people}，
-        你现在看到的物品:{self.state.observation.items}，
-        你现在身上的物品:{self.state.backpack}，
-        你可去的地方:{scene_allowed_places}，
-        你现在看到的地点:{self.state.observation.locations}，
-        {player_name}对你说：“{player_speech}”，
-        他的背景：{player_state_desc}，
-        他身上有：{items_visible}。
-        """
-        # 目的(包含情绪)，动作，回答
-        prompt = f"""   
-                        每当有人与你对话时，你都会以符合角色情绪和背景的方式回应，应包含：1.情绪，2.角色目的，3.回答内容，4.角色行为，采用特定格式：`@[情绪]<角色目的>@回答内容@<动作|对象|参数>@`。
-                        这个格式方便游戏端进行解析。`<动作|对象|参数>`部分需要限定在以下[行为定义]中：
-                        {action_prompt}
-                    要求：
-                        1.一次仅返回一个行为，而不是多个行为
-                        2.行为中的动作必须是[行为定义]出现的动作，格式为<action_name|obj|param>
-                        3.角色的行为必须和角色的回答内容、目的有逻辑关系。
-                        4.角色目的应该为10-30字。
-                """
-        # 发起请求
-        response: str = self.call_llm(instruct=instruct, prompt=prompt)
+                                           place != self.state.position]
+        if self.talk_box is None:
+            self.talk_box = TalkBox(name=self.name, desc=self.desc, mood=self.mood, time=time,
+                                    position=self.state.position, purpose=self.purpose,
+                                    memory_latest_text=memory_latest_text,
+                                    memory_related_text_purpose=memory_related_text_purpose,
+                                    memory_related_text_player=memory_related_text_player,
+                                    scene_allowed_places=scene_allowed_places,
+                                    player_name=player_name, player_state_desc=player_state_desc,
+                                    items_visible=items_visible, action_prompt=action_prompt,
+                                    state=self.state.to_dict(), project_root_path=self.PROJECT_ROOT_PATH, model=self.ACTION_MODEL)
+        response: str = self.talk_box.get_response(input_text=player_speech, mood=self.mood,
+                                                   memory_related_text_player=memory_related_text_player,
+                                                   items_visible=items_visible,
+                                                   state=self.state.to_dict())
         """
             3.更新目的和情绪，返回动作和回答组成的数据包
         """
@@ -474,7 +470,8 @@ class NPC:
             mood_purpose = "[正常]<>"
             action_text = "<||>"
             answer_prompt = [x for x in response.strip("@").split("@") if x][-1]
-            self.logger.error(f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_text:{action_text} answer_prompt:{answer_prompt}")
+            self.logger.error(
+                f"NPC:{self.name}的回复格式不正确，回复为:{response}, 返回默认 mood_purpose:{mood_purpose} action_text:{action_text} answer_prompt:{answer_prompt}")
 
         # 检查抽取到的动作
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_text)
@@ -483,11 +480,12 @@ class NPC:
         # 如果没有找到匹配的action那么就在NPC的动作空间中搜索
         if action_name not in self.action_dict.keys():
             # failSafe
-            fail_safe_action :"ActionItem"= fail_safe.action_fail_safe(action_name, list(self.action_dict.values()))
+            fail_safe_action: "ActionItem" = fail_safe.action_fail_safe(action_name, list(self.action_dict.values()))
             if not fail_safe_action:
                 illegal_action = self.action_result
                 self.action_result = {"name": "", "object": "", "parameters": []}
-                self.logger.error(f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
+                self.logger.error(
+                    f"NPC:{self.name}的行为不合法，错误行为为:{illegal_action}, 返回空动作:{self.action_result}")
             else:
                 # 如果匹配到了fail_safe_action则替代
                 action_name = fail_safe_action.name
@@ -505,7 +503,7 @@ class NPC:
             mood: str = mood_purpose.split("]<")[0].replace("[", "")
         except IndexError:
             self.logger.error(f"返回的目的格式不正确，返回内容为：{mood_purpose}, 设定purpose为''")
-            purpose = "" # NULL
+            purpose = ""  # NULL
             mood = self.mood
         self.purpose = purpose
         self.mood = mood
@@ -533,14 +531,23 @@ class NPC:
 
         self.logger.debug(f"""
                     <TALK2NPC请求>
-                    <请求内容>:{instruct}
-                    <请求提示>:{prompt}
-                    <返回内容>:{response}
                     <返回行为>:{self.action_result}
                     <返回回答>:{answer_prompt}
                     <心情和目的>:{self.mood} {self.purpose}
                             """)
         return response_package
+
+    def end_talk(self):
+        """
+        结束对话，进行三件事：1）提取talk_box内容；2）进行记忆整合；3）删除talk_box。
+        """
+        # 提取talk_box内容
+        talk_content = self.talk_box.get_history_content()
+        # todo 进行记忆整合
+        print(talk_content)
+        # self.memory.add_memory_text(text=talk_content, game_time=self.talk_box.time)
+        # 删除talk_box
+        self.talk_box = None
 
     def call_llm(self, instruct: str, prompt: str) -> str:
         llm_prompt_list = [{
@@ -552,12 +559,14 @@ class NPC:
         ]
         # 测试使用百川2
         if self.ACTION_MODEL.startswith("baichuan2"):
-            prompt = instruct+prompt
-            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=[prompt], project_root_path=self.PROJECT_ROOT_PATH)
+            prompt = instruct + prompt
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=[prompt],
+                                      project_root_path=self.PROJECT_ROOT_PATH)
             self.logger.debug(f"<ACTION> 使用百川模型: {self.ACTION_MODEL}")
         elif self.ACTION_MODEL.startswith("gpt"):
             # 使用openai
-            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list, project_root_path=self.PROJECT_ROOT_PATH)
+            answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=llm_prompt_list,
+                                      project_root_path=self.PROJECT_ROOT_PATH)
             self.logger.debug(f"<ACTION> 使用openai模型{self.ACTION_MODEL}")
         elif self.ACTION_MODEL.startswith("gemini"):
             # 使用google Gemini
@@ -609,4 +618,3 @@ class NPC:
         with open(NPC_CONFIG_PATH, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
         self.logger.debug(f"已保存NPC:{self.name}的状态到{NPC_CONFIG_PATH}")
-
