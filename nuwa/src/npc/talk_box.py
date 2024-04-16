@@ -62,14 +62,28 @@ class TalkBox:
         prompt_text = "。".join(prompts)
         # print(prompts)
 
+        # instruct = f"""
+        #         你是{self.name}，{self.desc}。现在的时间是{self.time}，你位于{self.state_position}，心情{self.mood}。你的目的是{self.purpose}。
+        #         你记得最近的记忆是{self.memory_latest_text}，相关的记忆是{self.memory_related_text_purpose}，{self.memory_related_text_player}。
+        #         {prompt_text}
+        #
+        #         请以符合你角色情绪和背景的方式作出回应，包括：
+        #         1. 当前的情绪
+        #         2. 想说的话
+        #         3. 计划采取的行动
+        #
+        #         你的回应格式应该是：`@当前情绪@想说的话@<计划行动>@`。
+        #         行动的格式应该是：<动作|对象|参数>，并且只能选择一个行动。
+        #
+        #         请注意，你的行动应该符合以下定义：
+        #         {self.action_prompt}
+        #         """
         instruct = f"""
                 你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。你的目的是:{self.purpose}，你记得{self.memory_latest_text}，{self.memory_related_text_purpose}， {self.memory_related_text_player}。{prompt_text}
-                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你接下来的目的，3.你想说的话，4.你想做出的行动。你的回应要采用特定格式：`@[你当前的情绪]<你接下来的目的>@你想说的话@<你想做出的行动>@`。`<你想做出的行动>`部分需要限定在以下定义中：
+                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你想说的话，3.你想做出的行动。你的回应要采用特定格式：`@你当前的情绪@你想说的话@<你想做出的行动>@`。
+                <你想做出的行动>需要限定在以下定义中，格式应为<动作|对象|参数>。
+                行动定义：
                 {self.action_prompt}
-                要求：
-                - 你想做出的行为格式应为<动作|对象|参数>。
-                - 行为必须与你的回答内容、情绪和目的逻辑上相关。
-                - 你的目的描述应在10-30字之间。
                 """
         # 删掉instruct中多余的空格和换行符
         instruct = '\n'.join([line.strip() for line in instruct.strip().split('\n')])
@@ -79,9 +93,6 @@ class TalkBox:
     def generate_response(self, input_text, **kwargs):
         """
         生成回答
-        :param input_text:
-        :param kwargs:
-        :return:
         """
         # 获取新的输入参数，对比是否和原先一致，不一致则更新，并且加入指令中
         instruct = []
@@ -136,51 +147,64 @@ class TalkBox:
         return history_content
 
     def parse_response(self, content):
-        # todo: 优化解析逻辑
         if not content:
             content = self.response
-        # 抽取 "目的情绪"、"动作"、"回答" 三个部分
+        # 抽取 "情绪"、"动作"、"回答" 三个部分
         try:
+            # todo: 优化解析逻辑
             res1 = content.strip("@").split("@")
-            if len(res1) == 3:
-                mood_purpose, answer, action = res1
-            else:
-                mood_purpose, res2 = res1
-                answer, action = res2.split("<")
-                action = "<" + action
-            # 格式化回答，去掉两边的引号
-            mood, purpose = mood_purpose.split("<")
-            # 去掉两边的"“”"|[]<>@等符号
-            mood = mood.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
-            purpose = purpose.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
-            answer = answer.strip('"').strip("“").strip("”")
+            print(res1)
+            mood, answer, action = res1
         except Exception as e:
             self.logger.error(f"解析回答时出错：{e}, {content}")
             mood = ""
-            purpose = ""
             action = "<||>"
-            answer = [x for x in content.strip("@").split("@") if x][-1]
-        dict_response = {'mood': mood, 'purpose': purpose, 'answer': answer, 'action': action}
+            answer = content
+        # 去掉两边的"“”"|[]<>@等符号
+        mood = mood.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
+        answer = answer.strip('"').strip("“").strip("”")
+        dict_response = {'mood': mood, 'purpose': self.purpose, 'answer': answer, 'action': action}
         return dict_response
 
 
 if __name__ == "__main__":
     # Example of how to initialize TalkBox with specified parameters
+    # tb = TalkBox(
+    #     name="草泥马",
+    #     desc="一匹很凶的马，对人非常无理粗暴，喜欢说草泥马",
+    #     mood="烦躁",
+    #     time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
+    #     position="沙漠中",
+    #     purpose="草泥马现在只想要远离人类",
+    #     memory_latest_text="草泥马在沙漠中找到了一顶遮阳帽。",
+    #     memory_related_text_purpose="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
+    #     memory_related_text_player="",
+    #     scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
+    #     action_prompt="[{'name': 'move', 'definition': ('<move|location|>，向[location]移动',), 'example': ('<move|绿洲|>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}, {'name': 'follow', 'definition': ('<follow|person|>，跟随[person]',), 'example': ('<follow|商人|>',)}, {'name': 'give', 'definition': ('<give|item|person>，给[person]一个[item]',), 'example': ('<give|水|商人>',)}]",
+    #     state={'position': "沙漠中", 'people': ["沙漠商人"],
+    #            'items': [],
+    #            'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': ["遮阳帽"]},
+    #     player_name="杨泽君",
+    #     player_state_desc="杨泽君是一位年轻的法师，他看起来很帅气，穿着一身灰色的袍子，拿着一根法杖。看起来十分威风",
+    #     items_visible=["法杖", "望远镜", "水", "饼干"],
+    #     model="gpt-3.5-turbo-16k",
+    #     project_root_path=Path(__file__).parents[3] / "example_project"
+    # )
     tb = TalkBox(
-        name="草泥马",
-        desc="一匹很凶的马，对人非常无理粗暴，喜欢说草泥马",
-        mood="烦躁",
+        name="西格马",
+        desc="一匹喜欢沉思的马，整天在思考数学问题。说话风格很简单。喜欢给别人出数学题，只有当别人解出正确答案时，西格马才会follow。",
+        mood="沉思",
         time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
         position="沙漠中",
-        purpose="草泥马现在又渴又饿，想找到吃的",
-        memory_latest_text="做马真是太讨厌了，草泥马，我真的受够了！",
-        memory_related_text_purpose="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
+        purpose="思考数学问题",
+        memory_latest_text="",
+        memory_related_text_purpose="",
         memory_related_text_player="",
-        scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
-        action_prompt="[{'name': 'mov', 'definition': ('<mov|location|>，向[location]移动',), 'example': ('<mov|绿洲|>',)}, {'name': 'get', 'definition': ('<get|object1|object2>，从[object2]中获得[object1]，[object2]处可为空',), 'example': ('<get|水|水壶>',)}, {'name': 'put', 'definition': ('<put|object1|object2>，把[object2]放入[object1]',), 'example': ('<put|帐篷|沙漠中心>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}]",
+        scene_allowed_places=[],
+        action_prompt="[{'name': 'continue', 'definition': ('<continue||>，继续保持之前的动作',), 'example': ('<continue||>',)}, {'name': 'follow', 'definition': ('<follow|person|>，跟随[person]',), 'example': ('<follow|商人|>',)}, {'name': 'give', 'definition': ('<give|item|person>，将身上的[item]给[person]',), 'example': ('<give|水|商人>',)}]",
         state={'position': "沙漠中", 'people': ["沙漠商人"],
                'items': [],
-               'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': ["遮阳帽"]},
+               'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': [""]},
         player_name="杨泽君",
         player_state_desc="杨泽君是一位年轻的法师，他看起来很帅气，穿着一身灰色的袍子，拿着一根法杖。看起来十分威风",
         items_visible=["法杖", "望远镜", "水", "饼干"],

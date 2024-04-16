@@ -435,6 +435,9 @@ class NPC:
         scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
         allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
                                       action_name in self.action_space]  # 场景action和人物action取交集
+        print(self.action_space)
+        print(scene_allowed_actions)
+        print(allowed_actions)
         allowed_actions_dict = {action_name: self.action_dict[action_name] for action_name in allowed_actions}
         action_prompt = ""
         for key, item in allowed_actions_dict.items():
@@ -499,19 +502,20 @@ class NPC:
             self.mood = mood
         self.purpose = purpose
 
-        """
-            4.添加本次交互的记忆元素
-        """
-        memory_text = f"""
-            {self.name}在{self.state.position}和{player_name}相遇，
-            {self.name}的目的是{purpose}，
-            {player_name} 的状态是{player_state_desc}，
-            {player_name} 说: {player_speech}
-            {self.name} 回答{player_name}: {answer_text}
-            然后 采取了动作: {action_text}
-            时间在：{time}
-        """
-        self.memory.add_memory_text(text=memory_text, game_time=time)
+        # dont need to add memory
+        # """
+        #     4.添加本次交互的记忆元素
+        # """
+        # memory_text = f"""
+        #     {self.name}在{self.state.position}和{player_name}相遇，
+        #     {self.name}的目的是{purpose}，
+        #     {player_name} 的状态是{player_state_desc}，
+        #     {player_name} 说: {player_speech}
+        #     {self.name} 回答{player_name}: {answer_text}
+        #     然后 采取了动作: {action_text}
+        #     时间在：{time}
+        # """
+        # self.memory.add_memory_text(text=memory_text, game_time=time)
 
         response_package = {
             "name": "talk_result",
