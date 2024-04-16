@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -21,9 +22,9 @@ class TalkBox:
         self.mood = kwargs.get("mood", "")
         self.time = kwargs.get("time", "")
         self.purpose = kwargs.get("purpose", "")
-        self.memory_latest_text = kwargs.get("memory_latest_text", "")
-        self.memory_related_text_purpose = kwargs.get("memory_related_text_purpose", "")
-        self.memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        self.latest_memory = kwargs.get("latest_memory", [])
+        self.purpose_related_memory = kwargs.get("purpose_related_memory", [])
+        self.player_related_memory = kwargs.get("player_related_memory", [])
         self.action_prompt = kwargs.get("action_prompt", "")
         self.state_position = kwargs.get("state", {}).get("position", "")
         self.state_observation_people = kwargs.get("state", {}).get("people", [])
@@ -44,11 +45,14 @@ class TalkBox:
             return non_empty_msg.format('、'.join(items))
 
         prompts = [
-            generate_prompt("地点", self.scene_allowed_places, "你现在去不了任何地方", "你现在可以去{}"),
-            generate_prompt("人", self.state_observation_people, "你现在看不到什么人", "你现在看到的人有{}"),
+            generate_prompt("目的", [self.purpose], "", "你现在的目的是{}"),
+            generate_prompt("记忆", self.latest_memory + self.purpose_related_memory + self.player_related_memory,
+                            "", "你记得{}"),
+            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}"),
+            generate_prompt("地点", self.scene_allowed_places, "", "你现在可以去{}"),
+            generate_prompt("人", self.state_observation_people, "你现在看不到什么人", "周围能看到的人有{}"),
             generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西", "周围能捡的东西有{}"),
             generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方", "周围能看到的地方有{}"),
-            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}")
         ]
 
         player_info_prompt = f"{self.player_name}正在和你说话，"
@@ -64,7 +68,7 @@ class TalkBox:
 
         # instruct = f"""
         #         你是{self.name}，{self.desc}。现在的时间是{self.time}，你位于{self.state_position}，心情{self.mood}。你的目的是{self.purpose}。
-        #         你记得最近的记忆是{self.memory_latest_text}，相关的记忆是{self.memory_related_text_purpose}，{self.memory_related_text_player}。
+        #         你记得最近的记忆是{self.latest_memory}，相关的记忆是{self.purpose_related_memory}，{self.player_related_memory}。
         #         {prompt_text}
         #
         #         请以符合你角色情绪和背景的方式作出回应，包括：
@@ -79,9 +83,9 @@ class TalkBox:
         #         {self.action_prompt}
         #         """
         instruct = f"""
-                你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。你的目的是:{self.purpose}，你记得{self.memory_latest_text}，{self.memory_related_text_purpose}， {self.memory_related_text_player}。{prompt_text}
-                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你想说的话，3.你想做出的行动。你的回应要采用特定格式：`@你当前的情绪@你想说的话@<你想做出的行动>@`。
-                <你想做出的行动>需要限定在以下定义中，格式应为<动作|对象|参数>。
+                你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。{prompt_text}
+                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你想说的话，3.你想做出的行动。你的回应要采用特定格式：`@你当前的情绪@你想说的话@<动作|对象|参数>@`。
+                你想做出的行动需要限定在以下定义中，格式应为：<动作|对象|参数>。
                 行动定义：
                 {self.action_prompt}
                 """
@@ -97,16 +101,17 @@ class TalkBox:
         # 获取新的输入参数，对比是否和原先一致，不一致则更新，并且加入指令中
         instruct = []
         mood = kwargs.get("mood", "")
-        memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        memory_related_text_player = kwargs.get("player_related_memory", "")
         items_visible = kwargs.get("items_visible", [])
         state_backpack = kwargs.get("state", {}).get("backpack", [])
 
         if mood != self.mood and mood != "":
             instruct.append(f"{self.name}的心情是{mood}。")
             self.mood = mood
-        if memory_related_text_player != self.memory_related_text_player and memory_related_text_player != "":
-            instruct.append(f"{self.name}脑海中相关记忆:{memory_related_text_player}。")
-            self.memory_related_text_player = memory_related_text_player
+        # todo 目前记忆有问题，做好了再加上
+        # if memory_related_text_player != self.player_related_memory and memory_related_text_player != "":
+        #     instruct.append(f"{self.name}脑海中相关记忆:{memory_related_text_player}。")
+        #     self.player_related_memory = memory_related_text_player
         if items_visible != self.items_visible and items_visible != []:
             instruct.append(f"{self.player_name}身上有：{items_visible}。")
             self.items_visible = items_visible
@@ -152,19 +157,29 @@ class TalkBox:
         # 抽取 "情绪"、"动作"、"回答" 三个部分
         try:
             # todo: 优化解析逻辑
-            res1 = content.strip("@").split("@")
+            # 去掉两边的字符
+            content = remove_non_alphanumeric_from_ends(content)
+            res1 = content.split("@")
             print(res1)
             mood, answer, action = res1
         except Exception as e:
             self.logger.error(f"解析回答时出错：{e}, {content}")
-            mood = ""
-            action = "<||>"
+            mood = self.mood
+            action = "<continue||>"
             answer = content
         # 去掉两边的"“”"|[]<>@等符号
-        mood = mood.strip('"').strip("“").strip("”").strip("|").strip("[").strip("]").strip("<").strip(">")
+        mood = remove_non_alphanumeric_from_ends(mood)
         answer = answer.strip('"').strip("“").strip("”")
         dict_response = {'mood': mood, 'purpose': self.purpose, 'answer': answer, 'action': action}
         return dict_response
+
+
+def remove_non_alphanumeric_from_ends(input_str):
+    # 匹配字符串两端的中文、英文和数字之外的字符
+    pattern = r'^[^>\u4e00-\u9fa5a-zA-Z0-9]*|[^>\u4e00-\u9fa5a-zA-Z0-9]*$'
+    # 使用正则表达式匹配并删除
+    result = re.sub(pattern, '', input_str)
+    return result
 
 
 if __name__ == "__main__":
@@ -176,9 +191,9 @@ if __name__ == "__main__":
     #     time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
     #     position="沙漠中",
     #     purpose="草泥马现在只想要远离人类",
-    #     memory_latest_text="草泥马在沙漠中找到了一顶遮阳帽。",
-    #     memory_related_text_purpose="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
-    #     memory_related_text_player="",
+    #     latest_memory="草泥马在沙漠中找到了一顶遮阳帽。",
+    #     purpose_related_memory="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
+    #     player_related_memory="",
     #     scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
     #     action_prompt="[{'name': 'move', 'definition': ('<move|location|>，向[location]移动',), 'example': ('<move|绿洲|>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}, {'name': 'follow', 'definition': ('<follow|person|>，跟随[person]',), 'example': ('<follow|商人|>',)}, {'name': 'give', 'definition': ('<give|item|person>，给[person]一个[item]',), 'example': ('<give|水|商人>',)}]",
     #     state={'position': "沙漠中", 'people': ["沙漠商人"],

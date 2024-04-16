@@ -2,7 +2,7 @@
   "name": "continue",
   "definition": "<continue||>，继续保持之前的动作",
   "multi_param": false,
-  "example": "<continue||>",
+  "example": "continue",
   "log_template":{
     "success": "{npc_name}保持之前的动作",
     "fail": "{npc_name}试图保持之前的动作，但是失败了. 原因是{reason}"

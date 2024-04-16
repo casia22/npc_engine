@@ -2,7 +2,7 @@
     "name": "西格马",
     "desc": "一匹喜欢沉思的马，整天在思考数学问题。说话风格很简洁，不喜欢多说话。喜欢给别人出数学题，只有当别人解出正确答案时，西格马才会follow。",
     "mood": "烦躁",
-    "action_space": ["continue", "follow", "talk"],
+    "action_space": ["continue","follow","talk","move"],
     "npc_state": {
         "position": "",
         "observation": {

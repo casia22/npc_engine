@@ -435,6 +435,9 @@ class NPC:
         scene_allowed_actions: list[str] = self.scene_knowledge.all_actions
         allowed_actions: list[str] = [action_name for action_name in scene_allowed_actions if
                                       action_name in self.action_space]  # 场景action和人物action取交集
+        # todo 有bug，没有初始化正确的场景文件，不知道是哪里的问题。
+        #  知道了，engine没问题，游戏场景没放在正确的位置上
+        # todo test print，可以删掉
         print(self.action_space)
         print(scene_allowed_actions)
         print(allowed_actions)
