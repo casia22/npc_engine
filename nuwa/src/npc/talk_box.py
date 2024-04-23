@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -44,27 +45,28 @@ class TalkBox:
                 return empty_msg
             return non_empty_msg.format('、'.join(items))
 
-        prompts = [
-            generate_prompt("目的", [self.purpose], "", "你现在的目的是{}"),
-            generate_prompt("记忆", self.latest_memory + self.purpose_related_memory + self.player_related_memory,
-                            "", "你记得{}"),
-            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}"),
-            generate_prompt("地点", self.scene_allowed_places, "", "你现在可以去{}"),
-            generate_prompt("人", self.state_observation_people, "你现在看不到什么人", "周围能看到的人有{}"),
-            generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西", "周围能捡的东西有{}"),
-            generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方", "周围能看到的地方有{}"),
+        npc_info_prompts = [
+            generate_prompt("时间", [self.time], "", "现在的时间是{}，"),
+            generate_prompt("位置", [self.state_position], "", "你现在位于{}，"),
+            generate_prompt("心情", [self.mood], "", "心情是{}，"),
+            generate_prompt("目的", [self.purpose], "", "目的是{}，"),
+            generate_prompt("记忆", self.latest_memory + self.purpose_related_memory, "", "你记得{}。"),
+            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}。"),
+            generate_prompt("地点", self.scene_allowed_places, "", "你现在可以去{}。"),
+            generate_prompt("人", self.state_observation_people, "你现在看不到什么人。", "周围能看到的人有{}。"),
+            generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西。", "周围能捡的东西有{}。"),
+            generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方。", "周围能看到的地方有{}。"),
         ]
 
-        player_info_prompt = f"{self.player_name}正在和你说话，"
-        player_info_prompt += "你对他一无所知" if not self.player_state_desc else f"你知道一些关于他的信息，{self.player_state_desc}"
-        prompts.append(player_info_prompt)
+        player_info_prompts = [
+            generate_prompt("人物", [self.player_name], "", "{}正在和你说话，"),
+            generate_prompt("人物信息", [self.player_state_desc] + self.player_related_memory, "你对他一无所知。",
+                            "你知道一些关于他的信息，{}。"),
+            generate_prompt("人物身上物品", self.items_visible, "他身上没有任何东西。", "他身上有{}。")
+        ]
 
-        player_items_prompt = f"{self.player_name}身上"
-        player_items_prompt += "没有任何东西" if not self.items_visible else f"有{self.items_visible}"
-        prompts.append(player_items_prompt)
-
-        prompt_text = "。".join(prompts)
-        # print(prompts)
+        npc_prompt_text = "".join(npc_info_prompts)
+        player_prompt_text = "".join(player_info_prompts)
 
         # instruct = f"""
         #         你是{self.name}，{self.desc}。现在的时间是{self.time}，你位于{self.state_position}，心情{self.mood}。你的目的是{self.purpose}。
@@ -83,11 +85,23 @@ class TalkBox:
         #         {self.action_prompt}
         #         """
         instruct = f"""
-                你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。{prompt_text}
-                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你想说的话，3.你想做出的行动。你的回应要采用特定格式：`@你当前的情绪@你想说的话@<动作|对象|参数>@`。
-                你想做出的行动需要限定在以下定义中，格式应为：<动作|对象|参数>。
-                行动定义：
+                你是{self.name}，{self.desc}
+                {npc_prompt_text}
+                {player_prompt_text}
+                You need to respond in a way that fits the character's emotions and background. 
+                The output should be a markdown code snippet formatted in the following schema, including the leading and trailing "```json" and "```". including the content, {{"mood": Your current mood. "answer": What you want to say. "action": The actions you want to take. }}:
+                
+                ```json
+                {{
+                    "mood": string  // 开心
+                    "answer": string  // 你好
+                    "action": string  // <continue||>
+                }}
+                
+                The action should be defined in the format: <Action|Object|Parameter>, and only one action can be selected from the following definitions:
                 {self.action_prompt}
+                ```
+                用中文回答
                 """
         # 删掉instruct中多余的空格和换行符
         instruct = '\n'.join([line.strip() for line in instruct.strip().split('\n')])
@@ -122,7 +136,7 @@ class TalkBox:
         if instruct:
             instruct = "，".join(instruct)
             self.history.append({"role": "system", "content": instruct})
-        self.history.append({"role": "user", "content": input_text})
+        self.history.append({"role": "user", "content": f'{self.player_name}：{input_text}'})
         answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=self.history,
                                   project_root_path=self.PROJECT_ROOT_PATH)
         self.history.append({"role": "assistant", "content": answer})
@@ -141,36 +155,29 @@ class TalkBox:
         history = [f'{self.name}与{self.player_name}在{self.time}，{self.state_position}，发生了一次对话：']
         for item in self.history:
             if item["role"] == "user":
-                history.append(f"{self.player_name}: {item['content']}")
+                history.append(f"{item['content']}")
             elif item["role"] == "assistant":
-                assistant_content = self.parse_response(item['content'])
-                history.append(f"{self.name}[{assistant_content.get('mood', '')}]: {assistant_content['answer']}")
-        last_assistant_content = self.parse_response(self.history[-1]['content'])
+                assistant_content = self.parse_response_json(item['content'])
+                history.append(f"{self.name}[{assistant_content.get('mood', '')}]：{assistant_content['answer']}")
+        last_assistant_content = self.parse_response_json(self.history[-1]['content'])
         history.append(
             f"对话过后，{self.name}的心情很{last_assistant_content.get('mood', '')}，接下来的行动是{last_assistant_content.get('action', '')}。")
         history_content = "\n".join(history)
         return history_content
 
-    def parse_response(self, content):
+    def parse_response_json(self, content):
+        """
+        解析回答的json格式
+        """
         if not content:
             content = self.response
-        # 抽取 "情绪"、"动作"、"回答" 三个部分
+        # remove ```json from the beginning and ``` from end
+        content = content.lstrip("```json").rstrip("```")
         try:
-            # todo: 优化解析逻辑
-            # 去掉两边的字符
-            content = remove_non_alphanumeric_from_ends(content)
-            res1 = content.split("@")
-            print(res1)
-            mood, answer, action = res1
+            dict_response = json.loads(content)
         except Exception as e:
             self.logger.error(f"解析回答时出错：{e}, {content}")
-            mood = self.mood
-            action = "<continue||>"
-            answer = content
-        # 去掉两边的"“”"|[]<>@等符号
-        mood = remove_non_alphanumeric_from_ends(mood)
-        answer = answer.strip('"').strip("“").strip("”")
-        dict_response = {'mood': mood, 'purpose': self.purpose, 'answer': answer, 'action': action}
+            dict_response = {'mood': self.mood, 'purpose': self.purpose, 'answer': content, 'action': "<continue||>"}
         return dict_response
 
 
@@ -207,9 +214,9 @@ if __name__ == "__main__":
     # )
     tb = TalkBox(
         name="西格马",
-        desc="一匹喜欢沉思的马，整天在思考数学问题。说话风格很简单。喜欢给别人出数学题，只有当别人解出正确答案时，西格马才会follow。",
+        desc="一匹喜欢沉思的马，整天在思考数学问题。说话风格很简单，喜欢给别人出数学题。西格玛很独立，只有当别人解出正确答案时，西格马才会跟随别人，也就是follow。",
         mood="沉思",
-        time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
+        time="下午3:00",
         position="沙漠中",
         purpose="思考数学问题",
         memory_latest_text="",
@@ -228,9 +235,10 @@ if __name__ == "__main__":
     )
     input("Press Enter to start the conversation")
     while True:
-        user_input = input("User: ")
+        user_input = input("杨泽君: ")
         if user_input == "exit":
+            print(tb.history)
             print(tb.get_history_content())
             break
         response = tb.generate_response(user_input)
-        print(f"Assistant: {response}")
+        print(f"Assistant: {tb.parse_response_json(response)}")

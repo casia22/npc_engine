@@ -468,11 +468,10 @@ class NPC:
             3.更新目的和情绪，返回动作和回答组成的数据包
         """
         # 解析返回
-        results = self.talk_box.parse_response(response)
-        mood = results["mood"]
-        purpose = results["purpose"]
-        answer_text = results["answer"]
-        action_text = results["action"]
+        results = self.talk_box.parse_response_json(response)
+        mood = results.get("mood", self.mood)
+        answer_text = results.get("answer", "")
+        action_text = results.get("action", "<continue||>")
 
         # 检查抽取到的动作
         self.action_result: Dict[str, Any] = ActionItem.str2json(action_text)
@@ -498,27 +497,9 @@ class NPC:
                 # 如果非多参数，比如对话，那就把参数合并成一个字符串
                 self.action_result["parameters"] = ",".join(self.action_result["parameters"])
         self.action_result["npc_name"] = self.name
-        # 更新NPC的情绪和purpose
-        if not mood:
-            mood = self.mood
-        else:
-            self.mood = mood
-        self.purpose = purpose
 
-        # dont need to add memory
-        # """
-        #     4.添加本次交互的记忆元素
-        # """
-        # memory_text = f"""
-        #     {self.name}在{self.state.position}和{player_name}相遇，
-        #     {self.name}的目的是{purpose}，
-        #     {player_name} 的状态是{player_state_desc}，
-        #     {player_name} 说: {player_speech}
-        #     {self.name} 回答{player_name}: {answer_text}
-        #     然后 采取了动作: {action_text}
-        #     时间在：{time}
-        # """
-        # self.memory.add_memory_text(text=memory_text, game_time=time)
+        # 更新NPC的情绪和purpose
+        self.mood = mood
 
         response_package = {
             "name": "talk_result",

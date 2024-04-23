@@ -8,6 +8,10 @@
             {
                 "OPENAI_KEY": "sk-qvpKnoiDugYFOJbLC48e68E26a9e4510Ad779096Fd2019Fd",
                 "OPENAI_BASE": "https://apic3.a1r.cc/v1"
+            },
+            {
+                "OPENAI_KEY": "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",
+                "OPENAI_BASE": "https://api.openai.com/v1"
             }
         ],
         "OPENAI_TEMPERATURE": 0.5,
