@@ -1,5 +1,5 @@
 {
- "all_actions": ["move","catch","pick"],
+ "all_actions": ["move","catch","pick","follow","talk","move","continue"],
  "all_places": ["Elon家入口","Elon家出口","Elon的床","Elon的洗漱台","Elon的办公桌"],
  "all_moods": ["正常", "焦虑", "好奇", "开心", "伤心", "警觉", "机敏", "复仇", "沉稳", "忧郁", "坚决", "悲伤", "忠诚", "神秘", "自由", "温柔"],
  "all_people": ["时空旅者Elon"]

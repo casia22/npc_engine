@@ -1,5 +1,7 @@
+import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -11,6 +13,7 @@ class TalkBox:
     def __init__(self, model, project_root_path, **kwargs):
         self.logger = logging.getLogger("NPC")
         self.history = []
+        self.response = ""
         self.ACTION_MODEL = model
         self.PROJECT_ROOT_PATH = project_root_path
 
@@ -20,9 +23,9 @@ class TalkBox:
         self.mood = kwargs.get("mood", "")
         self.time = kwargs.get("time", "")
         self.purpose = kwargs.get("purpose", "")
-        self.memory_latest_text = kwargs.get("memory_latest_text", "")
-        self.memory_related_text_purpose = kwargs.get("memory_related_text_purpose", "")
-        self.memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        self.latest_memory = kwargs.get("latest_memory", [])
+        self.purpose_related_memory = kwargs.get("purpose_related_memory", [])
+        self.player_related_memory = kwargs.get("player_related_memory", [])
         self.action_prompt = kwargs.get("action_prompt", "")
         self.state_position = kwargs.get("state", {}).get("position", "")
         self.state_observation_people = kwargs.get("state", {}).get("people", [])
@@ -42,59 +45,87 @@ class TalkBox:
                 return empty_msg
             return non_empty_msg.format('、'.join(items))
 
-        prompts = [
-            generate_prompt("地点", self.scene_allowed_places, "你现在去不了任何地方", "你现在可以去{}"),
-            generate_prompt("人", self.state_observation_people, "你现在看不到什么人", "你现在看到的人有{}"),
-            generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西", "周围能捡的东西有{}"),
-            generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方", "周围能看到的地方有{}"),
-            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}")
+        npc_info_prompts = [
+            generate_prompt("时间", [self.time], "", "现在的时间是{}，"),
+            generate_prompt("位置", [self.state_position], "", "你现在位于{}，"),
+            generate_prompt("心情", [self.mood], "", "心情是{}，"),
+            generate_prompt("目的", [self.purpose], "", "目的是{}，"),
+            generate_prompt("记忆", self.latest_memory + self.purpose_related_memory, "", "你记得{}。"),
+            generate_prompt("身上物品", self.state_backpack, "你现在身上空无一物", "你现在身上有{}。"),
+            generate_prompt("地点", self.scene_allowed_places, "", "你现在可以去{}。"),
+            generate_prompt("人", self.state_observation_people, "你现在看不到什么人。", "周围能看到的人有{}。"),
+            generate_prompt("物品", self.state_observation_items, "周围没有什么能捡的东西。", "周围能捡的东西有{}。"),
+            generate_prompt("地方", self.state_observation_locations, "周围看不到什么地方。", "周围能看到的地方有{}。"),
         ]
 
-        player_info_prompt = f"{self.player_name}正在和你说话，"
-        player_info_prompt += "你对他一无所知" if not self.player_state_desc else f"你知道一些关于他的信息，{self.player_state_desc}"
-        prompts.append(player_info_prompt)
+        player_info_prompts = [
+            generate_prompt("人物", [self.player_name], "", "{}正在和你说话，"),
+            generate_prompt("人物信息", [self.player_state_desc] + self.player_related_memory, "你对他一无所知。",
+                            "你知道一些关于他的信息，{}。"),
+            generate_prompt("人物身上物品", self.items_visible, "他身上没有任何东西。", "他身上有{}。")
+        ]
 
-        player_items_prompt = f"{self.player_name}身上"
-        player_items_prompt += "没有任何东西" if not self.items_visible else f"有{self.items_visible}"
-        prompts.append(player_items_prompt)
+        npc_prompt_text = "".join(npc_info_prompts)
+        player_prompt_text = "".join(player_info_prompts)
 
-        prompt_text = "。".join(prompts)
-        # print(prompts)
-
+        # instruct = f"""
+        #         你是{self.name}，{self.desc}。现在的时间是{self.time}，你位于{self.state_position}，心情{self.mood}。你的目的是{self.purpose}。
+        #         你记得最近的记忆是{self.latest_memory}，相关的记忆是{self.purpose_related_memory}，{self.player_related_memory}。
+        #         {prompt_text}
+        #
+        #         请以符合你角色情绪和背景的方式作出回应，包括：
+        #         1. 当前的情绪
+        #         2. 想说的话
+        #         3. 计划采取的行动
+        #
+        #         你的回应格式应该是：`@当前情绪@想说的话@<计划行动>@`。
+        #         行动的格式应该是：<动作|对象|参数>，并且只能选择一个行动。
+        #
+        #         请注意，你的行动应该符合以下定义：
+        #         {self.action_prompt}
+        #         """
         instruct = f"""
-                你是{self.name}，{self.desc}。现在时间是{self.time}，你当前在{self.state_position}，心情很{self.mood}。你的目的是:{self.purpose}，你记得{self.memory_latest_text}，{self.memory_related_text_purpose}， {self.memory_related_text_player}。{prompt_text}
-                你需要以符合角色情绪和背景的方式作出回应，你的回应内容应包含：1.你当前的情绪，2.你接下来的目的，3.你想说的话，4.你想做出的行动。你的回应要采用特定格式：`@[你当前的情绪]<你接下来的目的>@你想说的话@<你想做出的行动>@`。`<你想做出的行动>`部分需要限定在以下定义中：
+                你是{self.name}，{self.desc}
+                {npc_prompt_text}
+                {player_prompt_text}
+                You need to respond in a way that fits the character's emotions and background. 
+                The output should be a markdown code snippet formatted in the following schema, including the leading and trailing "```json" and "```". including the content, {{"mood": Your current mood. "answer": What you want to say. "action": The actions you want to take. }}:
+                
+                ```json
+                {{
+                    "mood": string  // 开心
+                    "answer": string  // 你好
+                    "action": string  // <continue||>
+                }}
+                
+                The action should be defined in the format: <Action|Object|Parameter>, and only one action can be selected from the following definitions:
                 {self.action_prompt}
-                要求：
-                - 你想做出的行为格式应为<动作|对象|参数>。
-                - 行为必须与你的回答内容、情绪和目的逻辑上相关。
-                - 你的目的描述应在10-30字之间。
+                ```
+                用中文回答
                 """
         # 删掉instruct中多余的空格和换行符
         instruct = '\n'.join([line.strip() for line in instruct.strip().split('\n')])
-        # print(instruct)
+        print(instruct)
         self.history.append({"role": "system", "content": instruct})
 
-    def get_response(self, input_text, **kwargs):
+    def generate_response(self, input_text, **kwargs):
         """
         生成回答
-        :param input_text:
-        :param kwargs:
-        :return:
         """
         # 获取新的输入参数，对比是否和原先一致，不一致则更新，并且加入指令中
         instruct = []
         mood = kwargs.get("mood", "")
-        memory_related_text_player = kwargs.get("memory_related_text_player", "")
+        memory_related_text_player = kwargs.get("player_related_memory", "")
         items_visible = kwargs.get("items_visible", [])
         state_backpack = kwargs.get("state", {}).get("backpack", [])
 
         if mood != self.mood and mood != "":
             instruct.append(f"{self.name}的心情是{mood}。")
             self.mood = mood
-        if memory_related_text_player != self.memory_related_text_player and memory_related_text_player != "":
-            instruct.append(f"{self.name}脑海中相关记忆:{memory_related_text_player}。")
-            self.memory_related_text_player = memory_related_text_player
+        # todo 目前记忆有问题，做好了再加上
+        # if memory_related_text_player != self.player_related_memory and memory_related_text_player != "":
+        #     instruct.append(f"{self.name}脑海中相关记忆:{memory_related_text_player}。")
+        #     self.player_related_memory = memory_related_text_player
         if items_visible != self.items_visible and items_visible != []:
             instruct.append(f"{self.player_name}身上有：{items_visible}。")
             self.items_visible = items_visible
@@ -105,7 +136,7 @@ class TalkBox:
         if instruct:
             instruct = "，".join(instruct)
             self.history.append({"role": "system", "content": instruct})
-        self.history.append({"role": "user", "content": input_text})
+        self.history.append({"role": "user", "content": f'{self.player_name}：{input_text}'})
         answer = get_model_answer(model_name=self.ACTION_MODEL, inputs_list=self.history,
                                   project_root_path=self.PROJECT_ROOT_PATH)
         self.history.append({"role": "assistant", "content": answer})
@@ -114,6 +145,7 @@ class TalkBox:
                     <TalkBox of {self.name}>
                     <对话列表>:{self.history}
                             """)
+        self.response = answer
         return answer
 
     def get_history_content(self) -> str:
@@ -123,50 +155,78 @@ class TalkBox:
         history = [f'{self.name}与{self.player_name}在{self.time}，{self.state_position}，发生了一次对话：']
         for item in self.history:
             if item["role"] == "user":
-                history.append(f"{self.player_name}: {item['content']}")
+                history.append(f"{item['content']}")
             elif item["role"] == "assistant":
-                assistant_content = self.parse_response(item['content'])
-                history.append(f"{self.name}[{assistant_content.get('mood', '')}]: {assistant_content['answer']}")
-        last_assistant_content = self.parse_response(self.history[-1]['content'])
+                assistant_content = self.parse_response_json(item['content'])
+                history.append(f"{self.name}[{assistant_content.get('mood', '')}]：{assistant_content['answer']}")
+        last_assistant_content = self.parse_response_json(self.history[-1]['content'])
         history.append(
             f"对话过后，{self.name}的心情很{last_assistant_content.get('mood', '')}，接下来的行动是{last_assistant_content.get('action', '')}。")
         history_content = "\n".join(history)
         return history_content
 
-    def parse_response(self, content):
-        # 抽取 "目的情绪"、"动作"、"回答" 三个部分
+    def parse_response_json(self, content):
+        """
+        解析回答的json格式
+        """
+        if not content:
+            content = self.response
+        # remove ```json from the beginning and ``` from end
+        content = content.lstrip("```json").rstrip("```")
         try:
-            [mood_purpose, answer, action] = content.strip("@").split("@")
-            # 格式化回答，去掉两边的引号
-            mood = mood_purpose.split("<")[0]
-            purpose = mood_purpose.split(">")[-1]
-            answer = answer.strip('"').strip("“").strip("”")
+            dict_response = json.loads(content)
         except Exception as e:
-            mood = ""
-            purpose = ""
-            action = "<||>"
-            answer = [x for x in content.strip("@").split("@") if x][-1]
-        dict_response = {'mood': mood, 'purpose': purpose, 'answer': answer, 'action': action}
+            self.logger.error(f"解析回答时出错：{e}, {content}")
+            dict_response = {'mood': self.mood, 'purpose': self.purpose, 'answer': content, 'action': "<continue||>"}
         return dict_response
+
+
+def remove_non_alphanumeric_from_ends(input_str):
+    # 匹配字符串两端的中文、英文和数字之外的字符
+    pattern = r'^[^>\u4e00-\u9fa5a-zA-Z0-9]*|[^>\u4e00-\u9fa5a-zA-Z0-9]*$'
+    # 使用正则表达式匹配并删除
+    result = re.sub(pattern, '', input_str)
+    return result
 
 
 if __name__ == "__main__":
     # Example of how to initialize TalkBox with specified parameters
+    # tb = TalkBox(
+    #     name="草泥马",
+    #     desc="一匹很凶的马，对人非常无理粗暴，喜欢说草泥马",
+    #     mood="烦躁",
+    #     time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
+    #     position="沙漠中",
+    #     purpose="草泥马现在只想要远离人类",
+    #     latest_memory="草泥马在沙漠中找到了一顶遮阳帽。",
+    #     purpose_related_memory="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
+    #     player_related_memory="",
+    #     scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
+    #     action_prompt="[{'name': 'move', 'definition': ('<move|location|>，向[location]移动',), 'example': ('<move|绿洲|>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}, {'name': 'follow', 'definition': ('<follow|person|>，跟随[person]',), 'example': ('<follow|商人|>',)}, {'name': 'give', 'definition': ('<give|item|person>，给[person]一个[item]',), 'example': ('<give|水|商人>',)}]",
+    #     state={'position': "沙漠中", 'people': ["沙漠商人"],
+    #            'items': [],
+    #            'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': ["遮阳帽"]},
+    #     player_name="杨泽君",
+    #     player_state_desc="杨泽君是一位年轻的法师，他看起来很帅气，穿着一身灰色的袍子，拿着一根法杖。看起来十分威风",
+    #     items_visible=["法杖", "望远镜", "水", "饼干"],
+    #     model="gpt-3.5-turbo-16k",
+    #     project_root_path=Path(__file__).parents[3] / "example_project"
+    # )
     tb = TalkBox(
-        name="草泥马",
-        desc="一匹很凶的马，对人非常无理粗暴，喜欢说草泥马",
-        mood="烦躁",
-        time=datetime.strptime("2023-04-01 15:00:00", "%Y-%m-%d %H:%M:%S"),  # 假设当前时间
+        name="西格马",
+        desc="一匹喜欢沉思的马，整天在思考数学问题。说话风格很简单，喜欢给别人出数学题。西格玛很独立，只有当别人解出正确答案时，西格马才会跟随别人，也就是follow。",
+        mood="沉思",
+        time="下午3:00",
         position="沙漠中",
-        purpose="草泥马现在又渴又饿，想找到吃的",
-        memory_latest_text="做马真是太讨厌了，草泥马，我真的受够了！",
-        memory_related_text_purpose="因为和大司马吵了一架而离开了马群，这是草泥马第一次冒险进入沙漠。",
+        purpose="思考数学问题",
+        memory_latest_text="",
+        memory_related_text_purpose="",
         memory_related_text_player="",
-        scene_allowed_places=["沙漠东部", "沙漠中心", "即将到达的绿洲"],
-        action_prompt="[{'name': 'mov', 'definition': ('<mov|location|>，向[location]移动',), 'example': ('<mov|绿洲|>',)}, {'name': 'get', 'definition': ('<get|object1|object2>，从[object2]中获得[object1]，[object2]处可为空',), 'example': ('<get|水|水壶>',)}, {'name': 'put', 'definition': ('<put|object1|object2>，把[object2]放入[object1]',), 'example': ('<put|帐篷|沙漠中心>',)}, {'name': 'chat', 'definition': ('<chat|person|content>，对[person]说话，内容是[content]',), 'example': ('<chat|旅行者|你好呀，欢迎来到沙漠！>',)}]",
+        scene_allowed_places=[],
+        action_prompt="[{'name': 'continue', 'definition': ('<continue||>，继续保持之前的动作',), 'example': ('<continue||>',)}, {'name': 'follow', 'definition': ('<follow|person|>，跟随[person]',), 'example': ('<follow|商人|>',)}, {'name': 'give', 'definition': ('<give|item|person>，将身上的[item]给[person]',), 'example': ('<give|水|商人>',)}]",
         state={'position': "沙漠中", 'people': ["沙漠商人"],
                'items': [],
-               'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': ["遮阳帽"]},
+               'locations': ["沙漠东部", "沙漠中心", "即将到达的绿洲"], 'backpack': [""]},
         player_name="杨泽君",
         player_state_desc="杨泽君是一位年轻的法师，他看起来很帅气，穿着一身灰色的袍子，拿着一根法杖。看起来十分威风",
         items_visible=["法杖", "望远镜", "水", "饼干"],
@@ -175,9 +235,10 @@ if __name__ == "__main__":
     )
     input("Press Enter to start the conversation")
     while True:
-        user_input = input("User: ")
+        user_input = input("杨泽君: ")
         if user_input == "exit":
+            print(tb.history)
             print(tb.get_history_content())
             break
-        response = tb.get_response(user_input)
-        print(f"Assistant: {response}")
+        response = tb.generate_response(user_input)
+        print(f"Assistant: {tb.parse_response_json(response)}")

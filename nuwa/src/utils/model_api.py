@@ -142,7 +142,7 @@ class OPENAI:
                         temperature=self.temperature,
                         stop=self.stop
                     )
-                    print(response.choices[0].message["content"].strip())
+                    # print(response.choices[0].message["content"].strip())
                     return response.choices[0].message["content"].strip()
             except Exception as e:
                 attempt += 1
